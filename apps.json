@@ -1,0 +1,11 @@
+[
+  {
+    "name": "Flight tracking dashboard",
+    "description": "Read-only flight status view (local JSON build).",
+    "owner": "ETI360",
+    "status": "pilot",
+    "url": "",
+    "notes": "This tool currently runs locally (generates dashboard.html from flights.csv). Public hosted version TBD."
+  }
+]
+

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETI360 — Internal Apps</title>
+    <link rel="stylesheet" href="ui_style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <div class="topbar">
+          <h1>ETI360 internal apps</h1>
+          <div class="meta" id="meta">Loading…</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout" style="grid-template-columns: 1fr;">
+      <div class="panel">
+        <div class="section-meta">
+          <div style="font-weight: 600;">Directory</div>
+          <div class="actions">
+            <input id="q" type="text" placeholder="Search (name / description / owner)" />
+            <button id="reset" class="secondary" type="button">Clear</button>
+          </div>
+        </div>
+
+        <div class="hint">
+          Public pilot. Some tools may link to repos or require local setup until hosted services are added.
+        </div>
+
+        <div style="overflow: auto; margin-top: 10px;">
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" data-key="name">App</th>
+                <th class="sortable" data-key="status">Status</th>
+                <th>Description</th>
+                <th class="sortable" data-key="owner">Owner</th>
+                <th>Link</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+
+        <details style="margin-top: 12px;">
+          <summary class="small">Add an app</summary>
+          <div class="hint" style="margin-top: 8px;">
+            Edit <span class="mono">apps.json</span> and redeploy. Suggested fields:
+            <span class="mono">name</span>, <span class="mono">description</span>, <span class="mono">owner</span>,
+            <span class="mono">status</span>, <span class="mono">url</span>.
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <script>
+      const rowsEl = document.getElementById("rows");
+      const metaEl = document.getElementById("meta");
+      const qEl = document.getElementById("q");
+      const resetEl = document.getElementById("reset");
+
+      let apps = [];
+      let sortKey = localStorage.getItem("eti_apps_sortKey") || "name";
+      let sortDir = localStorage.getItem("eti_apps_sortDir") || "asc";
+
+      function esc(s) {
+        return String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+      }
+
+      function keyValue(app, key) {
+        return String(app?.[key] ?? "").toLowerCase();
+      }
+
+      function compare(a, b) {
+        const dir = sortDir === "desc" ? -1 : 1;
+        const av = keyValue(a, sortKey);
+        const bv = keyValue(b, sortKey);
+        return av.localeCompare(bv) * dir;
+      }
+
+      function render() {
+        const q = String(qEl.value || "").trim().toLowerCase();
+        const filtered = apps
+          .filter((a) => {
+            if (!q) return true;
+            const hay = [a.name, a.description, a.owner, a.status, a.notes].map((x) => String(x || "").toLowerCase()).join(" | ");
+            return hay.includes(q);
+          })
+          .slice()
+          .sort(compare);
+
+        rowsEl.innerHTML = "";
+        for (const a of filtered) {
+          const url = String(a.url || "").trim();
+          const link = url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open</a>` : `<span class="small">Not published</span>`;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><div style="font-weight:600;">${esc(a.name)}</div>${a.notes ? `<div class="small">${esc(a.notes)}</div>` : ""}</td>
+            <td class="mono">${esc(a.status || "")}</td>
+            <td>${esc(a.description || "")}</td>
+            <td>${esc(a.owner || "")}</td>
+            <td>${link}</td>
+          `;
+          rowsEl.appendChild(tr);
+        }
+
+        metaEl.textContent = `Apps: ${filtered.length}/${apps.length} • Sort: ${sortKey} (${sortDir})`;
+      }
+
+      async function load() {
+        try {
+          const res = await fetch("apps.json", { cache: "no-store" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const body = await res.json();
+          apps = Array.isArray(body) ? body : [];
+          metaEl.textContent = `Apps: ${apps.length}`;
+          render();
+        } catch (e) {
+          metaEl.textContent = "Failed to load apps.json";
+        }
+      }
+
+      qEl.value = localStorage.getItem("eti_apps_q") || "";
+      qEl.addEventListener("input", () => {
+        localStorage.setItem("eti_apps_q", qEl.value);
+        render();
+      });
+
+      resetEl.addEventListener("click", () => {
+        qEl.value = "";
+        localStorage.setItem("eti_apps_q", "");
+        render();
+      });
+
+      document.querySelectorAll("th.sortable").forEach((th) => {
+        th.addEventListener("click", () => {
+          const key = th.getAttribute("data-key");
+          if (!key) return;
+          if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+          else {
+            sortKey = key;
+            sortDir = "asc";
+          }
+          localStorage.setItem("eti_apps_sortKey", sortKey);
+          localStorage.setItem("eti_apps_sortDir", sortDir);
+          render();
+        });
+      });
+
+      load();
+    </script>
+  </body>
+</html>
+

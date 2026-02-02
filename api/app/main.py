@@ -79,84 +79,198 @@ def home() -> str:
 
 
 
+
 @app.get("/weather/ui", response_class=HTMLResponse)
 def weather_ui() -> str:
     return """<!doctype html>
-<html lang="en">
+<html lang=\"en\">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ETI360 Weather UI</title>
+    <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <title>ETI360 Weather</title>
     <style>
       :root { color-scheme: light; }
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px; color: #0f172a; background: #f8fafc; }
-      .wrap { max-width: 980px; margin: 0 auto; }
+      .wrap { max-width: 1100px; margin: 0 auto; }
       header { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 14px; }
       h1 { margin: 0 0 6px 0; font-size: 18px; }
       .muted { color: #475569; font-size: 13px; }
-      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+      .grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+      .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
       .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
       label { display: block; font-size: 12px; color: #334155; margin-bottom: 6px; }
-      input[type="text"], input[type="number"], textarea { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: white; }
-      textarea { min-height: 340px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      input[type=\"text\"], input[type=\"number\"], textarea { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: white; }
+      textarea { min-height: 76px; }
+      table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+      th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+      th { font-size: 12px; letter-spacing: 0.2px; color: #475569; background: #f8fafc; position: sticky; top: 0; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
       .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
       button { padding: 10px 12px; border-radius: 10px; border: 1px solid #0f172a; background: #0f172a; color: white; cursor: pointer; font-size: 14px; }
       button.secondary { background: white; color: #0f172a; }
-      .status { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; white-space: pre-wrap; }
+      .status { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; font-size: 12px; white-space: pre-wrap; }
       a { color: #2563eb; text-decoration: none; }
       a:hover { text-decoration: underline; }
-      @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+      @media (max-width: 980px) { .row2 { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
-    <div class="wrap">
+    <div class=\"wrap\">
       <header>
-        <h1>ETI360 Weather UI</h1>
-        <div class="muted">Paste a payload JSON, save it to Postgres, then generate a PNG to S3.</div>
+        <h1>ETI360 Weather</h1>
+        <div class=\"muted\">Enter atomic monthly values, save to Postgres, then generate a PNG to S3.</div>
       </header>
 
-      <div class="row">
-        <div class="card">
-          <label>API key (stored locally in this browser)</label>
-          <input id="apiKey" type="text" placeholder="ETI360 API key" autocomplete="off" />
-
-          <div style="height: 12px"></div>
-
-          <label>Location slug (for Generate)</label>
-          <input id="locationSlug" type="text" placeholder="fukuoka" />
-
-          <div style="height: 12px"></div>
-
-          <label>Year (for Generate)</label>
-          <input id="year" type="number" value="2026" />
-
-          <div class="actions">
-            <button id="btnSave" type="button">Save payload</button>
-            <button id="btnGenerate" type="button">Generate PNG</button>
-            <button id="btnSample" class="secondary" type="button">Load sample</button>
+      <div class=\"grid\">
+        <div class=\"card\">
+          <div class=\"row2\">
+            <div>
+              <label>API key (stored locally in this browser)</label>
+              <input id=\"apiKey\" type=\"text\" placeholder=\"ETI360 API key\" autocomplete=\"off\" />
+            </div>
+            <div>
+              <label>Year (Generate)</label>
+              <input id=\"year\" type=\"number\" value=\"2026\" />
+            </div>
           </div>
 
-          <div id="status" class="status">Ready.</div>
+          <div class=\"actions\">
+            <button id=\"btnSave\" type=\"button\">Save to DB</button>
+            <button id=\"btnGenerate\" type=\"button\">Generate PNG</button>
+            <button id=\"btnSample\" class=\"secondary\" type=\"button\">Fill sample (Fukuoka)</button>
+          </div>
+
+          <div id=\"status\" class=\"status\">Ready.</div>
         </div>
 
-        <div class="card">
-          <label>Payload JSON (POST /weather/payload)</label>
-          <textarea id="payload" spellcheck="false" placeholder='{ "location_slug": "fukuoka", ... }'></textarea>
-          <div class="muted" style="margin-top: 8px">Tip: after saving, use the same <code>location_slug</code> in Generate.</div>
+        <div class=\"card\">
+          <div class=\"row2\">
+            <div>
+              <label>Location slug (e.g. fukuoka)</label>
+              <input id=\"locationSlug\" type=\"text\" />
+            </div>
+            <div>
+              <label>Google Place ID</label>
+              <input id=\"placeId\" type=\"text\" />
+            </div>
+          </div>
+
+          <div class=\"row2\" style=\"margin-top: 12px;\">
+            <div>
+              <label>City</label>
+              <input id=\"city\" type=\"text\" />
+            </div>
+            <div>
+              <label>Country</label>
+              <input id=\"country\" type=\"text\" />
+            </div>
+          </div>
+
+          <div class=\"row2\" style=\"margin-top: 12px;\">
+            <div>
+              <label>Latitude</label>
+              <input id=\"lat\" type=\"number\" step=\"0.000001\" />
+            </div>
+            <div>
+              <label>Longitude</label>
+              <input id=\"lng\" type=\"number\" step=\"0.000001\" />
+            </div>
+          </div>
+
+          <div style=\"margin-top: 12px;\">
+            <label>Timezone ID (e.g. Asia/Tokyo)</label>
+            <input id=\"timezoneId\" type=\"text\" />
+          </div>
+        </div>
+
+        <div class=\"card\">
+          <div class=\"row2\">
+            <div>
+              <label>Title</label>
+              <input id=\"title\" type=\"text\" />
+            </div>
+            <div>
+              <label>Subtitle</label>
+              <input id=\"subtitle\" type=\"text\" />
+            </div>
+          </div>
+
+          <div style=\"margin-top: 12px;\">
+            <label>Weather overview (optional)</label>
+            <textarea id=\"weatherOverview\" placeholder=\"Short pattern summary (optional)\"></textarea>
+          </div>
+        </div>
+
+        <div class=\"card\">
+          <div class=\"row2\">
+            <div>
+              <label>Source label</label>
+              <input id=\"sourceLabel\" type=\"text\" placeholder=\"e.g. Meteostat / NOAA\" />
+            </div>
+            <div>
+              <label>Source URL</label>
+              <input id=\"sourceUrl\" type=\"text\" placeholder=\"https://...\" />
+            </div>
+          </div>
+
+          <div class=\"row2\" style=\"margin-top: 12px;\">
+            <div>
+              <label>Source accessed (UTC, ISO-8601)</label>
+              <input id=\"accessedUtc\" type=\"text\" placeholder=\"2026-02-02T00:00:00Z\" />
+            </div>
+            <div>
+              <label>Source notes (optional)</label>
+              <input id=\"sourceNotes\" type=\"text\" />
+            </div>
+          </div>
+        </div>
+
+        <div class=\"card\">
+          <div class=\"muted\" style=\"margin-bottom: 10px;\">Monthly normals (°C / cm). Enter all 12 months.</div>
+          <div style=\"overflow:auto; max-height: 420px;\">
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>High (°C)</th>
+                  <th>Low (°C)</th>
+                  <th>Precip (cm)</th>
+                </tr>
+              </thead>
+              <tbody id=\"months\"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
     <script>
+      const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
       const apiKeyEl = document.getElementById('apiKey');
-      const locationSlugEl = document.getElementById('locationSlug');
       const yearEl = document.getElementById('year');
-      const payloadEl = document.getElementById('payload');
       const statusEl = document.getElementById('status');
 
-      function setStatus(msg) {
-        statusEl.textContent = msg;
-      }
+      const locationSlugEl = document.getElementById('locationSlug');
+      const placeIdEl = document.getElementById('placeId');
+      const cityEl = document.getElementById('city');
+      const countryEl = document.getElementById('country');
+      const latEl = document.getElementById('lat');
+      const lngEl = document.getElementById('lng');
+      const timezoneIdEl = document.getElementById('timezoneId');
+
+      const titleEl = document.getElementById('title');
+      const subtitleEl = document.getElementById('subtitle');
+      const overviewEl = document.getElementById('weatherOverview');
+
+      const sourceLabelEl = document.getElementById('sourceLabel');
+      const sourceUrlEl = document.getElementById('sourceUrl');
+      const accessedUtcEl = document.getElementById('accessedUtc');
+      const sourceNotesEl = document.getElementById('sourceNotes');
+
+      const monthsTbody = document.getElementById('months');
+
+      function setStatus(msg) { statusEl.textContent = msg; }
 
       function getKey() {
         const k = String(apiKeyEl.value || '').trim();
@@ -165,78 +279,166 @@ def weather_ui() -> str:
       }
 
       function headers() {
-        return {
-          'Content-Type': 'application/json',
-          'X-API-Key': getKey(),
-        };
+        return { 'Content-Type': 'application/json', 'X-API-Key': getKey() };
       }
 
       function saveLocal() {
         localStorage.setItem('eti360_api_key', apiKeyEl.value || '');
-        localStorage.setItem('eti360_weather_payload', payloadEl.value || '');
-        localStorage.setItem('eti360_weather_slug', locationSlugEl.value || '');
         localStorage.setItem('eti360_weather_year', yearEl.value || '2026');
+        localStorage.setItem('eti360_weather_location_slug', locationSlugEl.value || '');
+        localStorage.setItem('eti360_weather_place_id', placeIdEl.value || '');
+        localStorage.setItem('eti360_weather_city', cityEl.value || '');
+        localStorage.setItem('eti360_weather_country', countryEl.value || '');
+        localStorage.setItem('eti360_weather_lat', latEl.value || '');
+        localStorage.setItem('eti360_weather_lng', lngEl.value || '');
+        localStorage.setItem('eti360_weather_tz', timezoneIdEl.value || '');
+        localStorage.setItem('eti360_weather_title', titleEl.value || '');
+        localStorage.setItem('eti360_weather_subtitle', subtitleEl.value || '');
+        localStorage.setItem('eti360_weather_overview', overviewEl.value || '');
+        localStorage.setItem('eti360_weather_source_label', sourceLabelEl.value || '');
+        localStorage.setItem('eti360_weather_source_url', sourceUrlEl.value || '');
+        localStorage.setItem('eti360_weather_accessed_utc', accessedUtcEl.value || '');
+        localStorage.setItem('eti360_weather_source_notes', sourceNotesEl.value || '');
+        for (let i = 0; i < 12; i++) {
+          localStorage.setItem(`eti360_weather_high_${i}`, document.getElementById(`high_${i}`).value || '');
+          localStorage.setItem(`eti360_weather_low_${i}`, document.getElementById(`low_${i}`).value || '');
+          localStorage.setItem(`eti360_weather_precip_${i}`, document.getElementById(`precip_${i}`).value || '');
+        }
       }
 
       function loadLocal() {
         apiKeyEl.value = localStorage.getItem('eti360_api_key') || '';
-        payloadEl.value = localStorage.getItem('eti360_weather_payload') || '';
-        locationSlugEl.value = localStorage.getItem('eti360_weather_slug') || '';
         yearEl.value = localStorage.getItem('eti360_weather_year') || '2026';
+        locationSlugEl.value = localStorage.getItem('eti360_weather_location_slug') || '';
+        placeIdEl.value = localStorage.getItem('eti360_weather_place_id') || '';
+        cityEl.value = localStorage.getItem('eti360_weather_city') || '';
+        countryEl.value = localStorage.getItem('eti360_weather_country') || '';
+        latEl.value = localStorage.getItem('eti360_weather_lat') || '';
+        lngEl.value = localStorage.getItem('eti360_weather_lng') || '';
+        timezoneIdEl.value = localStorage.getItem('eti360_weather_tz') || '';
+        titleEl.value = localStorage.getItem('eti360_weather_title') || '';
+        subtitleEl.value = localStorage.getItem('eti360_weather_subtitle') || '';
+        overviewEl.value = localStorage.getItem('eti360_weather_overview') || '';
+        sourceLabelEl.value = localStorage.getItem('eti360_weather_source_label') || '';
+        sourceUrlEl.value = localStorage.getItem('eti360_weather_source_url') || '';
+        accessedUtcEl.value = localStorage.getItem('eti360_weather_accessed_utc') || '';
+        sourceNotesEl.value = localStorage.getItem('eti360_weather_source_notes') || '';
+        for (let i = 0; i < 12; i++) {
+          document.getElementById(`high_${i}`).value = localStorage.getItem(`eti360_weather_high_${i}`) || '';
+          document.getElementById(`low_${i}`).value = localStorage.getItem(`eti360_weather_low_${i}`) || '';
+          document.getElementById(`precip_${i}`).value = localStorage.getItem(`eti360_weather_precip_${i}`) || '';
+        }
+      }
+
+      // Build months table
+      for (let i = 0; i < 12; i++) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${MONTHS[i]}</td>
+          <td><input id="high_${i}" type="number" step="0.01" /></td>
+          <td><input id="low_${i}" type="number" step="0.01" /></td>
+          <td><input id="precip_${i}" type="number" step="0.001" /></td>
+        `;
+        monthsTbody.appendChild(tr);
       }
 
       loadLocal();
 
-      apiKeyEl.addEventListener('input', saveLocal);
-      payloadEl.addEventListener('input', saveLocal);
-      locationSlugEl.addEventListener('input', saveLocal);
-      yearEl.addEventListener('input', saveLocal);
+      document.querySelectorAll('input, textarea').forEach((el) => el.addEventListener('input', saveLocal));
+
+      function readMonthValues(prefix) {
+        const out = [];
+        for (let i = 0; i < 12; i++) {
+          const v = String(document.getElementById(`${prefix}_${i}`).value || '').trim();
+          if (!v) throw new Error(`Missing ${prefix} for ${MONTHS[i]}`);
+          const n = Number(v);
+          if (!Number.isFinite(n)) throw new Error(`Invalid ${prefix} for ${MONTHS[i]}`);
+          out.push(n);
+        }
+        return out;
+      }
+
+      function buildPayload() {
+        const slug = String(locationSlugEl.value || '').trim();
+        const place = String(placeIdEl.value || '').trim();
+        if (!slug) throw new Error('Missing location slug');
+        if (!place) throw new Error('Missing place_id');
+
+        const lat = Number(latEl.value);
+        const lng = Number(lngEl.value);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Missing/invalid lat/lng');
+
+        const title = String(titleEl.value || '').trim();
+        const subtitle = String(subtitleEl.value || '').trim();
+        if (!title || !subtitle) throw new Error('Missing title/subtitle');
+
+        const high_c = readMonthValues('high');
+        const low_c = readMonthValues('low');
+        const precip_cm = readMonthValues('precip');
+        for (let i = 0; i < 12; i++) {
+          if (high_c[i] < low_c[i]) throw new Error(`High < Low for ${MONTHS[i]}`);
+        }
+
+        return {
+          location_slug: slug,
+          place_id: place,
+          city: String(cityEl.value || '').trim(),
+          country: String(countryEl.value || '').trim(),
+          lat,
+          lng,
+          timezone_id: String(timezoneIdEl.value || '').trim(),
+          title,
+          subtitle,
+          weather_overview: String(overviewEl.value || '').trim(),
+          source: {
+            label: String(sourceLabelEl.value || '').trim(),
+            url: String(sourceUrlEl.value || '').trim(),
+            accessed_utc: String(accessedUtcEl.value || '').trim(),
+            notes: String(sourceNotesEl.value || '').trim(),
+          },
+          high_c,
+          low_c,
+          precip_cm,
+        };
+      }
 
       document.getElementById('btnSample').addEventListener('click', () => {
-        const sample = {
-          location_slug: 'fukuoka',
-          place_id: 'TEST_PLACE_ID',
-          city: 'Fukuoka',
-          country: 'Japan',
-          lat: 33.5902,
-          lng: 130.4017,
-          timezone_id: 'Asia/Tokyo',
-          title: 'Rainfall peaks Jun–Sep',
-          subtitle: 'Monthly climate normals: highs/lows (°C) and precipitation (cm)',
-          weather_overview: '',
-          source: { label: 'Test', url: 'https://example.com', accessed_utc: '2026-02-02T00:00:00Z', notes: '' },
-          high_c: [10,11,14,19,23,26,30,31,28,23,18,12],
-          low_c:  [ 3, 4, 7,11,15,20,24,25,22,16,10, 5],
-          precip_cm: [6,5,7,8,9,20,25,18,16,9,7,6]
-        };
-        payloadEl.value = JSON.stringify(sample, null, 2);
         locationSlugEl.value = 'fukuoka';
+        placeIdEl.value = 'TEST_PLACE_ID';
+        cityEl.value = 'Fukuoka';
+        countryEl.value = 'Japan';
+        latEl.value = '33.5902';
+        lngEl.value = '130.4017';
+        timezoneIdEl.value = 'Asia/Tokyo';
+        titleEl.value = 'Rainfall peaks Jun–Sep';
+        subtitleEl.value = 'Monthly climate normals: highs/lows (°C) and precipitation (cm)';
+        overviewEl.value = '';
+        sourceLabelEl.value = 'Test';
+        sourceUrlEl.value = 'https://example.com';
+        accessedUtcEl.value = '2026-02-02T00:00:00Z';
+        sourceNotesEl.value = '';
+        const high = [10,11,14,19,23,26,30,31,28,23,18,12];
+        const low  = [ 3, 4, 7,11,15,20,24,25,22,16,10, 5];
+        const pre  = [6,5,7,8,9,20,25,18,16,9,7,6];
+        for (let i=0;i<12;i++) {
+          document.getElementById(`high_${i}`).value = String(high[i]);
+          document.getElementById(`low_${i}`).value = String(low[i]);
+          document.getElementById(`precip_${i}`).value = String(pre[i]);
+        }
         saveLocal();
-        setStatus('Sample loaded. Edit values and click “Save payload”.');
+        setStatus('Sample filled. Replace TEST_PLACE_ID + numbers, then click “Save to DB”.');
       });
 
       document.getElementById('btnSave').addEventListener('click', async () => {
         try {
           saveLocal();
-          setStatus('Saving…');
-          const raw = String(payloadEl.value || '').trim();
-          if (!raw) throw new Error('Paste a payload JSON first');
-          const payload = JSON.parse(raw);
-
-          const res = await fetch('/weather/payload', {
-            method: 'POST',
-            headers: headers(),
-            body: JSON.stringify(payload)
-          });
+          setStatus('Saving to DB…');
+          const payload = buildPayload();
+          const res = await fetch('/weather/payload', { method: 'POST', headers: headers(), body: JSON.stringify(payload) });
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
           setStatus('Saved.
 ' + JSON.stringify(body, null, 2));
-          // Default slug from saved payload.
-          if (payload.location_slug && !locationSlugEl.value) {
-            locationSlugEl.value = String(payload.location_slug);
-            saveLocal();
-          }
         } catch (e) {
           setStatus('Error: ' + (e?.message || String(e)));
         }
@@ -249,22 +451,14 @@ def weather_ui() -> str:
           if (!slug) throw new Error('Missing location slug');
           const year = Number(yearEl.value || 2026);
           setStatus('Generating… This can take ~10–30s.');
-
-          const res = await fetch('/weather/generate', {
-            method: 'POST',
-            headers: headers(),
-            body: JSON.stringify({ location_slug: slug, year })
-          });
+          const res = await fetch('/weather/generate', { method: 'POST', headers: headers(), body: JSON.stringify({ location_slug: slug, year }) });
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-
           let msg = 'Generated.
 ' + JSON.stringify(body, null, 2);
-          if (body.view_url) {
-            msg += `
+          if (body.view_url) msg += `
 
 Open PNG: ${body.view_url}`;
-          }
           setStatus(msg);
         } catch (e) {
           setStatus('Error: ' + (e?.message || String(e)));
@@ -273,6 +467,9 @@ Open PNG: ${body.view_url}`;
     </script>
   </body>
 </html>"""
+
+
+
 
 
 @app.get("/health")

@@ -245,6 +245,10 @@ def weather_ui() -> str:
     </div>
 
     <script>
+      window.addEventListener('error', (e) => {
+        const el = document.getElementById('status');
+        if (el) el.textContent = 'JS Error: ' + (e?.message || e);
+      });
       const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
       const apiKeyEl = document.getElementById('apiKey');
@@ -437,8 +441,7 @@ def weather_ui() -> str:
           const res = await fetch('/weather/payload', { method: 'POST', headers: headers(), body: JSON.stringify(payload) });
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-          setStatus('Saved.
-' + JSON.stringify(body, null, 2));
+          setStatus('Saved\n' + JSON.stringify(body, null, 2));
         } catch (e) {
           setStatus('Error: ' + (e?.message || String(e)));
         }
@@ -454,8 +457,7 @@ def weather_ui() -> str:
           const res = await fetch('/weather/generate', { method: 'POST', headers: headers(), body: JSON.stringify({ location_slug: slug, year }) });
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-          let msg = 'Generated.
-' + JSON.stringify(body, null, 2);
+          let msg = 'Generated\n' + JSON.stringify(body, null, 2);
           if (body.view_url) msg += `
 
 Open PNG: ${body.view_url}`;

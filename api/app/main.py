@@ -9,12 +9,13 @@ from urllib.parse import urlparse
 
 import psycopg
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.weather.s3 import get_s3_config, presign_get, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
-app = FastAPI(title="ETI360 Internal API", docs_url=None, redoc_url=None)
+app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
 
 WEATHER_SCHEMA = "weather"
 
@@ -40,6 +41,39 @@ def _connect() -> psycopg.Connection:
 
 def _schema(sql: str) -> str:
     return sql.replace("__SCHEMA__", WEATHER_SCHEMA)
+
+
+@app.get("/", response_class=HTMLResponse)
+def home() -> str:
+    return """<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETI360 Internal API</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; color: #0f172a; }
+      .card { max-width: 760px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #fff; }
+      h1 { margin: 0 0 8px 0; font-size: 18px; }
+      ul { margin: 8px 0 0 18px; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .muted { color: #475569; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>ETI360 Internal API</h1>
+      <div class="muted">This service powers internal tools. Many endpoints require <code>X-API-Key</code>.</div>
+      <ul>
+        <li><a href="/health">GET /health</a></li>
+        <li><a href="/health/db">GET /health/db</a></li>
+        <li><a href="/docs">Swagger UI</a></li>
+      </ul>
+    </div>
+  </body>
+</html>"""
 
 
 @app.get("/health")

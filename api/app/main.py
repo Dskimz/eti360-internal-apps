@@ -70,8 +70,207 @@ def home() -> str:
         <li><a href="/health">GET /health</a></li>
         <li><a href="/health/db">GET /health/db</a></li>
         <li><a href="/docs">Swagger UI</a></li>
+        <li><a href="/weather/ui">Weather UI</a></li>
       </ul>
     </div>
+  </body>
+</html>"""
+
+
+
+
+@app.get("/weather/ui", response_class=HTMLResponse)
+def weather_ui() -> str:
+    return """<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETI360 Weather UI</title>
+    <style>
+      :root { color-scheme: light; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px; color: #0f172a; background: #f8fafc; }
+      .wrap { max-width: 980px; margin: 0 auto; }
+      header { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 14px; }
+      h1 { margin: 0 0 6px 0; font-size: 18px; }
+      .muted { color: #475569; font-size: 13px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+      .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+      label { display: block; font-size: 12px; color: #334155; margin-bottom: 6px; }
+      input[type="text"], input[type="number"], textarea { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: white; }
+      textarea { min-height: 340px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+      button { padding: 10px 12px; border-radius: 10px; border: 1px solid #0f172a; background: #0f172a; color: white; cursor: pointer; font-size: 14px; }
+      button.secondary { background: white; color: #0f172a; }
+      .status { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; white-space: pre-wrap; }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>ETI360 Weather UI</h1>
+        <div class="muted">Paste a payload JSON, save it to Postgres, then generate a PNG to S3.</div>
+      </header>
+
+      <div class="row">
+        <div class="card">
+          <label>API key (stored locally in this browser)</label>
+          <input id="apiKey" type="text" placeholder="ETI360 API key" autocomplete="off" />
+
+          <div style="height: 12px"></div>
+
+          <label>Location slug (for Generate)</label>
+          <input id="locationSlug" type="text" placeholder="fukuoka" />
+
+          <div style="height: 12px"></div>
+
+          <label>Year (for Generate)</label>
+          <input id="year" type="number" value="2026" />
+
+          <div class="actions">
+            <button id="btnSave" type="button">Save payload</button>
+            <button id="btnGenerate" type="button">Generate PNG</button>
+            <button id="btnSample" class="secondary" type="button">Load sample</button>
+          </div>
+
+          <div id="status" class="status">Ready.</div>
+        </div>
+
+        <div class="card">
+          <label>Payload JSON (POST /weather/payload)</label>
+          <textarea id="payload" spellcheck="false" placeholder='{ "location_slug": "fukuoka", ... }'></textarea>
+          <div class="muted" style="margin-top: 8px">Tip: after saving, use the same <code>location_slug</code> in Generate.</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const apiKeyEl = document.getElementById('apiKey');
+      const locationSlugEl = document.getElementById('locationSlug');
+      const yearEl = document.getElementById('year');
+      const payloadEl = document.getElementById('payload');
+      const statusEl = document.getElementById('status');
+
+      function setStatus(msg) {
+        statusEl.textContent = msg;
+      }
+
+      function getKey() {
+        const k = String(apiKeyEl.value || '').trim();
+        if (!k) throw new Error('Missing API key');
+        return k;
+      }
+
+      function headers() {
+        return {
+          'Content-Type': 'application/json',
+          'X-API-Key': getKey(),
+        };
+      }
+
+      function saveLocal() {
+        localStorage.setItem('eti360_api_key', apiKeyEl.value || '');
+        localStorage.setItem('eti360_weather_payload', payloadEl.value || '');
+        localStorage.setItem('eti360_weather_slug', locationSlugEl.value || '');
+        localStorage.setItem('eti360_weather_year', yearEl.value || '2026');
+      }
+
+      function loadLocal() {
+        apiKeyEl.value = localStorage.getItem('eti360_api_key') || '';
+        payloadEl.value = localStorage.getItem('eti360_weather_payload') || '';
+        locationSlugEl.value = localStorage.getItem('eti360_weather_slug') || '';
+        yearEl.value = localStorage.getItem('eti360_weather_year') || '2026';
+      }
+
+      loadLocal();
+
+      apiKeyEl.addEventListener('input', saveLocal);
+      payloadEl.addEventListener('input', saveLocal);
+      locationSlugEl.addEventListener('input', saveLocal);
+      yearEl.addEventListener('input', saveLocal);
+
+      document.getElementById('btnSample').addEventListener('click', () => {
+        const sample = {
+          location_slug: 'fukuoka',
+          place_id: 'TEST_PLACE_ID',
+          city: 'Fukuoka',
+          country: 'Japan',
+          lat: 33.5902,
+          lng: 130.4017,
+          timezone_id: 'Asia/Tokyo',
+          title: 'Rainfall peaks Jun–Sep',
+          subtitle: 'Monthly climate normals: highs/lows (°C) and precipitation (cm)',
+          weather_overview: '',
+          source: { label: 'Test', url: 'https://example.com', accessed_utc: '2026-02-02T00:00:00Z', notes: '' },
+          high_c: [10,11,14,19,23,26,30,31,28,23,18,12],
+          low_c:  [ 3, 4, 7,11,15,20,24,25,22,16,10, 5],
+          precip_cm: [6,5,7,8,9,20,25,18,16,9,7,6]
+        };
+        payloadEl.value = JSON.stringify(sample, null, 2);
+        locationSlugEl.value = 'fukuoka';
+        saveLocal();
+        setStatus('Sample loaded. Edit values and click “Save payload”.');
+      });
+
+      document.getElementById('btnSave').addEventListener('click', async () => {
+        try {
+          saveLocal();
+          setStatus('Saving…');
+          const raw = String(payloadEl.value || '').trim();
+          if (!raw) throw new Error('Paste a payload JSON first');
+          const payload = JSON.parse(raw);
+
+          const res = await fetch('/weather/payload', {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify(payload)
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+          setStatus('Saved.
+' + JSON.stringify(body, null, 2));
+          // Default slug from saved payload.
+          if (payload.location_slug && !locationSlugEl.value) {
+            locationSlugEl.value = String(payload.location_slug);
+            saveLocal();
+          }
+        } catch (e) {
+          setStatus('Error: ' + (e?.message || String(e)));
+        }
+      });
+
+      document.getElementById('btnGenerate').addEventListener('click', async () => {
+        try {
+          saveLocal();
+          const slug = String(locationSlugEl.value || '').trim();
+          if (!slug) throw new Error('Missing location slug');
+          const year = Number(yearEl.value || 2026);
+          setStatus('Generating… This can take ~10–30s.');
+
+          const res = await fetch('/weather/generate', {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ location_slug: slug, year })
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+          let msg = 'Generated.
+' + JSON.stringify(body, null, 2);
+          if (body.view_url) {
+            msg += `
+
+Open PNG: ${body.view_url}`;
+          }
+          setStatus(msg);
+        } catch (e) {
+          setStatus('Error: ' + (e?.message || String(e)));
+        }
+      });
+    </script>
   </body>
 </html>"""
 

@@ -8,6 +8,8 @@ from fastapi import FastAPI, Header, HTTPException
 
 app = FastAPI(title="ETI360 Internal API", docs_url=None, redoc_url=None)
 
+WEATHER_SCHEMA = "weather"
+
 
 def _require_api_key(x_api_key: str | None) -> None:
     expected = os.environ.get("ETI360_API_KEY", "").strip()
@@ -44,12 +46,21 @@ def health_db() -> dict[str, bool]:
     return {"ok": True}
 
 
+def _q(name: str) -> str:
+    # Safe for our internal fixed identifiers; avoids mixing schemas in f-strings.
+    if not name.replace("_", "").isalnum():
+        raise ValueError("Invalid identifier")
+    return f'"{name}"'
+
+
 _SCHEMA_STATEMENTS: list[str] = [
     # Extensions
     "CREATE EXTENSION IF NOT EXISTS pgcrypto;",
+    # Namespacing: keep weather tables out of public schema to avoid collisions with other apps.
+    f"CREATE SCHEMA IF NOT EXISTS {_q(WEATHER_SCHEMA)};",
     # Core tables (atomic schema; no JSON columns, no array columns)
-    """
-    CREATE TABLE IF NOT EXISTS locations (
+    f"""
+    CREATE TABLE IF NOT EXISTS {_q(WEATHER_SCHEMA)}.locations (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       location_slug TEXT NOT NULL UNIQUE,
       place_id TEXT NOT NULL UNIQUE,
@@ -60,37 +71,37 @@ _SCHEMA_STATEMENTS: list[str] = [
       timezone_id TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
+    )
     """.strip()
     + ";",
-    """
-    CREATE TABLE IF NOT EXISTS weather_sources (
+    f"""
+    CREATE TABLE IF NOT EXISTS {_q(WEATHER_SCHEMA)}.weather_sources (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       label TEXT NOT NULL DEFAULT '',
       url TEXT NOT NULL DEFAULT '',
       accessed_utc TIMESTAMPTZ,
       notes TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
+    )
     """.strip()
     + ";",
-    """
-    CREATE TABLE IF NOT EXISTS weather_datasets (
+    f"""
+    CREATE TABLE IF NOT EXISTS {_q(WEATHER_SCHEMA)}.weather_datasets (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
-      source_id UUID REFERENCES weather_sources(id) ON DELETE SET NULL,
+      location_id UUID NOT NULL REFERENCES {_q(WEATHER_SCHEMA)}.locations(id) ON DELETE CASCADE,
+      source_id UUID REFERENCES {_q(WEATHER_SCHEMA)}.weather_sources(id) ON DELETE SET NULL,
       title TEXT NOT NULL DEFAULT '',
       subtitle TEXT NOT NULL DEFAULT '',
       weather_overview TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
+    )
     """.strip()
     + ";",
-    """
-    CREATE TABLE IF NOT EXISTS weather_monthly_normals (
+    f"""
+    CREATE TABLE IF NOT EXISTS {_q(WEATHER_SCHEMA)}.weather_monthly_normals (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      dataset_id UUID NOT NULL REFERENCES weather_datasets(id) ON DELETE CASCADE,
+      dataset_id UUID NOT NULL REFERENCES {_q(WEATHER_SCHEMA)}.weather_datasets(id) ON DELETE CASCADE,
       month SMALLINT NOT NULL,
       high_c NUMERIC(6,2) NOT NULL,
       low_c  NUMERIC(6,2) NOT NULL,
@@ -99,13 +110,13 @@ _SCHEMA_STATEMENTS: list[str] = [
       CONSTRAINT wmn_month_range_chk CHECK (month >= 1 AND month <= 12),
       CONSTRAINT wmn_high_ge_low_chk CHECK (high_c >= low_c),
       CONSTRAINT wmn_dataset_month_uniq UNIQUE (dataset_id, month)
-    );
+    )
     """.strip()
     + ";",
-    """
-    CREATE TABLE IF NOT EXISTS assets (
+    f"""
+    CREATE TABLE IF NOT EXISTS {_q(WEATHER_SCHEMA)}.assets (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+      location_id UUID NOT NULL REFERENCES {_q(WEATHER_SCHEMA)}.locations(id) ON DELETE CASCADE,
       kind TEXT NOT NULL,
       year INTEGER,
       s3_bucket TEXT NOT NULL DEFAULT '',
@@ -115,11 +126,11 @@ _SCHEMA_STATEMENTS: list[str] = [
       generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       CONSTRAINT assets_kind_chk CHECK (kind IN ('weather','daylight','map'))
-    );
+    )
     """.strip()
     + ";",
-    "CREATE INDEX IF NOT EXISTS assets_location_kind_idx ON assets(location_id, kind);",
-    "CREATE INDEX IF NOT EXISTS assets_generated_at_idx ON assets(generated_at DESC);",
+    f"CREATE INDEX IF NOT EXISTS assets_location_kind_idx ON {_q(WEATHER_SCHEMA)}.assets(location_id, kind);",
+    f"CREATE INDEX IF NOT EXISTS assets_generated_at_idx ON {_q(WEATHER_SCHEMA)}.assets(generated_at DESC);",
 ]
 
 
@@ -139,4 +150,4 @@ def admin_schema_init(x_api_key: str | None = Header(default=None, alias="X-API-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Schema init failed: {e}") from e
 
-    return {"ok": True, "applied": applied}
+    return {"ok": True, "schema": WEATHER_SCHEMA, "applied": applied}

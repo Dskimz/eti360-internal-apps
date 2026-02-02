@@ -1,0 +1,11 @@
+{
+  "name": "eti360-internal-apps",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "pagecrypt": "^5.0.0"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}

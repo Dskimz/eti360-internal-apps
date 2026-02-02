@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ETI360 — Internal Apps</title>
     <link rel="stylesheet" href="ui_style.css" />
+    <!-- INLINE_CSS -->
   </head>
   <body>
     <header>
@@ -56,6 +57,7 @@
       </div>
     </div>
 
+    <!-- INLINE_APPS_JSON -->
     <script>
       const rowsEl = document.getElementById("rows");
       const metaEl = document.getElementById("meta");
@@ -110,8 +112,27 @@
         metaEl.textContent = `Apps: ${filtered.length}/${apps.length} • Sort: ${sortKey} (${sortDir})`;
       }
 
+      function loadEmbeddedApps() {
+        const el = document.getElementById("apps-json");
+        if (!el) return { found: false, apps: [] };
+        try {
+          const body = JSON.parse(String(el.textContent || "[]"));
+          return { found: true, apps: Array.isArray(body) ? body : [] };
+        } catch {
+          return { found: true, apps: [] };
+        }
+      }
+
       async function load() {
         try {
+          const embedded = loadEmbeddedApps();
+          if (embedded.found) {
+            apps = embedded.apps;
+            metaEl.textContent = `Apps: ${apps.length}`;
+            render();
+            return;
+          }
+
           const res = await fetch("apps.json", { cache: "no-store" });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const body = await res.json();
@@ -154,4 +175,3 @@
     </script>
   </body>
 </html>
-

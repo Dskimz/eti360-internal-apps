@@ -20,7 +20,14 @@ app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
 WEATHER_SCHEMA = "weather"
 
 
+def _auth_disabled() -> bool:
+    v = os.environ.get("AUTH_DISABLED", "").strip().lower()
+    return v in {"1", "true", "yes", "on"}
+
+
 def _require_api_key(x_api_key: str | None) -> None:
+    if _auth_disabled():
+        return
     expected = os.environ.get("ETI360_API_KEY", "").strip()
     if not expected:
         raise HTTPException(status_code=500, detail="ETI360_API_KEY is not set")
@@ -125,7 +132,7 @@ def weather_ui() -> str:
         <div class=\"card\">
           <div class=\"row2\">
             <div>
-              <label>API key (stored locally in this browser)</label>
+              <label>API key (optional during testing; stored locally in this browser)</label>
               <input id=\"apiKey\" type=\"text\" placeholder=\"ETI360 API key\" autocomplete=\"off\" />
             </div>
             <div>
@@ -276,14 +283,11 @@ def weather_ui() -> str:
 
       function setStatus(msg) { statusEl.textContent = msg; }
 
-      function getKey() {
-        const k = String(apiKeyEl.value || '').trim();
-        if (!k) throw new Error('Missing API key');
-        return k;
-      }
-
       function headers() {
-        return { 'Content-Type': 'application/json', 'X-API-Key': getKey() };
+        const h = { 'Content-Type': 'application/json' };
+        const k = String(apiKeyEl.value || '').trim();
+        if (k) h['X-API-Key'] = k;
+        return h;
       }
 
       function saveLocal() {

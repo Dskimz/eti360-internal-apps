@@ -600,12 +600,272 @@ def weather_ui() -> str:
     <meta charset=\"utf-8\" />
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
     <title>ETI360 Weather</title>
+    <style>
+      :root { color-scheme: light; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px; color: #0f172a; background: #f8fafc; }
+      .wrap { max-width: 1100px; margin: 0 auto; }
+      header { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+      h1 { margin: 0 0 6px 0; font-size: 18px; }
+      .muted { color: #475569; font-size: 13px; }
+      .grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+      .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+      label { display: block; font-size: 12px; color: #334155; margin-bottom: 6px; }
+      input[type=\"text\"], input[type=\"number\"], textarea { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: white; }
+      textarea { min-height: 280px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
+      .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+      button { padding: 10px 12px; border-radius: 10px; border: 1px solid #0f172a; background: #0f172a; color: white; cursor: pointer; font-size: 14px; }
+      button.secondary { background: white; color: #0f172a; }
+      .status { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; font-size: 12px; white-space: pre-wrap; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
+      table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+      th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+      th { font-size: 12px; letter-spacing: 0.2px; color: #475569; background: #f8fafc; }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      @media (max-width: 980px) { .row2 { grid-template-columns: 1fr; } }
+    </style>
   </head>
-  <body style=\"font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px;\">
-    <h1 style=\"margin:0 0 8px 0; font-size:18px;\">ETI360 Weather</h1>
-    <div style=\"color:#475569; font-size:13px; margin-bottom: 14px;\">Use <a href=\"/docs\">/docs</a> to run <code>/places/search</code> and <code>/weather/import</code> for now.</div>
-    <div style=\"font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace; font-size: 12px;\">
-      Coming next: a simple form UI that finds Place IDs and imports the weather JSON format into atomic DB rows.
+  <body>
+    <div class=\"wrap\">
+      <header>
+        <h1>ETI360 Weather</h1>
+        <div class=\"muted\">Search for a location (Google Places), paste the weather JSON format, import to atomic DB rows, then generate a PNG to S3.</div>
+      </header>
+
+      <div class=\"grid\">
+        <div class=\"card\">
+          <div class=\"row2\">
+            <div>
+              <label>API key (optional if AUTH_DISABLED=true)</label>
+              <input id=\"apiKey\" type=\"text\" placeholder=\"ETI360 API key\" autocomplete=\"off\" />
+            </div>
+            <div>
+              <label>Year (Generate)</label>
+              <input id=\"year\" type=\"number\" value=\"2026\" />
+            </div>
+          </div>
+
+          <div class=\"actions\">
+            <button id=\"btnSearch\" class=\"secondary\" type=\"button\">Search Places</button>
+            <button id=\"btnImport\" type=\"button\">Import to DB</button>
+            <button id=\"btnGenerate\" type=\"button\">Generate PNG</button>
+            <button id=\"btnSample\" class=\"secondary\" type=\"button\">Load sample (Bali)</button>
+          </div>
+
+          <div id=\"status\" class=\"status\">Ready.</div>
+        </div>
+
+        <div class=\"card\">
+          <div class=\"row2\">
+            <div>
+              <label>Location search (e.g. Bali, Indonesia)</label>
+              <input id=\"locationQuery\" type=\"text\" />
+            </div>
+            <div>
+              <label>Location slug (used as ID in the system)</label>
+              <input id=\"locationSlug\" type=\"text\" placeholder=\"bali\" />
+              <div class=\"muted\" style=\"margin-top:6px;\">If blank, it will be auto-generated from the search.</div>
+            </div>
+          </div>
+
+          <div style=\"margin-top: 12px; overflow: auto;\">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pick</th>
+                  <th>Name</th>
+                  <th>Address</th>
+                  <th class=\"mono\">Place ID</th>
+                  <th class=\"mono\">Lat</th>
+                  <th class=\"mono\">Lng</th>
+                </tr>
+              </thead>
+              <tbody id=\"placeRows\"></tbody>
+            </table>
+          </div>
+
+          <div class=\"muted\" style=\"margin-top: 10px;\">Selected: <span id=\"picked\" class=\"mono\">(none)</span></div>
+        </div>
+
+        <div class=\"card\">
+          <label>Weather JSON (your current input format)</label>
+          <textarea id=\"weatherJson\" spellcheck=\"false\"></textarea>
+          <div class=\"muted\" style=\"margin-top: 8px;\">We store atomic rows in Postgres; this JSON is only an input convenience.</div>
+        </div>
+      </div>
     </div>
+
+    <script>
+      const apiKeyEl = document.getElementById('apiKey');
+      const yearEl = document.getElementById('year');
+      const locationQueryEl = document.getElementById('locationQuery');
+      const locationSlugEl = document.getElementById('locationSlug');
+      const weatherJsonEl = document.getElementById('weatherJson');
+      const statusEl = document.getElementById('status');
+      const rowsEl = document.getElementById('placeRows');
+      const pickedEl = document.getElementById('picked');
+
+      let picked = null;
+
+      window.addEventListener('error', (e) => {
+        statusEl.textContent = 'JS Error: ' + (e?.message || e);
+      });
+
+      function setStatus(msg) { statusEl.textContent = msg; }
+
+      function headers() {
+        const h = { 'Content-Type': 'application/json' };
+        const k = String(apiKeyEl.value || '').trim();
+        if (k) h['X-API-Key'] = k;
+        return h;
+      }
+
+      function slugify(s) {
+        return String(s || '').trim().toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 64) || 'location';
+      }
+
+      function saveLocal() {
+        localStorage.setItem('eti360_api_key', apiKeyEl.value || '');
+        localStorage.setItem('eti360_weather_year', yearEl.value || '2026');
+        localStorage.setItem('eti360_weather_q', locationQueryEl.value || '');
+        localStorage.setItem('eti360_weather_slug', locationSlugEl.value || '');
+        localStorage.setItem('eti360_weather_json', weatherJsonEl.value || '');
+      }
+
+      function loadLocal() {
+        apiKeyEl.value = localStorage.getItem('eti360_api_key') || '';
+        yearEl.value = localStorage.getItem('eti360_weather_year') || '2026';
+        locationQueryEl.value = localStorage.getItem('eti360_weather_q') || '';
+        locationSlugEl.value = localStorage.getItem('eti360_weather_slug') || '';
+        weatherJsonEl.value = localStorage.getItem('eti360_weather_json') || '';
+      }
+
+      loadLocal();
+      [apiKeyEl, yearEl, locationQueryEl, locationSlugEl, weatherJsonEl].forEach((el) => el.addEventListener('input', saveLocal));
+
+      function renderPlaces(results) {
+        rowsEl.innerHTML = '';
+        picked = null;
+        pickedEl.textContent = '(none)';
+
+        for (const r of results) {
+          const tr = document.createElement('tr');
+          const id = r.place_id;
+          tr.innerHTML = `
+            <td><input type="radio" name="pick" value="${id}" /></td>
+            <td>${String(r.name || '')}</td>
+            <td>${String(r.formatted_address || '')}</td>
+            <td class="mono" style="max-width: 360px; overflow:hidden; text-overflow: ellipsis;">${String(r.place_id || '')}</td>
+            <td class="mono">${r.lat ?? ''}</td>
+            <td class="mono">${r.lng ?? ''}</td>
+          `;
+          tr.querySelector('input').addEventListener('change', () => {
+            picked = r;
+            pickedEl.textContent = r.place_id;
+            if (!locationSlugEl.value) {
+              locationSlugEl.value = slugify(locationQueryEl.value || r.name || r.formatted_address);
+            }
+            saveLocal();
+          });
+          rowsEl.appendChild(tr);
+        }
+      }
+
+      document.getElementById('btnSearch').addEventListener('click', async () => {
+        try {
+          saveLocal();
+          const q = String(locationQueryEl.value || '').trim();
+          if (!q) throw new Error('Enter a location search first');
+          setStatus('Searching Places…');
+
+          const res = await fetch(`/places/search?q=${encodeURIComponent(q)}`, { headers: headers() });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+          renderPlaces(body.results || []);
+          setStatus(`Places found: ${(body.results || []).length}. Pick one.`);
+        } catch (e) {
+          setStatus('Error: ' + (e?.message || String(e)));
+        }
+      });
+
+      document.getElementById('btnSample').addEventListener('click', () => {
+        const sample = {
+          place_id: 'ChIJoQ8Q6NNB0S0RkOYkS7EPkSQ',
+          weather_overview: 'Bali has a tropical climate with consistently warm temperatures year-round and a pronounced wet season with heavy rainfall from November to March and a distinct drier period from May to October. Temperature variation is minimal throughout the year.',
+          title: 'Bali’s climate has year-round warmth with a wet monsoon season',
+          subtitle: 'Temperatures remain stable while rainfall peaks in the wet months and drops markedly in the dry months',
+          source: {
+            label: 'WeatherWonderer Bali monthly averages',
+            url: 'https://weatherwonderer.com/roundups/bali/',
+            accessed_utc: '2026-01-31T00:00:00Z',
+            notes: 'Monthly average high, low and precipitation converted from mm to cm.'
+          },
+          months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+          high_c: [30, 30, 31, 31, 31, 30, 29, 29, 30, 31, 31, 30],
+          low_c: [23, 23, 23, 24, 24, 23, 23, 22, 23, 24, 24, 23],
+          precip_cm: [34.5, 27.4, 23.4, 10.2, 9.2, 5.1, 4.3, 2.5, 4.3, 10.7, 17.8, 28.2]
+        };
+        locationQueryEl.value = 'Bali, Indonesia';
+        if (!locationSlugEl.value) locationSlugEl.value = 'bali';
+        weatherJsonEl.value = JSON.stringify(sample, null, 2);
+        saveLocal();
+        setStatus('Sample loaded. Click “Search Places”, pick one, then “Import to DB”.');
+      });
+
+      document.getElementById('btnImport').addEventListener('click', async () => {
+        try {
+          saveLocal();
+          const q = String(locationQueryEl.value || '').trim();
+          if (!q) throw new Error('Enter a location search first');
+          const slug = String(locationSlugEl.value || '').trim() || slugify(q);
+
+          const raw = String(weatherJsonEl.value || '').trim();
+          if (!raw) throw new Error('Paste the weather JSON first');
+          const obj = JSON.parse(raw);
+
+          // Our server endpoint accepts your JSON + our helper fields.
+          const bodyIn = { ...obj, location_query: q, location_slug: slug };
+
+          setStatus('Importing to DB…');
+          const res = await fetch('/weather/import', { method: 'POST', headers: headers(), body: JSON.stringify(bodyIn) });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+          setStatus('Imported.
+' + JSON.stringify(body, null, 2));
+        } catch (e) {
+          setStatus('Error: ' + (e?.message || String(e)));
+        }
+      });
+
+      document.getElementById('btnGenerate').addEventListener('click', async () => {
+        try {
+          saveLocal();
+          const slug = String(locationSlugEl.value || '').trim();
+          if (!slug) throw new Error('Enter a location slug (or pick a place after search)');
+          const year = Number(yearEl.value || 2026);
+
+          setStatus('Generating PNG…');
+          const res = await fetch('/weather/generate', { method: 'POST', headers: headers(), body: JSON.stringify({ location_slug: slug, year }) });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+          let msg = 'Generated.
+' + JSON.stringify(body, null, 2);
+          if (body.view_url) msg += `
+
+Open PNG: ${body.view_url}`;
+          setStatus(msg);
+        } catch (e) {
+          setStatus('Error: ' + (e?.message || String(e)));
+        }
+      });
+    </script>
   </body>
 </html>"""
+

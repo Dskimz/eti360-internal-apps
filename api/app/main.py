@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.weather.perplexity import fetch_monthly_weather_normals
-from app.weather.daylight_chart import MonthlyDaylight, render_daylight_chart
+from app.weather.daylight_chart import DaylightInputs, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
 from app.weather.s3 import get_s3_config, presign_get, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
@@ -200,26 +200,6 @@ def _require_timezone_id(*, lat: float, lng: float) -> str:
     return tzid
 
 
-def _compute_monthly_daylight_hours(*, lat: float, lng: float, timezone_id: str, year: int) -> list[MonthlyDaylight]:
-    from datetime import date
-    from zoneinfo import ZoneInfo
-
-    from astral import LocationInfo
-    from astral.sun import sun
-
-    tz = ZoneInfo(timezone_id)
-    loc = LocationInfo(name="location", region="", timezone=timezone_id, latitude=lat, longitude=lng)
-    monthly: list[MonthlyDaylight] = []
-    for month_idx, month_name in enumerate(MONTHS, start=1):
-        d = date(year, month_idx, 15)
-        s = sun(loc.observer, date=d, tzinfo=tz)
-        sunrise = s["sunrise"]
-        sunset = s["sunset"]
-        hours = max(0.0, float((sunset - sunrise).total_seconds() / 3600.0))
-        monthly.append(MonthlyDaylight(month=month_name, daylight_hours=hours))
-    return monthly
-
-
 def _generate_daylight_png_for_slug(*, location_slug: str, year: int) -> dict[str, Any]:
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
@@ -244,17 +224,23 @@ def _generate_daylight_png_for_slug(*, location_slug: str, year: int) -> dict[st
                 )
                 conn.commit()
 
-    monthly = _compute_monthly_daylight_hours(lat=lat_f, lng=lng_f, timezone_id=tzid, year=year)
-
     title_city = str(city or "").strip() or location_slug
     title_country = str(country or "").strip()
-    title = f"{title_city}{', ' + title_country if title_country else ''} daylight varies by season"
-    subtitle = f"Estimated daylight hours by month (year {year})"
-    source_left = "Source: Astral (computed from lat/lng + timezone)"
+    display_name = f"{title_city}{', ' + title_country if title_country else ''}"
+    title = f"{year} Sun Graph for {display_name}"
+    subtitle = f"Rise/set times and twilight bands (nautical/civil) • {tzid}"
+    source_left = "Computed from lat/lng + timezone (Astral; civil + nautical twilight)."
 
     tmpdir = Path(tempfile.gettempdir())
     out_path = tmpdir / f"eti360-daylight-{location_slug}-{year}.png"
-    render_daylight_chart(monthly=monthly, title=title, subtitle=subtitle, source_left=source_left, output_path=out_path)
+    render_daylight_chart(
+        inputs=DaylightInputs(display_name=display_name, lat=lat_f, lng=lng_f, timezone_id=tzid),
+        year=year,
+        output_path=out_path,
+        chart_title=title,
+        chart_subtitle=subtitle,
+        source_left=source_left,
+    )
     png_bytes = out_path.read_bytes()
 
     cfg = get_s3_config()

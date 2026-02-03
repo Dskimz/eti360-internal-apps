@@ -49,6 +49,7 @@ Optional / for weather helpers:
 - DB schema browser: `GET /db/ui` (and JSON helpers `GET /db/schemas`, `GET /db/tables`, `GET /db/columns`)
 - Auth: `GET /login`, `POST /login`, `GET /logout` (cookie sessions)
 - Admin users: `GET /admin/users/ui` (UI), `GET /admin/users`, `POST /admin/users` (requires admin access)
+- Prompts: `GET /prompts/ui`, `GET /prompts/log/ui`, `GET /prompts`, `GET /prompts/{prompt_key}`, `POST /prompts/{prompt_key}`
 - `POST /admin/schema/init` (one-time DB schema init; requires `X-API-Key`)
 - Weather UI: `GET /weather/ui`
 - Weather automation: `POST /weather/auto_batch`

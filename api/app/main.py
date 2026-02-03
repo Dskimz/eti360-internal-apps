@@ -373,6 +373,72 @@ def _require_access(
     return {"id": "api_key", "username": "api_key", "display_name": "API key", "role": "admin"}
 
 
+PROMPTS_SCHEMA = os.environ.get("PROMPTS_SCHEMA", AUTH_SCHEMA).strip() or AUTH_SCHEMA
+_PROMPT_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+
+
+def _prompts_schema(sql: str) -> str:
+    schema = _require_safe_ident("PROMPTS_SCHEMA", PROMPTS_SCHEMA)
+    return sql.replace("__SCHEMA__", schema)
+
+
+def _require_prompt_key(key: str) -> str:
+    key = (key or "").strip().lower()
+    if not key or not _PROMPT_KEY_RE.match(key):
+        raise HTTPException(status_code=400, detail="Invalid prompt key (use a-z, 0-9, _, -, max 64 chars)")
+    return key
+
+
+def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
+    cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+    cur.execute(_prompts_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
+
+    cur.execute(
+        _prompts_schema(
+            """
+            CREATE TABLE IF NOT EXISTS "__SCHEMA__".prompts (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              prompt_key TEXT NOT NULL UNIQUE,
+              name TEXT NOT NULL DEFAULT '',
+              description TEXT NOT NULL DEFAULT '',
+              provider TEXT NOT NULL DEFAULT '',
+              model TEXT NOT NULL DEFAULT '',
+              prompt_text TEXT NOT NULL DEFAULT '',
+              is_active BOOLEAN NOT NULL DEFAULT TRUE,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            """
+        ).strip()
+    )
+    cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompts_updated_at_idx ON "__SCHEMA__".prompts(updated_at DESC);'))
+
+    cur.execute(
+        _prompts_schema(
+            """
+            CREATE TABLE IF NOT EXISTS "__SCHEMA__".prompt_revisions (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              prompt_id UUID NOT NULL REFERENCES "__SCHEMA__".prompts(id) ON DELETE CASCADE,
+              prompt_key TEXT NOT NULL DEFAULT '',
+              edited_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+              edited_by_user_id UUID,
+              edited_by_username TEXT NOT NULL DEFAULT '',
+              edited_by_role TEXT NOT NULL DEFAULT '',
+              change_note TEXT NOT NULL DEFAULT '',
+              before_text TEXT NOT NULL DEFAULT '',
+              after_text TEXT NOT NULL DEFAULT '',
+              before_provider TEXT NOT NULL DEFAULT '',
+              after_provider TEXT NOT NULL DEFAULT '',
+              before_model TEXT NOT NULL DEFAULT '',
+              after_model TEXT NOT NULL DEFAULT ''
+            );
+            """
+        ).strip()
+    )
+    cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompt_revisions_key_idx ON "__SCHEMA__".prompt_revisions(prompt_key, edited_at DESC);'))
+    cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompt_revisions_edited_at_idx ON "__SCHEMA__".prompt_revisions(edited_at DESC);'))
+
+
 _UI_CSS = """
 :root {
   color-scheme: light;
@@ -1227,6 +1293,11 @@ def apps_home(request: Request) -> str:
                 <td class="muted">User management (roles/permissions).</td>
                 <td><a href="/admin/users/ui">Open</a></td>
               </tr>
+              <tr>
+                <td>Prompts</td>
+                <td class="muted">Review/edit prompts and audit prompt changes.</td>
+                <td><a href="/prompts/ui">Open</a></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1609,6 +1680,535 @@ def admin_users_ui(
     """.strip()
 
     return _ui_shell(title="ETI360 Admin Users", active="apps", body_html=body_html, max_width_px=1100, user=user, extra_script=script)
+
+
+class PromptUpsertIn(BaseModel):
+    prompt_key: str = Field(..., min_length=1, max_length=64)
+    name: str = ""
+    description: str = ""
+    provider: str = ""
+    model: str = ""
+    prompt_text: str = ""
+    change_note: str = ""
+
+
+@app.get("/prompts")
+def prompts_list(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_prompts_tables(cur)
+            cur.execute(
+                _prompts_schema(
+                    """
+                    SELECT prompt_key, name, description, provider, model, is_active, updated_at
+                    FROM "__SCHEMA__".prompts
+                    ORDER BY prompt_key ASC;
+                    """
+                )
+            )
+            rows = cur.fetchall()
+
+    prompts = [
+        {
+            "prompt_key": str(k),
+            "name": str(n or ""),
+            "description": str(d or ""),
+            "provider": str(p or ""),
+            "model": str(m or ""),
+            "is_active": bool(a),
+            "updated_at": ua.isoformat() if ua else None,
+        }
+        for (k, n, d, p, m, a, ua) in rows
+    ]
+    return {"ok": True, "schema": _require_safe_ident("PROMPTS_SCHEMA", PROMPTS_SCHEMA), "prompts": prompts}
+
+
+@app.get("/prompts/{prompt_key}")
+def prompts_get(
+    prompt_key: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    key = _require_prompt_key(prompt_key)
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_prompts_tables(cur)
+            cur.execute(
+                _prompts_schema(
+                    """
+                    SELECT id, prompt_key, name, description, provider, model, prompt_text, is_active, created_at, updated_at
+                    FROM "__SCHEMA__".prompts
+                    WHERE prompt_key=%s
+                    LIMIT 1;
+                    """
+                ),
+                (key,),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    (pid, k, name, desc, provider, model, text, is_active, created_at, updated_at) = row
+    return {
+        "ok": True,
+        "prompt": {
+            "id": str(pid),
+            "prompt_key": str(k),
+            "name": str(name or ""),
+            "description": str(desc or ""),
+            "provider": str(provider or ""),
+            "model": str(model or ""),
+            "prompt_text": str(text or ""),
+            "is_active": bool(is_active),
+            "created_at": created_at.isoformat() if created_at else None,
+            "updated_at": updated_at.isoformat() if updated_at else None,
+        },
+    }
+
+
+@app.post("/prompts/{prompt_key}")
+def prompts_upsert(
+    prompt_key: str,
+    body: PromptUpsertIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    actor = _require_access(request=request, x_api_key=x_api_key, role="editor") or {}
+    key = _require_prompt_key(prompt_key)
+    if _require_prompt_key(body.prompt_key) != key:
+        raise HTTPException(status_code=400, detail="prompt_key mismatch")
+
+    note = (body.change_note or "").strip()
+    if not note:
+        note = "Update prompt"
+
+    username = str(actor.get("username") or "")
+    role = str(actor.get("role") or "")
+    user_id_uuid = None
+    try:
+        if str(actor.get("id") or "").strip() and str(actor.get("id")) not in {"disabled", "api_key"}:
+            user_id_uuid = uuid.UUID(str(actor.get("id")))
+    except Exception:
+        user_id_uuid = None
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_prompts_tables(cur)
+
+            cur.execute(
+                _prompts_schema(
+                    """
+                    SELECT id, provider, model, prompt_text
+                    FROM "__SCHEMA__".prompts
+                    WHERE prompt_key=%s
+                    LIMIT 1;
+                    """
+                ),
+                (key,),
+            )
+            existing = cur.fetchone()
+
+            before_provider = ""
+            before_model = ""
+            before_text = ""
+            prompt_id = None
+
+            if existing:
+                prompt_id, before_provider, before_model, before_text = existing
+
+                cur.execute(
+                    _prompts_schema(
+                        """
+                        UPDATE "__SCHEMA__".prompts
+                        SET name=%s, description=%s, provider=%s, model=%s, prompt_text=%s, updated_at=now()
+                        WHERE id=%s;
+                        """
+                    ),
+                    (
+                        (body.name or "").strip(),
+                        (body.description or "").strip(),
+                        (body.provider or "").strip(),
+                        (body.model or "").strip(),
+                        (body.prompt_text or ""),
+                        prompt_id,
+                    ),
+                )
+            else:
+                cur.execute(
+                    _prompts_schema(
+                        """
+                        INSERT INTO "__SCHEMA__".prompts (prompt_key, name, description, provider, model, prompt_text)
+                        VALUES (%s,%s,%s,%s,%s,%s)
+                        RETURNING id;
+                        """
+                    ),
+                    (
+                        key,
+                        (body.name or "").strip(),
+                        (body.description or "").strip(),
+                        (body.provider or "").strip(),
+                        (body.model or "").strip(),
+                        (body.prompt_text or ""),
+                    ),
+                )
+                (prompt_id,) = cur.fetchone()  # type: ignore[misc]
+
+            cur.execute(
+                _prompts_schema(
+                    """
+                    INSERT INTO "__SCHEMA__".prompt_revisions
+                      (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
+                       before_text, after_text, before_provider, after_provider, before_model, after_model)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                    """
+                ),
+                (
+                    prompt_id,
+                    key,
+                    user_id_uuid,
+                    username,
+                    role,
+                    note,
+                    str(before_text or ""),
+                    str(body.prompt_text or ""),
+                    str(before_provider or ""),
+                    str((body.provider or "").strip()),
+                    str(before_model or ""),
+                    str((body.model or "").strip()),
+                ),
+            )
+
+        conn.commit()
+
+    return {"ok": True, "prompt_key": key, "edited_by": {"username": username, "role": role}, "note": note}
+
+
+@app.get("/prompts/log")
+def prompts_log(
+    request: Request,
+    limit: int = Query(default=200, ge=1, le=2000),
+    prompt_key: str = Query(default=""),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    key = (prompt_key or "").strip().lower()
+    if key:
+        key = _require_prompt_key(key)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_prompts_tables(cur)
+            if key:
+                cur.execute(
+                    _prompts_schema(
+                        """
+                        SELECT edited_at, prompt_key, edited_by_username, edited_by_role, change_note
+                        FROM "__SCHEMA__".prompt_revisions
+                        WHERE prompt_key=%s
+                        ORDER BY edited_at DESC
+                        LIMIT %s;
+                        """
+                    ),
+                    (key, limit),
+                )
+            else:
+                cur.execute(
+                    _prompts_schema(
+                        """
+                        SELECT edited_at, prompt_key, edited_by_username, edited_by_role, change_note
+                        FROM "__SCHEMA__".prompt_revisions
+                        ORDER BY edited_at DESC
+                        LIMIT %s;
+                        """
+                    ),
+                    (limit,),
+                )
+            rows = cur.fetchall()
+
+    items = [
+        {
+            "edited_at": ea.isoformat() if ea else None,
+            "prompt_key": str(pk),
+            "user": str(u or ""),
+            "role": str(r or ""),
+            "note": str(n or ""),
+        }
+        for (ea, pk, u, r, n) in rows
+    ]
+    return {"ok": True, "schema": _require_safe_ident("PROMPTS_SCHEMA", PROMPTS_SCHEMA), "items": items}
+
+
+@app.get("/prompts/ui", response_class=HTMLResponse)
+def prompts_ui(
+    request: Request,
+    prompt_key: str = Query(default="", min_length=0),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer")
+
+    key = (prompt_key or "").strip().lower()
+    if key:
+        key = _require_prompt_key(key)
+
+    body_html = f"""
+      <div class="card">
+        <h1>Prompts</h1>
+        <p class="muted">Review and edit prompts used by workflows. Every save writes an audit log (date/time/user/note).</p>
+      </div>
+
+      <div class="section grid-sidebar">
+        <div class="card">
+          <h2>Prompt list</h2>
+          <div class="muted">Click to edit.</div>
+          <div class="divider"></div>
+          <div id="promptList" class="muted">Loading…</div>
+          <div class="divider"></div>
+          <div class="muted">Changes: <a href="/prompts/log/ui">Prompt log</a></div>
+        </div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
+            <h2>Edit</h2>
+            <span class="pill">Viewer</span>
+          </div>
+          <div class="divider"></div>
+          <div id="editor" class="muted">Select a prompt.</div>
+        </div>
+      </div>
+    """.strip()
+
+    script = f"""
+    <script>
+      const promptListEl = document.getElementById('promptList');
+      const editorEl = document.getElementById('editor');
+      const selectedKey = {json.dumps(key)};
+
+      function esc(s) {{
+        return String(s || '')
+          .replaceAll('&','&amp;')
+          .replaceAll('<','&lt;')
+          .replaceAll('>','&gt;')
+          .replaceAll('"','&quot;')
+          .replaceAll(\"'\",'&#39;');
+      }}
+
+      function canEdit(role) {{
+        role = String(role || '').toLowerCase();
+        return role === 'admin' || role === 'editor' || role === 'account_manager';
+      }}
+
+      async function loadList() {{
+        try {{
+          const res = await fetch('/prompts', {{ headers: {{ 'Content-Type': 'application/json' }} }});
+          const body = await res.json().catch(() => ({{}}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
+          const prompts = body.prompts || [];
+          if (!prompts.length) {{
+            promptListEl.innerHTML = '<div class="muted">No prompts yet.</div>';
+            return;
+          }}
+          const ul = document.createElement('ul');
+          ul.style.margin = '10px 0 0 18px';
+          ul.style.padding = '0';
+          for (const p of prompts) {{
+            const k = String(p.prompt_key || '');
+            const li = document.createElement('li');
+            li.style.margin = '6px 0';
+            const active = (k === selectedKey);
+            li.innerHTML = `<a href="/prompts/ui?prompt_key=${{encodeURIComponent(k)}}">${{esc(k)}}</a>` +
+              (p.name ? ` <span class="muted">— ${{esc(p.name)}}</span>` : '') +
+              (active ? ' <span class="pill">selected</span>' : '');
+            ul.appendChild(li);
+          }}
+          promptListEl.innerHTML = '';
+          promptListEl.appendChild(ul);
+        }} catch (e) {{
+          promptListEl.innerHTML = '<div class="muted">Error: ' + esc(e.message || e) + '</div>';
+        }}
+      }}
+
+      async function loadPrompt(key) {{
+        if (!key) return;
+        try {{
+          const res = await fetch('/prompts/' + encodeURIComponent(key), {{ headers: {{ 'Content-Type': 'application/json' }} }});
+          const body = await res.json().catch(() => ({{}}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
+          const p = body.prompt || {{}};
+
+          const role = {json.dumps((user or {{}}).get('role') if isinstance(user, dict) else '')};
+          const editable = canEdit(role);
+
+          editorEl.innerHTML = `
+            <div class="muted">Key: <code>${{esc(p.prompt_key)}}</code></div>
+            <div style="height:10px;"></div>
+            <label>Name</label>
+            <input id="name" type="text" value="${{esc(p.name)}}" ${{editable ? '' : 'disabled'}} />
+            <div style="height:10px;"></div>
+            <label>Description</label>
+            <input id="desc" type="text" value="${{esc(p.description)}}" ${{editable ? '' : 'disabled'}} />
+            <div style="height:10px;"></div>
+            <label>Provider</label>
+            <input id="provider" type="text" value="${{esc(p.provider)}}" placeholder="perplexity / openai" ${{editable ? '' : 'disabled'}} />
+            <div style="height:10px;"></div>
+            <label>Model</label>
+            <input id="model" type="text" value="${{esc(p.model)}}" placeholder="sonar-pro / gpt-4o-mini" ${{editable ? '' : 'disabled'}} />
+            <div style="height:10px;"></div>
+            <label>Prompt text</label>
+            <textarea id="text" class="mono" ${{editable ? '' : 'disabled'}}>${{esc(p.prompt_text)}}</textarea>
+            <div style="height:10px;"></div>
+            <label>Change note</label>
+            <input id="note" type="text" value="" placeholder="What changed and why?" ${{editable ? '' : 'disabled'}} />
+            <div class="btnrow">
+              <button id="btnSave" class="btn primary" type="button" ${{editable ? '' : 'disabled'}}>Save</button>
+              <a class="btn" href="/prompts/log/ui?prompt_key=${{encodeURIComponent(p.prompt_key || '')}}">View log</a>
+            </div>
+            <div id="status" class="statusbox mono" style="display:none;"></div>
+          `;
+
+          if (!editable) {{
+            editorEl.querySelector('.pill').textContent = 'Read-only';
+          }}
+
+          const btn = document.getElementById('btnSave');
+          if (btn) {{
+            btn.addEventListener('click', async () => {{
+              const payload = {{
+                prompt_key: String(p.prompt_key || ''),
+                name: String(document.getElementById('name').value || ''),
+                description: String(document.getElementById('desc').value || ''),
+                provider: String(document.getElementById('provider').value || ''),
+                model: String(document.getElementById('model').value || ''),
+                prompt_text: String(document.getElementById('text').value || ''),
+                change_note: String(document.getElementById('note').value || '').trim() || 'Update prompt'
+              }};
+              const status = document.getElementById('status');
+              status.style.display = 'block';
+              status.textContent = 'Saving…';
+              try {{
+                const res2 = await fetch('/prompts/' + encodeURIComponent(payload.prompt_key), {{
+                  method: 'POST',
+                  headers: {{ 'Content-Type': 'application/json' }},
+                  body: JSON.stringify(payload)
+                }});
+                const body2 = await res2.json().catch(() => ({{}}));
+                if (!res2.ok) throw new Error(body2.detail || `HTTP ${{res2.status}}`);
+                status.textContent = 'Saved. ' + (body2.note || '');
+                setTimeout(() => window.location.reload(), 600);
+              }} catch (e2) {{
+                status.textContent = 'Error: ' + String(e2.message || e2);
+              }}
+            }});
+          }}
+        }} catch (e) {{
+          editorEl.innerHTML = '<div class="muted">Error: ' + esc(e.message || e) + '</div>';
+        }}
+      }}
+
+      loadList();
+      if (selectedKey) loadPrompt(selectedKey);
+    </script>
+    """.strip()
+
+    return _ui_shell(title="ETI360 Prompts", active="apps", body_html=body_html, max_width_px=1400, user=user, extra_script=script)
+
+
+@app.get("/prompts/log/ui", response_class=HTMLResponse)
+def prompts_log_ui(
+    request: Request,
+    prompt_key: str = Query(default="", min_length=0),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    key = (prompt_key or "").strip().lower()
+    if key:
+        key = _require_prompt_key(key)
+
+    body_html = f"""
+      <div class="card">
+        <h1>Prompt Change Log</h1>
+        <p class="muted">Audit trail of prompt edits (UTC). Filter by prompt key.</p>
+      </div>
+
+      <div class="card">
+        <label>Prompt key (optional)</label>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <input id="key" type="text" value="{key}" placeholder="e.g. weather_normals_v1" style="max-width:420px;" />
+          <button id="btnFilter" class="btn primary" type="button">Filter</button>
+          <a class="btn" href="/prompts/ui">Back to prompts</a>
+        </div>
+        <div class="divider"></div>
+        <div class="section tablewrap" style="max-height: 70vh;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date (UTC)</th>
+                <th>Prompt</th>
+                <th>User</th>
+                <th>Role</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    """.strip()
+
+    script = f"""
+    <script>
+      const rowsEl = document.getElementById('rows');
+      const keyEl = document.getElementById('key');
+      const initial = {json.dumps(key)};
+
+      function esc(s) {{
+        return String(s || '')
+          .replaceAll('&','&amp;')
+          .replaceAll('<','&lt;')
+          .replaceAll('>','&gt;')
+          .replaceAll('"','&quot;')
+          .replaceAll(\"'\",'&#39;');
+      }}
+
+      async function load() {{
+        const key = String(keyEl.value || '').trim();
+        const qs = key ? ('?prompt_key=' + encodeURIComponent(key) + '&limit=500') : '?limit=500';
+        rowsEl.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
+        try {{
+          const res = await fetch('/prompts/log' + qs, {{ headers: {{ 'Content-Type': 'application/json' }} }});
+          const body = await res.json().catch(() => ({{}}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
+          const items = body.items || [];
+          rowsEl.innerHTML = '';
+          for (const r of items) {{
+            const tr = document.createElement('tr');
+            const date = String(r.edited_at || '').replace('T',' ').replace('Z','');
+            tr.innerHTML = `
+              <td><code>${{esc(date)}}</code></td>
+              <td><a href="/prompts/ui?prompt_key=${{encodeURIComponent(r.prompt_key || '')}}"><code>${{esc(r.prompt_key)}}</code></a></td>
+              <td>${{esc(r.user)}}</td>
+              <td><span class="pill">${{esc(r.role)}}</span></td>
+              <td class="muted">${{esc(r.note)}}</td>
+            `;
+            rowsEl.appendChild(tr);
+          }}
+          if (!items.length) {{
+            rowsEl.innerHTML = '<tr><td colspan="5" class="muted">No changes yet.</td></tr>';
+          }}
+        }} catch (e) {{
+          rowsEl.innerHTML = '<tr><td colspan="5" class="muted">Error: ' + esc(e.message || e) + '</td></tr>';
+        }}
+      }}
+
+      document.getElementById('btnFilter').addEventListener('click', load);
+      if (initial) load(); else load();
+    </script>
+    """.strip()
+
+    return _ui_shell(title="ETI360 Prompt Log", active="apps", body_html=body_html, max_width_px=1400, user=user, extra_script=script)
 
 
 @app.get("/db/schemas")

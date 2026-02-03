@@ -34,6 +34,7 @@ Optional / for weather helpers:
 
 - `GET /health`
 - `GET /health/db`
+- DB schema browser: `GET /db/ui` (and JSON helpers `GET /db/schemas`, `GET /db/tables`, `GET /db/columns`)
 - `POST /admin/schema/init` (one-time DB schema init; requires `X-API-Key`)
 - Weather UI: `GET /weather/ui`
 - Weather automation: `POST /weather/auto_batch`

@@ -78,6 +78,169 @@ def _extract_url(s: str) -> str:
     return m.group(0) if m else s
 
 
+_SAFE_IDENT_RE = re.compile(r"^[a-zA-Z0-9_]+$")
+
+
+def _require_safe_ident(label: str, value: str) -> str:
+    value = (value or "").strip()
+    if not value or not _SAFE_IDENT_RE.match(value):
+        raise HTTPException(status_code=400, detail=f"Invalid {label}")
+    return value
+
+
+_UI_CSS = """
+:root {
+  color-scheme: light;
+  --primary: #002b4f;
+  --accent: #ffc300;
+  --text: #000814;
+  --muted: rgba(0, 8, 20, 0.6);
+  --bg: #F5F6F7;
+  --surface: #ffffff;
+  --band: #f7f7f8;
+  --border: #F2F2F2;
+  --tint: rgba(0, 43, 79, 0.12);
+  --radius: 16px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.8;
+}
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.muted { color: var(--muted); font-size: 13px; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.topbar { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--border); }
+.topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 0; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: 0.2px; }
+.brand-dot { width: 10px; height: 10px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 4px var(--tint); }
+.badge { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--tint); color: var(--primary); border: 1px solid var(--border); }
+.nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nav a { font-size: 13px; padding: 6px 12px; border-radius: 999px; color: var(--muted); }
+.nav a.active { background: var(--tint); color: var(--primary); }
+.goldline { height: 2px; background: var(--accent); }
+main { padding: 22px 0 40px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.card + .card { margin-top: 16px; }
+h1 { margin: 0; font-size: 20px; line-height: 1.25; }
+h2 { margin: 0; font-size: 14px; letter-spacing: 0.2px; }
+.section { margin-top: 16px; }
+.divider { border-top: 1px solid var(--border); margin: 16px 0; }
+
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.btn {
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--primary);
+  cursor: pointer;
+}
+.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn:hover { background: var(--band); text-decoration: none; }
+.btn.primary:hover { opacity: 0.92; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+label { display: block; font-size: 12px; color: rgba(0, 8, 20, 0.75); margin-bottom: 6px; }
+input[type="text"], textarea, select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+  background: var(--surface);
+  outline: none;
+}
+input[type="text"]:focus, textarea:focus, select:focus {
+  border-color: rgba(0, 43, 79, 0.35);
+  box-shadow: 0 0 0 4px rgba(0, 43, 79, 0.10);
+}
+textarea { min-height: 220px; resize: vertical; }
+
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+th, td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12px; letter-spacing: 0.2px; color: rgba(0, 8, 20, 0.65); background: var(--band); }
+.tablewrap { overflow: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.tablewrap table th { position: sticky; top: 0; z-index: 1; }
+.right { text-align: right; }
+.pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); background: var(--band); color: rgba(0, 8, 20, 0.75); }
+
+.grid-2 { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1100px) { .grid-2 { grid-template-columns: 1fr 1.4fr; } }
+.grid-sidebar { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid-sidebar { grid-template-columns: 1fr; } }
+
+.statusbox {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--band);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+""".strip()
+
+
+def _ui_nav(*, active: str) -> str:
+    items = [
+        ("Apps", "/apps", "apps"),
+        ("Weather", "/weather/ui", "weather"),
+        ("Usage", "/usage/ui", "usage"),
+        ("DB", "/db/ui", "db"),
+        ("Docs", "/docs", "docs"),
+        ("Health", "/health/db", "health"),
+    ]
+    links = []
+    for label, href, key in items:
+        cls = "active" if key == active else ""
+        links.append(f'<a class="{cls}" href="{href}">{label}</a>')
+    return "".join(links)
+
+
+def _ui_shell(*, title: str, active: str, body_html: str, max_width_px: int = 1200, extra_head: str = "", extra_script: str = "") -> str:
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <style>{_UI_CSS}</style>
+    {extra_head}
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container" style="max-width:{max_width_px}px;">
+        <div class="topbar-inner">
+          <div class="brand">
+            <span class="brand-dot"></span>
+            <span>ETI360</span>
+            <span class="badge">Internal</span>
+          </div>
+          <nav class="nav">{_ui_nav(active=active)}</nav>
+        </div>
+      </div>
+      <div class="goldline"></div>
+    </header>
+    <main>
+      <div class="container" style="max-width:{max_width_px}px;">
+        {body_html}
+      </div>
+    </main>
+    {extra_script}
+  </body>
+</html>"""
+
+
 def _domain_only(url: str) -> str:
     url = (url or "").strip()
     if not url:
@@ -609,39 +772,15 @@ def usage_log(
 
 @app.get("/usage/ui", response_class=HTMLResponse)
 def usage_ui() -> str:
-    return """<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ETI360 API Usage Log</title>
-    <style>
-      :root { color-scheme: light; }
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px; color: #0f172a; background: #f8fafc; }
-      .wrap { max-width: 1400px; margin: 0 auto; }
-      header { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
-      h1 { margin: 0 0 6px 0; font-size: 18px; }
-      .muted { color: #475569; font-size: 13px; }
-      .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-top: 14px; }
-      table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
-      th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-      th { font-size: 12px; letter-spacing: 0.2px; color: #475569; background: #f8fafc; position: sticky; top: 0; }
-      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
-      a { color: #2563eb; text-decoration: none; }
-      a:hover { text-decoration: underline; }
-      .right { text-align: right; }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <header>
-        <h1>ETI360 API Usage Log</h1>
-        <div class="muted">LLM tokens/cost per run. Pricing comes from env vars (if unset, costs show as $0). <a href="/apps">Apps</a></div>
-      </header>
+    body_html = """
+      <div class="card">
+        <h1>API Usage Log</h1>
+        <p class="muted">LLM tokens/cost per run. Pricing comes from env vars (if unset, costs show as $0).</p>
+      </div>
 
       <div class="card">
         <div id="summary" class="muted">Loading…</div>
-        <div style="overflow:auto; max-height: 70vh; margin-top: 10px;">
+        <div class="section tablewrap" style="max-height: 70vh;">
           <table>
             <thead>
               <tr>
@@ -660,8 +799,9 @@ def usage_ui() -> str:
           </table>
         </div>
       </div>
-    </div>
+    """.strip()
 
+    script = """
     <script>
       const summaryEl = document.getElementById('summary');
       const rowsEl = document.getElementById('rows');
@@ -713,8 +853,9 @@ def usage_ui() -> str:
 
       load();
     </script>
-  </body>
-</html>"""
+    """.strip()
+
+    return _ui_shell(title="ETI360 API Usage Log", active="usage", body_html=body_html, max_width_px=1400, extra_script=script)
 
 
 @app.get("/weather/locations")
@@ -819,64 +960,56 @@ def home() -> str:
 
 @app.get("/apps", response_class=HTMLResponse)
 def apps_home() -> str:
-    return """<!doctype html>
-<html lang=\"en\">
-  <head>
-    <meta charset=\"utf-8\" />
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-    <title>ETI360 Apps</title>
-    <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; color: #0f172a; }
-      .card { max-width: 980px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #fff; }
-      h1 { margin: 0 0 8px 0; font-size: 18px; }
-      table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; }
-      th, td { text-align: left; padding: 10px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-      th { font-size: 12px; letter-spacing: 0.2px; color: #475569; background: #f8fafc; }
-      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
-      a { color: #2563eb; text-decoration: none; }
-      a:hover { text-decoration: underline; }
-      .muted { color: #475569; font-size: 13px; }
-    </style>
-  </head>
-  <body>
-    <div class=\"card\">
-      <h1>ETI360 Apps</h1>
-      <div class=\"muted\">Internal tools running inside a single Render service. Auth can be enabled via <code>X-API-Key</code> or disabled with <code>AUTH_DISABLED=true</code>.</div>
+    body_html = """
+      <div class="card">
+        <h1>ETI360 Internal Apps</h1>
+        <p class="muted">Internal tools running inside a single Render service. Auth can be enabled via <code>X-API-Key</code> or disabled with <code>AUTH_DISABLED=true</code>.</p>
+      </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>App</th>
-            <th>Description</th>
-            <th>Link</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Weather + Sunlight</td>
-            <td class=\"muted\">Batch-generate climate + daylight charts to S3.</td>
-            <td><a href=\"/weather/ui\">/weather/ui</a></td>
-          </tr>
-          <tr>
-            <td>API Usage Log</td>
-            <td class=\"muted\">Token + cost log by workflow/provider/model.</td>
-            <td><a href=\"/usage/ui\">/usage/ui</a></td>
-          </tr>
-          <tr>
-            <td>Health</td>
-            <td class=\"muted\">Service + DB connectivity checks.</td>
-            <td><a href=\"/health\">/health</a> · <a href=\"/health/db\">/health/db</a></td>
-          </tr>
-          <tr>
-            <td>API Docs</td>
-            <td class=\"muted\">Interactive docs for JSON endpoints.</td>
-            <td><a href=\"/docs\">/docs</a></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </body>
-</html>"""
+      <div class="card">
+        <h2>Directory</h2>
+        <div class="section tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>App</th>
+                <th>Description</th>
+                <th>Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Weather + Sunlight</td>
+                <td class="muted">Batch-generate climate + daylight charts to S3.</td>
+                <td><a href="/weather/ui">Open</a></td>
+              </tr>
+              <tr>
+                <td>API Usage Log</td>
+                <td class="muted">Token + cost log by workflow/provider/model.</td>
+                <td><a href="/usage/ui">Open</a></td>
+              </tr>
+              <tr>
+                <td>DB Schema</td>
+                <td class="muted">Browse tables/fields (requires API key unless auth is disabled).</td>
+                <td><a href="/db/ui">Open</a></td>
+              </tr>
+              <tr>
+                <td>API Docs</td>
+                <td class="muted">Interactive docs for JSON endpoints.</td>
+                <td><a href="/docs">Open</a></td>
+              </tr>
+              <tr>
+                <td>Health</td>
+                <td class="muted">Service + DB connectivity checks.</td>
+                <td><a href="/health">/health</a> · <a href="/health/db">/health/db</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    """.strip()
+
+    return _ui_shell(title="ETI360 Apps", active="apps", body_html=body_html, max_width_px=1100)
 
 
 @app.get("/health")
@@ -895,6 +1028,208 @@ def health_db() -> dict[str, bool]:
         raise HTTPException(status_code=500, detail=f"DB connection failed: {e}") from e
 
     return {"ok": True}
+
+
+@app.get("/db/schemas")
+def db_schemas(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> dict[str, Any]:
+    """
+    List non-system schemas. Useful for quickly confirming what namespaces exist in the DB.
+    """
+    _require_api_key(x_api_key)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT schema_name
+                FROM information_schema.schemata
+                WHERE schema_name NOT IN ('pg_catalog','information_schema')
+                ORDER BY schema_name ASC;
+                """
+            )
+            rows = cur.fetchall()
+
+    return {"ok": True, "schemas": [str(r[0]) for r in rows]}
+
+
+@app.get("/db/tables")
+def db_tables(
+    schema: str = Query(default=WEATHER_SCHEMA, min_length=1),
+    include_views: bool = Query(default=False),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    """
+    List tables (and optionally views) for a schema.
+    """
+    _require_api_key(x_api_key)
+    schema = _require_safe_ident("schema", schema)
+
+    types = ["BASE TABLE"]
+    if include_views:
+        types.append("VIEW")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT table_name, table_type
+                FROM information_schema.tables
+                WHERE table_schema=%s AND table_type = ANY(%s)
+                ORDER BY table_name ASC;
+                """,
+                (schema, types),
+            )
+            rows = cur.fetchall()
+
+    return {
+        "ok": True,
+        "schema": schema,
+        "tables": [{"name": str(name), "type": str(ttype)} for (name, ttype) in rows],
+    }
+
+
+@app.get("/db/columns")
+def db_columns(
+    schema: str = Query(default=WEATHER_SCHEMA, min_length=1),
+    table: str = Query(..., min_length=1),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    """
+    Describe a table/view: columns, types, nullability, and defaults.
+    """
+    _require_api_key(x_api_key)
+    schema = _require_safe_ident("schema", schema)
+    table = _require_safe_ident("table", table)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                  column_name,
+                  data_type,
+                  udt_name,
+                  is_nullable,
+                  column_default,
+                  ordinal_position
+                FROM information_schema.columns
+                WHERE table_schema=%s AND table_name=%s
+                ORDER BY ordinal_position ASC;
+                """,
+                (schema, table),
+            )
+            rows = cur.fetchall()
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="No such table (or no columns visible)")
+
+    cols: list[dict[str, Any]] = []
+    for (name, data_type, udt_name, is_nullable, default, ordinal) in rows:
+        cols.append(
+            {
+                "name": str(name),
+                "data_type": str(data_type),
+                "udt_name": str(udt_name),
+                "nullable": str(is_nullable).upper() == "YES",
+                "default": str(default) if default is not None else None,
+                "ordinal_position": int(ordinal),
+            }
+        )
+
+    return {"ok": True, "schema": schema, "table": table, "columns": cols}
+
+
+@app.get("/db/ui", response_class=HTMLResponse)
+def db_ui(
+    schema: str = Query(default=WEATHER_SCHEMA, min_length=1),
+    table: str = Query(default="", min_length=0),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    _require_api_key(x_api_key)
+    schema = _require_safe_ident("schema", schema)
+    picked_table = ""
+    if (table or "").strip():
+        picked_table = _require_safe_ident("table", table)
+
+    tables = db_tables(schema=schema, include_views=True, x_api_key=x_api_key)["tables"]
+    cols: list[dict[str, Any]] = []
+    if picked_table:
+        cols = db_columns(schema=schema, table=picked_table, x_api_key=x_api_key)["columns"]
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    table_links = "\n".join(
+        f'<li><a href="/db/ui?schema={_esc(schema)}&table={_esc(t["name"])}">{_esc(t["name"])}</a> <span class="muted">({ _esc(t["type"]) })</span></li>'
+        for t in tables
+    )
+
+    cols_rows = ""
+    if picked_table and cols:
+        cols_rows = "\n".join(
+            "<tr>"
+            f"<td><code>{_esc(c['name'])}</code></td>"
+            f"<td class=\"muted\">{_esc(c['data_type'])}</td>"
+            f"<td class=\"muted\">{_esc(c['udt_name'])}</td>"
+            f"<td>{'YES' if c['nullable'] else 'NO'}</td>"
+            f"<td class=\"muted\">{_esc(c['default'] or '')}</td>"
+            "</tr>"
+            for c in cols
+        )
+
+    detail_html = ""
+    if picked_table:
+        detail_html = f"""
+        <div class="card">
+          <h1>DB Schema</h1>
+          <p class="muted">Viewing <code>{_esc(schema)}.{_esc(picked_table)}</code></p>
+        </div>
+        <div class="card">
+          <div class="muted">JSON: <a href="/db/columns?schema={_esc(schema)}&table={_esc(picked_table)}">/db/columns</a></div>
+          <div class="section tablewrap">
+            <table>
+              <thead>
+                <tr><th>Column</th><th>Type</th><th>Udt</th><th>Nullable</th><th>Default</th></tr>
+              </thead>
+              <tbody>
+                {cols_rows}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        """
+    else:
+        detail_html = """
+        <div class="card">
+          <h1>DB Schema</h1>
+          <p class="muted">Pick a table on the left to view its fields.</p>
+        </div>
+        """.strip()
+
+    body_html = f"""
+      <div class="grid-sidebar">
+        <div class="card">
+          <h2>Tables</h2>
+          <div class="muted">Schema: <code>{_esc(schema)}</code></div>
+          <div class="divider"></div>
+          <ul style="margin: 8px 0 0 18px; padding: 0;">{table_links}</ul>
+          <div class="divider"></div>
+          <div class="muted">JSON: <a href="/db/tables?schema={_esc(schema)}&include_views=true">/db/tables</a> · <a href="/db/schemas">/db/schemas</a></div>
+        </div>
+        <div>
+          {detail_html}
+        </div>
+      </div>
+    """.strip()
+
+    return _ui_shell(title="ETI360 DB Schema", active="db", body_html=body_html, max_width_px=1400)
 
 
 _SCHEMA_STATEMENTS: list[str] = [
@@ -1596,64 +1931,29 @@ def auto_weather_batch(
 
 @app.get("/weather/ui", response_class=HTMLResponse)
 def weather_ui() -> str:
-    return """<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ETI360 Weather</title>
-    <style>
-      :root { color-scheme: light; }
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px; color: #0f172a; background: #f8fafc; }
-      .wrap { max-width: 1600px; margin: 0 auto; }
-      header { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
-      h1 { margin: 0 0 6px 0; font-size: 18px; }
-      .muted { color: #475569; font-size: 13px; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-      .layout { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; align-items: start; }
-      @media (min-width: 1100px) { .layout { grid-template-columns: 1fr 1.4fr; } }
-      .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
-      label { display: block; font-size: 12px; color: #334155; margin-bottom: 6px; }
-      input[type="text"], textarea { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: white; }
-      textarea { min-height: 220px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-      .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-      button { padding: 10px 12px; border-radius: 10px; border: 1px solid #0f172a; background: #0f172a; color: white; cursor: pointer; font-size: 14px; }
-      button.secondary { background: white; color: #0f172a; }
-      button:disabled { opacity: 0.6; cursor: not-allowed; }
-      .status { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; white-space: pre-wrap; }
-      table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
-      th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-      th { font-size: 12px; letter-spacing: 0.2px; color: #475569; background: #f8fafc; }
-      a { color: #2563eb; text-decoration: none; }
-      a:hover { text-decoration: underline; }
-      .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; }
-      .right { text-align: right; }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <header>
-        <h1>ETI360 Weather</h1>
-        <div class="muted">Paste one city per line, click Run. Cities and chart links are listed alphabetically. <a href="/apps">Apps</a> · <a href="/usage/ui">Usage Log</a></div>
-      </header>
+    body_html = """
+      <div class="card">
+        <h1>Weather + Sunlight</h1>
+        <p class="muted">Paste one city per line, then run. Cities and chart links are listed alphabetically.</p>
+      </div>
 
-      <div class="layout">
+      <div class="section grid-2">
         <div class="card">
-          <label>Location Input (one per line)</label>
-          <textarea id="citiesInput" placeholder="Lima, Peru&#10;Nagasaki, Japan"></textarea>
-          <div class="actions">
-            <button id="btnRun" type="button">Run</button>
-            <button id="btnClear" class="secondary" type="button">Clear</button>
+          <label>Location input (one per line)</label>
+          <textarea id="citiesInput" class="mono" placeholder="Lima, Peru&#10;Nagasaki, Japan"></textarea>
+          <div class="btnrow">
+            <button id="btnRun" class="btn primary" type="button">Run</button>
+            <button id="btnClear" class="btn" type="button">Clear</button>
           </div>
-          <div id="status" class="status">Ready.</div>
+          <div id="status" class="statusbox mono">Ready.</div>
         </div>
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
-            <h2 style="margin:0; font-size: 14px;">Cities and Links</h2>
+            <h2>Cities and Links</h2>
             <span class="pill">Alphabetical</span>
           </div>
-          <div style="overflow:auto; margin-top: 8px;">
+          <div class="section tablewrap">
             <table>
               <thead>
                 <tr>
@@ -1667,8 +1967,9 @@ def weather_ui() -> str:
           </div>
         </div>
       </div>
-    </div>
+    """.strip()
 
+    script = """
     <script>
       const citiesEl = document.getElementById('citiesInput');
       const statusEl = document.getElementById('status');
@@ -1780,5 +2081,6 @@ def weather_ui() -> str:
 
       refreshLocations();
     </script>
-  </body>
-</html>"""
+    """.strip()
+
+    return _ui_shell(title="ETI360 Weather", active="weather", body_html=body_html, max_width_px=1400, extra_script=script)

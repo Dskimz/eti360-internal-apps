@@ -271,12 +271,16 @@ def _create_run_id() -> str:
 def _record_llm_usage(
     *,
     run_id: str,
+    workflow: str,
     kind: str,
     provider: str,
     model: str,
     prompt_tokens: int,
     completion_tokens: int,
     total_tokens: int,
+    locations_count: int,
+    ok_count: int,
+    fail_count: int,
 ) -> dict[str, Any]:
     run_uuid = uuid.UUID(str(run_id))
     cost_usd = float(estimate_cost_usd(provider=provider, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens))
@@ -297,6 +301,10 @@ def _record_llm_usage(
                     """
                 ).strip()
             )
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS locations_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS ok_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS fail_count INTEGER NOT NULL DEFAULT 0;'))
             cur.execute(
                 _schema(
                     """
@@ -318,8 +326,19 @@ def _record_llm_usage(
             cur.execute(_schema('CREATE INDEX IF NOT EXISTS llm_usage_created_at_idx ON "__SCHEMA__".llm_usage(created_at DESC);'))
 
             cur.execute(
-                _schema('INSERT INTO "__SCHEMA__".llm_runs (id, kind) VALUES (%s,%s) ON CONFLICT (id) DO NOTHING;'),
-                (run_uuid, kind),
+                _schema(
+                    """
+                    INSERT INTO "__SCHEMA__".llm_runs (id, workflow, kind, locations_count, ok_count, fail_count)
+                    VALUES (%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (id) DO UPDATE SET
+                      workflow = EXCLUDED.workflow,
+                      kind = EXCLUDED.kind,
+                      locations_count = EXCLUDED.locations_count,
+                      ok_count = EXCLUDED.ok_count,
+                      fail_count = EXCLUDED.fail_count;
+                    """
+                ).strip(),
+                (run_uuid, (workflow or "").strip(), kind, int(locations_count), int(ok_count), int(fail_count)),
             )
             cur.execute(
                 _schema(
@@ -363,6 +382,10 @@ def weather_usage(
                     """
                 ).strip()
             )
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS locations_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS ok_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS fail_count INTEGER NOT NULL DEFAULT 0;'))
             cur.execute(
                 _schema(
                     """
@@ -444,6 +467,219 @@ def weather_usage(
     ]
     total_cost = float(sum(r["cost_usd"] for r in cumulative))
     return {"ok": True, "last_run": last, "cumulative": cumulative, "cumulative_total_cost_usd": total_cost}
+
+
+@app.get("/usage/log")
+def usage_log(
+    limit: int = Query(default=200, ge=1, le=2000),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+            cur.execute(_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
+            cur.execute(
+                _schema(
+                    """
+                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_runs (
+                      id UUID PRIMARY KEY,
+                      kind TEXT NOT NULL DEFAULT '',
+                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                ).strip()
+            )
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS locations_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS ok_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS fail_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(
+                _schema(
+                    """
+                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
+                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                      run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
+                      provider TEXT NOT NULL,
+                      model TEXT NOT NULL DEFAULT '',
+                      prompt_tokens INTEGER NOT NULL DEFAULT 0,
+                      completion_tokens INTEGER NOT NULL DEFAULT 0,
+                      total_tokens INTEGER NOT NULL DEFAULT 0,
+                      cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
+                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                ).strip()
+            )
+
+            cur.execute(
+                _schema(
+                    """
+                    SELECT
+                      r.id,
+                      r.workflow,
+                      r.kind,
+                      r.locations_count,
+                      r.ok_count,
+                      r.fail_count,
+                      u.provider,
+                      u.model,
+                      u.prompt_tokens,
+                      u.completion_tokens,
+                      u.total_tokens,
+                      u.cost_usd,
+                      u.created_at
+                    FROM "__SCHEMA__".llm_usage u
+                    JOIN "__SCHEMA__".llm_runs r ON r.id = u.run_id
+                    ORDER BY u.created_at DESC
+                    LIMIT %s;
+                    """
+                ),
+                (limit,),
+            )
+            rows = cur.fetchall()
+
+            cur.execute(_schema('SELECT COALESCE(SUM(cost_usd),0) FROM "__SCHEMA__".llm_usage;'))
+            (cumulative_total,) = cur.fetchone()  # type: ignore[misc]
+
+    items = [
+        {
+            "run_id": str(run_id),
+            "workflow": str(workflow or ""),
+            "kind": str(kind or ""),
+            "locations_count": int(locations_count),
+            "ok_count": int(ok_count),
+            "fail_count": int(fail_count),
+            "provider": str(provider),
+            "model": str(model),
+            "prompt_tokens": int(prompt_tokens),
+            "completion_tokens": int(completion_tokens),
+            "total_tokens": int(total_tokens),
+            "cost_usd": float(cost_usd),
+            "created_at": created_at.isoformat() if created_at else None,
+        }
+        for (
+            run_id,
+            workflow,
+            kind,
+            locations_count,
+            ok_count,
+            fail_count,
+            provider,
+            model,
+            prompt_tokens,
+            completion_tokens,
+            total_tokens,
+            cost_usd,
+            created_at,
+        ) in rows
+    ]
+    return {"ok": True, "items": items, "cumulative_total_cost_usd": float(cumulative_total)}
+
+
+@app.get("/usage/ui", response_class=HTMLResponse)
+def usage_ui() -> str:
+    return """<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETI360 API Usage Log</title>
+    <style>
+      :root { color-scheme: light; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px; color: #0f172a; background: #f8fafc; }
+      .wrap { max-width: 1400px; margin: 0 auto; }
+      header { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+      h1 { margin: 0 0 6px 0; font-size: 18px; }
+      .muted { color: #475569; font-size: 13px; }
+      .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-top: 14px; }
+      table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+      th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+      th { font-size: 12px; letter-spacing: 0.2px; color: #475569; background: #f8fafc; position: sticky; top: 0; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .right { text-align: right; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>ETI360 API Usage Log</h1>
+        <div class="muted">LLM tokens/cost per run. Pricing comes from env vars (if unset, costs show as $0). <a href="/apps">Apps</a></div>
+      </header>
+
+      <div class="card">
+        <div id="summary" class="muted">Loading…</div>
+        <div style="overflow:auto; max-height: 70vh; margin-top: 10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date (UTC)</th>
+                <th>Workflow</th>
+                <th>Provider</th>
+                <th>Model</th>
+                <th class="right">In</th>
+                <th class="right">Out</th>
+                <th class="right">Total</th>
+                <th class="right">Cost (USD)</th>
+                <th class="right">Run</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const summaryEl = document.getElementById('summary');
+      const rowsEl = document.getElementById('rows');
+
+      function money(x) { return '$' + Number(x || 0).toFixed(6); }
+      function safe(s) { return String(s || ''); }
+
+      async function load() {
+        try {
+          const res = await fetch('/usage/log?limit=500', { headers: { 'Content-Type': 'application/json' }});
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+          summaryEl.textContent = `Cumulative total: ${money(body.cumulative_total_cost_usd)} (rows: ${(body.items || []).length})`;
+
+          const items = body.items || [];
+          rowsEl.innerHTML = '';
+          for (const r of items) {
+            const tr = document.createElement('tr');
+            const date = safe(r.created_at).replace('T', ' ').replace('Z','');
+            const runShort = safe(r.run_id).slice(0, 8);
+            tr.innerHTML = `
+              <td><code>${date}</code></td>
+              <td>${safe(r.workflow || r.kind)}</td>
+              <td>${safe(r.provider)}</td>
+              <td><code>${safe(r.model)}</code></td>
+              <td class="right"><code>${Number(r.prompt_tokens || 0)}</code></td>
+              <td class="right"><code>${Number(r.completion_tokens || 0)}</code></td>
+              <td class="right"><code>${Number(r.total_tokens || 0)}</code></td>
+              <td class="right"><code>${money(r.cost_usd)}</code></td>
+              <td class="right"><code title="${safe(r.run_id)}">${runShort}</code></td>
+            `;
+            rowsEl.appendChild(tr);
+          }
+          if (items.length === 0) {
+            rowsEl.innerHTML = '<tr><td colspan="9" class="muted">No usage yet.</td></tr>';
+          }
+        } catch (e) {
+          summaryEl.textContent = 'Error: ' + String(e?.message || e);
+          rowsEl.innerHTML = '';
+        }
+      }
+
+      load();
+    </script>
+  </body>
+</html>"""
 
 
 @app.get("/weather/locations")
@@ -543,17 +779,24 @@ def list_weather_locations(
 
 @app.get("/", response_class=HTMLResponse)
 def home() -> str:
+    return apps_home()
+
+
+@app.get("/apps", response_class=HTMLResponse)
+def apps_home() -> str:
     return """<!doctype html>
 <html lang=\"en\">
   <head>
     <meta charset=\"utf-8\" />
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-    <title>ETI360 Internal API</title>
+    <title>ETI360 Apps</title>
     <style>
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; color: #0f172a; }
-      .card { max-width: 760px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #fff; }
+      .card { max-width: 980px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #fff; }
       h1 { margin: 0 0 8px 0; font-size: 18px; }
-      ul { margin: 8px 0 0 18px; }
+      table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; }
+      th, td { text-align: left; padding: 10px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+      th { font-size: 12px; letter-spacing: 0.2px; color: #475569; background: #f8fafc; }
       code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
       a { color: #2563eb; text-decoration: none; }
       a:hover { text-decoration: underline; }
@@ -562,14 +805,40 @@ def home() -> str:
   </head>
   <body>
     <div class=\"card\">
-      <h1>ETI360 Internal API</h1>
-      <div class=\"muted\">This service powers internal tools. Writes can be protected by <code>X-API-Key</code>.</div>
-      <ul>
-        <li><a href=\"/health\">GET /health</a></li>
-        <li><a href=\"/health/db\">GET /health/db</a></li>
-        <li><a href=\"/docs\">Swagger UI</a></li>
-        <li><a href=\"/weather/ui\">Weather UI</a></li>
-      </ul>
+      <h1>ETI360 Apps</h1>
+      <div class=\"muted\">Internal tools running inside a single Render service. Auth can be enabled via <code>X-API-Key</code> or disabled with <code>AUTH_DISABLED=true</code>.</div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>App</th>
+            <th>Description</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Weather + Sunlight</td>
+            <td class=\"muted\">Batch-generate climate + daylight charts to S3.</td>
+            <td><a href=\"/weather/ui\">/weather/ui</a></td>
+          </tr>
+          <tr>
+            <td>API Usage Log</td>
+            <td class=\"muted\">Token + cost log by workflow/provider/model.</td>
+            <td><a href=\"/usage/ui\">/usage/ui</a></td>
+          </tr>
+          <tr>
+            <td>Health</td>
+            <td class=\"muted\">Service + DB connectivity checks.</td>
+            <td><a href=\"/health\">/health</a> · <a href=\"/health/db\">/health/db</a></td>
+          </tr>
+          <tr>
+            <td>API Docs</td>
+            <td class=\"muted\">Interactive docs for JSON endpoints.</td>
+            <td><a href=\"/docs\">/docs</a></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </body>
 </html>"""
@@ -1235,16 +1504,24 @@ def auto_weather_batch(
         except Exception as e:
             results.append({"ok": False, "location_query": q, "error": str(getattr(e, "detail", e))})
 
+    ok_count = sum(1 for r in results if r.get("ok"))
+    fail_count = sum(1 for r in results if not r.get("ok"))
+    workflow = "weather+sunlight"
+
     usage_rows: list[dict[str, Any]] = []
     usage_rows.append(
         _record_llm_usage(
             run_id=run_id,
-            kind="weather_auto_batch",
+            workflow=workflow,
+            kind="auto_batch",
             provider="perplexity",
             model=perplexity_model or os.environ.get("PERPLEXITY_MODEL", "").strip() or "unused",
             prompt_tokens=perplexity_prompt,
             completion_tokens=perplexity_completion,
             total_tokens=perplexity_total,
+            locations_count=len(locations),
+            ok_count=ok_count,
+            fail_count=fail_count,
         )
     )
 
@@ -1252,12 +1529,16 @@ def auto_weather_batch(
     usage_rows.append(
         _record_llm_usage(
             run_id=run_id,
-            kind="weather_auto_batch",
+            workflow=workflow,
+            kind="auto_batch",
             provider="openai",
             model=os.environ.get("OPENAI_MODEL", "").strip() or "unused",
             prompt_tokens=0,
             completion_tokens=0,
             total_tokens=0,
+            locations_count=len(locations),
+            ok_count=ok_count,
+            fail_count=fail_count,
         )
     )
 
@@ -1297,7 +1578,7 @@ def weather_ui() -> str:
       .muted { color: #475569; font-size: 13px; }
       .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
       .layout { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; align-items: start; }
-      @media (min-width: 1100px) { .layout { grid-template-columns: 0.9fr 1.2fr 0.9fr; } }
+      @media (min-width: 1100px) { .layout { grid-template-columns: 1fr 1.4fr; } }
       .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
       label { display: block; font-size: 12px; color: #334155; margin-bottom: 6px; }
       input[type="text"], textarea { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: white; }
@@ -1320,7 +1601,7 @@ def weather_ui() -> str:
     <div class="wrap">
       <header>
         <h1>ETI360 Weather</h1>
-        <div class="muted">Paste one city per line, click Run. Column 2 shows saved cities + chart links. Column 3 tracks tokens and estimated costs.</div>
+        <div class="muted">Paste one city per line, click Run. Cities and chart links are listed alphabetically. <a href="/apps">Apps</a> · <a href="/usage/ui">Usage Log</a></div>
       </header>
 
       <div class="layout">
@@ -1352,13 +1633,6 @@ def weather_ui() -> str:
             </table>
           </div>
         </div>
-
-        <div class="card">
-          <h2 style="margin:0 0 10px 0; font-size: 14px;">Token Tracker</h2>
-          <div class="muted">Costs use env pricing vars. If unset, costs show as $0.</div>
-          <div class="divider" style="height:1px; background:#e2e8f0; margin:10px 0;"></div>
-          <div id="usageBox" class="status">Loading…</div>
-        </div>
       </div>
     </div>
 
@@ -1366,7 +1640,6 @@ def weather_ui() -> str:
       const citiesEl = document.getElementById('citiesInput');
       const statusEl = document.getElementById('status');
       const locRowsEl = document.getElementById('locRows');
-      const usageBoxEl = document.getElementById('usageBox');
       const btnRun = document.getElementById('btnRun');
 
       window.addEventListener('error', (e) => {
@@ -1428,43 +1701,6 @@ def weather_ui() -> str:
         }
       }
 
-      function renderUsage(data) {
-        if (!data || !data.ok) {
-          usageBoxEl.textContent = 'Could not load usage.';
-          return;
-        }
-        const lines = [];
-        const last = data.last_run;
-        if (last) {
-          lines.push(`Last run: ${last.kind || ''} (${last.created_at || ''})`);
-          for (const r of (last.usage || [])) {
-            lines.push(`- ${r.provider} / ${r.model}: in ${r.prompt_tokens}, out ${r.completion_tokens}, total ${r.total_tokens}, cost $${Number(r.cost_usd || 0).toFixed(6)}`);
-          }
-          lines.push('');
-        } else {
-          lines.push('Last run: (none)');
-          lines.push('');
-        }
-        lines.push('Cumulative:');
-        for (const r of (data.cumulative || [])) {
-          lines.push(`- ${r.provider} / ${r.model}: in ${r.prompt_tokens}, out ${r.completion_tokens}, total ${r.total_tokens}, cost $${Number(r.cost_usd || 0).toFixed(6)}`);
-        }
-        lines.push(``);
-        lines.push(`Cumulative total: $${Number(data.cumulative_total_cost_usd || 0).toFixed(6)}`);
-        usageBoxEl.textContent = lines.join('\\n');
-      }
-
-      async function refreshUsage() {
-        try {
-          const res = await fetch('/weather/usage', { headers: headers() });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-          renderUsage(body);
-        } catch (e) {
-          usageBoxEl.textContent = 'Could not load usage: ' + String(e?.message || e);
-        }
-      }
-
       async function runBatch() {
         const cities = parseCities();
         if (cities.length === 0) {
@@ -1498,7 +1734,6 @@ def weather_ui() -> str:
           }
           setStatus(lines.join('\\n'));
           await refreshLocations();
-          await refreshUsage();
         } catch (e) {
           setStatus('Error: ' + String(e?.message || e));
         } finally {
@@ -1511,7 +1746,6 @@ def weather_ui() -> str:
       citiesEl.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runBatch(); });
 
       refreshLocations();
-      refreshUsage();
     </script>
   </body>
 </html>"""

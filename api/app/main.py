@@ -15,6 +15,7 @@ from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.s3 import get_s3_config, presign_get, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
@@ -88,6 +89,96 @@ def _fetch_json(url: str) -> dict[str, Any]:
     if not isinstance(obj, dict):
         raise ValueError("Expected JSON object")
     return obj
+
+
+def _extract_country(formatted_address: str) -> str:
+    formatted_address = (formatted_address or "").strip()
+    if not formatted_address:
+        return ""
+    parts = [p.strip() for p in formatted_address.split(",") if p.strip()]
+    return parts[-1] if parts else ""
+
+
+def _extract_model_float_list(obj: Any, key: str) -> list[float]:
+    v = obj.get(key) if isinstance(obj, dict) else None
+    if not isinstance(v, list):
+        raise HTTPException(status_code=500, detail=f"Model payload missing {key} list")
+    out: list[float] = []
+    for i, x in enumerate(v):
+        if not isinstance(x, (int, float)):
+            raise HTTPException(status_code=500, detail=f"Model payload {key}[{i}] is not a number")
+        out.append(float(x))
+    return out
+
+
+def _generate_weather_png_for_slug(*, location_slug: str, year: int) -> dict[str, Any]:
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(_schema('SELECT id FROM "__SCHEMA__".locations WHERE location_slug=%s;'), (location_slug,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Unknown location_slug")
+            (location_id,) = row
+
+            cur.execute(
+                _schema(
+                    'SELECT d.id, d.title, d.subtitle, s.label, s.url FROM "__SCHEMA__".weather_datasets d LEFT JOIN "__SCHEMA__".weather_sources s ON s.id = d.source_id WHERE d.location_id=%s ORDER BY d.updated_at DESC LIMIT 1;'
+                ),
+                (location_id,),
+            )
+            ds = cur.fetchone()
+            if not ds:
+                raise HTTPException(status_code=404, detail="No dataset for location")
+            dataset_id, title, subtitle, src_label, src_url = ds
+
+            cur.execute(
+                _schema(
+                    'SELECT month, high_c, low_c, precip_cm FROM "__SCHEMA__".weather_monthly_normals WHERE dataset_id=%s ORDER BY month ASC;'
+                ),
+                (dataset_id,),
+            )
+            rows = cur.fetchall()
+            if len(rows) != 12:
+                raise HTTPException(status_code=400, detail=f"Expected 12 monthly rows; got {len(rows)}")
+
+    monthly = [
+        MonthlyWeather(month=MONTHS[int(m) - 1], high_c=float(h), low_c=float(l), precip_cm=float(p))
+        for (m, h, l, p) in rows
+    ]
+
+    tmpdir = Path(tempfile.gettempdir())
+    out_path = tmpdir / f"eti360-weather-{location_slug}-{year}.png"
+    render_weather_chart(
+        project_root=Path("."),
+        monthly=monthly,
+        title=str(title),
+        subtitle=str(subtitle),
+        source_left=_source_left(str(src_label or "Source"), str(src_url or "")),
+        output_path=out_path,
+    )
+    png_bytes = out_path.read_bytes()
+
+    cfg = get_s3_config()
+    key = f"{cfg.prefix}{location_slug}/weather/{year}.png"
+    put_png(region=cfg.region, bucket=cfg.bucket, key=key, body=png_bytes)
+
+    generated_at = datetime.now(timezone.utc)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                _schema(
+                    'INSERT INTO "__SCHEMA__".assets (location_id, kind, year, s3_bucket, s3_key, bytes, content_type, generated_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id;'
+                ),
+                (location_id, "weather", year, cfg.bucket, key, len(png_bytes), "image/png", generated_at),
+            )
+            (asset_id,) = cur.fetchone()  # type: ignore[misc]
+        conn.commit()
+
+    view_url = presign_get(region=cfg.region, bucket=cfg.bucket, key=key, expires_in=3600)
+    return {"ok": True, "asset_id": str(asset_id), "s3_bucket": cfg.bucket, "s3_key": key, "view_url": view_url}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -296,6 +387,36 @@ def places_search(
     return {"ok": True, "results": out}
 
 
+@app.get("/places/resolve")
+def places_resolve(
+    q: str = Query(..., min_length=1),
+    place_id: str = Query(default=""),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    """
+    Convenience wrapper: run a Places search and return a single picked result.
+    """
+    _require_api_key(x_api_key)
+    results = (places_search(q=q, x_api_key=x_api_key) or {}).get("results") or []
+    if not isinstance(results, list) or not results:
+        raise HTTPException(status_code=404, detail="No Google Places results")
+
+    picked = None
+    pid = (place_id or "").strip()
+    if pid:
+        for r in results:
+            if isinstance(r, dict) and str(r.get("place_id") or "").strip() == pid:
+                picked = r
+                break
+    if picked is None:
+        picked = results[0] if isinstance(results[0], dict) else {}
+
+    if not str(picked.get("place_id") or "").strip():
+        raise HTTPException(status_code=500, detail="Picked result missing place_id")
+
+    return {"ok": True, "picked": picked, "results": results}
+
+
 class WeatherSourceIn(BaseModel):
     label: str = ""
     url: str = ""
@@ -350,13 +471,29 @@ def _save_weather_payload(payload: WeatherPayloadIn) -> dict[str, Any]:
 
     with _connect() as conn:
         with conn.cursor() as cur:
+            # place_id is the identity; location_slug is a human-friendly handle.
+            cur.execute(
+                _schema('SELECT location_slug FROM "__SCHEMA__".locations WHERE place_id=%s LIMIT 1;'), (payload.place_id,)
+            )
+            row = cur.fetchone()
+            effective_slug = str(row[0]) if row else payload.location_slug
+
+            # If the slug is already taken by a different place, disambiguate.
+            cur.execute(
+                _schema('SELECT place_id FROM "__SCHEMA__".locations WHERE location_slug=%s LIMIT 1;'), (effective_slug,)
+            )
+            row2 = cur.fetchone()
+            if row2 and str(row2[0]) != payload.place_id:
+                suffix = payload.place_id[-6:].lower()
+                effective_slug = _slugify(f"{effective_slug}-{suffix}")[:64]
+
             cur.execute(
                 _schema(
                     """
                     INSERT INTO "__SCHEMA__".locations (location_slug, place_id, city, country, lat, lng, timezone_id)
                     VALUES (%s,%s,%s,%s,%s,%s,%s)
-                    ON CONFLICT (location_slug) DO UPDATE SET
-                      place_id = EXCLUDED.place_id,
+                    ON CONFLICT (place_id) DO UPDATE SET
+                      location_slug = EXCLUDED.location_slug,
                       city = EXCLUDED.city,
                       country = EXCLUDED.country,
                       lat = EXCLUDED.lat,
@@ -367,7 +504,7 @@ def _save_weather_payload(payload: WeatherPayloadIn) -> dict[str, Any]:
                     """
                 ),
                 (
-                    payload.location_slug,
+                    effective_slug,
                     payload.place_id,
                     payload.city,
                     payload.country,
@@ -412,7 +549,7 @@ def _save_weather_payload(payload: WeatherPayloadIn) -> dict[str, Any]:
 
         conn.commit()
 
-    return {"ok": True, "location_slug": payload.location_slug, "dataset_id": str(dataset_id)}
+    return {"ok": True, "location_slug": effective_slug, "dataset_id": str(dataset_id)}
 
 
 @app.post("/weather/payload")
@@ -523,73 +660,144 @@ def generate_weather_png(
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
     _require_api_key(x_api_key)
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+    return _generate_weather_png_for_slug(location_slug=body.location_slug, year=body.year)
 
+
+class AutoWeatherIn(BaseModel):
+    location_query: str = Field(..., min_length=1)
+    location_slug: str = ""
+    year: int = 2026
+    force_refresh: bool = False
+
+
+@app.post("/weather/auto")
+def auto_weather(
+    body: AutoWeatherIn,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    """
+    City-only flow:
+    - Resolve Google Place (place_id + lat/lng)
+    - Fetch monthly normals via Perplexity
+    - Import into DB (atomic rows)
+    - Generate PNG to S3
+    """
+    _require_api_key(x_api_key)
+
+    location_query = (body.location_query or "").strip()
+    if not location_query:
+        raise HTTPException(status_code=400, detail="location_query is required")
+
+    key = _require_google_key()
+    url = "https://maps.googleapis.com/maps/api/place/textsearch/json?" + urlencode({"query": location_query, "key": key})
+    try:
+        data = _fetch_json(url)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Google Places request failed: {e}") from e
+
+    status = str(data.get("status") or "")
+    if status not in {"OK", "ZERO_RESULTS"}:
+        raise HTTPException(status_code=400, detail=f"Google Places status: {status}")
+
+    results = data.get("results") or []
+    if not isinstance(results, list) or not results:
+        raise HTTPException(status_code=404, detail="No Google Places results")
+    first = results[0] if isinstance(results[0], dict) else {}
+
+    place_id = str(first.get("place_id") or "").strip()
+    if not place_id:
+        raise HTTPException(status_code=500, detail="Google Places did not return place_id")
+    name = str(first.get("name") or "").strip()
+    formatted_address = str(first.get("formatted_address") or "").strip()
+    geom = (first.get("geometry") or {}).get("location") or {}
+    lat = geom.get("lat")
+    lng = geom.get("lng")
+    lat_f = float(lat) if isinstance(lat, (int, float)) else None
+    lng_f = float(lng) if isinstance(lng, (int, float)) else None
+    if lat_f is None or lng_f is None:
+        raise HTTPException(status_code=500, detail="Google Places did not return lat/lng")
+
+    picked_place = {
+        "name": name,
+        "formatted_address": formatted_address,
+        "place_id": place_id,
+        "lat": lat_f,
+        "lng": lng_f,
+    }
+
+    requested_slug = (body.location_slug or "").strip()
+    default_slug = requested_slug or _slugify(location_query or name or formatted_address)
+
+    existing_slug = ""
+    existing_location_id = None
+    has_dataset = False
     with _connect() as conn:
         with conn.cursor() as cur:
-            cur.execute(_schema('SELECT id FROM "__SCHEMA__".locations WHERE location_slug=%s;'), (body.location_slug,))
-            row = cur.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Unknown location_slug")
-            (location_id,) = row
+            cur.execute(_schema('SELECT id, location_slug FROM "__SCHEMA__".locations WHERE place_id=%s LIMIT 1;'), (place_id,))
+            r = cur.fetchone()
+            if r:
+                existing_location_id, existing_slug = r
+                cur.execute(_schema('SELECT 1 FROM "__SCHEMA__".weather_datasets WHERE location_id=%s LIMIT 1;'), (existing_location_id,))
+                has_dataset = cur.fetchone() is not None
 
-            cur.execute(
-                _schema(
-                    'SELECT d.id, d.title, d.subtitle, s.label, s.url FROM "__SCHEMA__".weather_datasets d LEFT JOIN "__SCHEMA__".weather_sources s ON s.id = d.source_id WHERE d.location_id=%s ORDER BY d.updated_at DESC LIMIT 1;'
-                ),
-                (location_id,),
-            )
-            ds = cur.fetchone()
-            if not ds:
-                raise HTTPException(status_code=404, detail="No dataset for location")
-            dataset_id, title, subtitle, src_label, src_url = ds
+    effective_slug = existing_slug or default_slug
 
-            cur.execute(
-                _schema(
-                    'SELECT month, high_c, low_c, precip_cm FROM "__SCHEMA__".weather_monthly_normals WHERE dataset_id=%s ORDER BY month ASC;'
-                ),
-                (dataset_id,),
-            )
-            rows = cur.fetchall()
-            if len(rows) != 12:
-                raise HTTPException(status_code=400, detail=f"Expected 12 monthly rows; got {len(rows)}")
+    imported = False
+    if body.force_refresh or not has_dataset:
+        try:
+            hint = f"{formatted_address} (place_id {place_id}, lat {lat_f}, lng {lng_f})".strip()
+            pr = fetch_monthly_weather_normals(location_label=(name or location_query), location_hint=hint)
+            payload_obj = pr.payload
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Perplexity fetch failed: {e}") from e
 
-    monthly = [
-        MonthlyWeather(month=MONTHS[int(m) - 1], high_c=float(h), low_c=float(l), precip_cm=float(p))
-        for (m, h, l, p) in rows
-    ]
+        months = payload_obj.get("months") if isinstance(payload_obj, dict) else None
+        if months and months != MONTHS:
+            raise HTTPException(status_code=500, detail="Model payload months must be Jan..Dec")
 
-    tmpdir = Path(tempfile.gettempdir())
-    out_path = tmpdir / f"eti360-weather-{body.location_slug}-{body.year}.png"
-    render_weather_chart(
-        project_root=Path("."),
-        monthly=monthly,
-        title=str(title),
-        subtitle=str(subtitle),
-        source_left=_source_left(str(src_label or "Source"), str(src_url or "")),
-        output_path=out_path,
-    )
-    png_bytes = out_path.read_bytes()
+        src = payload_obj.get("source") if isinstance(payload_obj, dict) else None
+        if not isinstance(src, dict):
+            src = {}
+        src_url = str(src.get("url") or "").strip()
+        if not src_url and pr.citations:
+            src_url = str(pr.citations[0]).strip()
 
-    cfg = get_s3_config()
-    key = f"{cfg.prefix}{body.location_slug}/weather/{body.year}.png"
-    put_png(region=cfg.region, bucket=cfg.bucket, key=key, body=png_bytes)
+        payload = WeatherPayloadIn(
+            location_slug=effective_slug,
+            place_id=place_id,
+            city=(name or location_query).strip(),
+            country=_extract_country(formatted_address),
+            lat=float(lat_f),
+            lng=float(lng_f),
+            timezone_id="",
+            title=str(payload_obj.get("title") or "").strip() or f"{(name or location_query).strip()} climate overview",
+            subtitle=str(payload_obj.get("subtitle") or "").strip()
+            or "Monthly average high/low temperatures and precipitation",
+            weather_overview=str(payload_obj.get("weather_overview") or "").strip(),
+            source=WeatherSourceIn(
+                label=str(src.get("label") or "Perplexity").strip(),
+                url=_extract_url(src_url),
+                accessed_utc=_parse_accessed_utc(str(src.get("accessed_utc") or "").strip()) or datetime.now(timezone.utc),
+                notes=str(src.get("notes") or "").strip(),
+            ),
+            high_c=_extract_model_float_list(payload_obj, "high_c"),
+            low_c=_extract_model_float_list(payload_obj, "low_c"),
+            precip_cm=_extract_model_float_list(payload_obj, "precip_cm"),
+        )
 
-    generated_at = datetime.now(timezone.utc)
+        saved = _save_weather_payload(payload)
+        effective_slug = str(saved.get("location_slug") or effective_slug)
+        imported = True
 
-    with _connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                _schema(
-                    'INSERT INTO "__SCHEMA__".assets (location_id, kind, year, s3_bucket, s3_key, bytes, content_type, generated_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id;'
-                ),
-                (location_id, "weather", body.year, cfg.bucket, key, len(png_bytes), "image/png", generated_at),
-            )
-            (asset_id,) = cur.fetchone()  # type: ignore[misc]
-        conn.commit()
-
-    view_url = presign_get(region=cfg.region, bucket=cfg.bucket, key=key, expires_in=3600)
-    return {"ok": True, "asset_id": str(asset_id), "s3_bucket": cfg.bucket, "s3_key": key, "view_url": view_url}
+    generated = _generate_weather_png_for_slug(location_slug=effective_slug, year=body.year)
+    return {
+        "ok": True,
+        "picked_place": picked_place,
+        "location_query": location_query,
+        "location_slug": effective_slug,
+        "imported": imported,
+        "generated": generated,
+    }
 
 
 @app.get("/weather/ui", response_class=HTMLResponse)
@@ -630,15 +838,15 @@ def weather_ui() -> str:
     <div class=\"wrap\">
       <header>
         <h1>ETI360 Weather</h1>
-        <div class=\"muted\">Search for a location (Google Places), paste the weather JSON format, import to atomic DB rows, then generate a PNG to S3.</div>
+        <div class=\"muted\">Type a city, click Auto Generate. The server resolves Google Places, fetches monthly normals via Perplexity, stores them, then generates a PNG to S3.</div>
       </header>
 
       <div class=\"grid\">
         <div class=\"card\">
           <div class=\"row2\">
             <div>
-              <label>API key (optional if AUTH_DISABLED=true)</label>
-              <input id=\"apiKey\" type=\"text\" placeholder=\"ETI360 API key\" autocomplete=\"off\" />
+              <label>City</label>
+              <input id=\"locationQuery\" type=\"text\" placeholder=\"e.g. Cleveland, Ohio\" />
             </div>
             <div>
               <label>Year (Generate)</label>
@@ -647,26 +855,32 @@ def weather_ui() -> str:
           </div>
 
           <div class=\"actions\">
-            <button id=\"btnSearch\" class=\"secondary\" type=\"button\">Search Places</button>
-            <button id=\"btnImport\" type=\"button\">Import to DB</button>
-            <button id=\"btnGenerate\" type=\"button\">Generate PNG</button>
-            <button id=\"btnSample\" class=\"secondary\" type=\"button\">Load sample (Bali)</button>
+            <button id=\"btnAuto\" type=\"button\">Auto Generate</button>
+            <button id=\"btnAutoRefresh\" class=\"secondary\" type=\"button\">Auto Generate (refresh)</button>
           </div>
 
           <div id=\"status\" class=\"status\">Ready.</div>
         </div>
 
-        <div class=\"card\">
+        <details class=\"card\">
+          <summary style=\"cursor:pointer; font-size: 13px; color:#334155; font-weight:600;\">Advanced (optional)</summary>
           <div class=\"row2\">
             <div>
-              <label>Location search (e.g. Bali, Indonesia)</label>
-              <input id=\"locationQuery\" type=\"text\" />
+              <label>API key (required unless AUTH_DISABLED=true)</label>
+              <input id=\"apiKey\" type=\"text\" placeholder=\"ETI360 API key\" autocomplete=\"off\" />
             </div>
             <div>
               <label>Location slug (used as ID in the system)</label>
               <input id=\"locationSlug\" type=\"text\" placeholder=\"bali\" />
               <div class=\"muted\" style=\"margin-top:6px;\">If blank, it will be auto-generated from the search.</div>
             </div>
+          </div>
+
+          <div class=\"actions\">
+            <button id=\"btnSearch\" class=\"secondary\" type=\"button\">Search Places</button>
+            <button id=\"btnImport\" type=\"button\">Import to DB</button>
+            <button id=\"btnGenerate\" type=\"button\">Generate PNG</button>
+            <button id=\"btnSample\" class=\"secondary\" type=\"button\">Load sample (Bali)</button>
           </div>
 
           <div style=\"margin-top: 12px; overflow: auto;\">
@@ -686,13 +900,12 @@ def weather_ui() -> str:
           </div>
 
           <div class=\"muted\" style=\"margin-top: 10px;\">Selected: <span id=\"picked\" class=\"mono\">(none)</span></div>
-        </div>
-
-        <div class=\"card\">
-          <label>Weather JSON (your current input format)</label>
-          <textarea id=\"weatherJson\" spellcheck=\"false\"></textarea>
-          <div class=\"muted\" style=\"margin-top: 8px;\">We store atomic rows in Postgres; this JSON is only an input convenience.</div>
-        </div>
+          <div style=\"margin-top: 12px;\">
+            <label>Weather JSON (manual import)</label>
+            <textarea id=\"weatherJson\" spellcheck=\"false\"></textarea>
+            <div class=\"muted\" style=\"margin-top: 8px;\">We store atomic rows in Postgres; this JSON is only an input convenience.</div>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -865,7 +1078,38 @@ Open PNG: ${body.view_url}`;
           setStatus('Error: ' + (e?.message || String(e)));
         }
       });
+
+      async function autoGenerate(forceRefresh) {
+        try {
+          saveLocal();
+          const q = String(locationQueryEl.value || '').trim();
+          if (!q) throw new Error('Enter a location search first');
+          const slug = String(locationSlugEl.value || '').trim() || slugify(q);
+          const year = Number(yearEl.value || 2026);
+
+          setStatus(forceRefresh ? 'Auto generating (refresh)…' : 'Auto generating…');
+          const res = await fetch('/weather/auto', {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ location_query: q, location_slug: slug, year, force_refresh: !!forceRefresh })
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+          if (body.location_slug) locationSlugEl.value = body.location_slug;
+          saveLocal();
+
+          let msg = 'Auto complete.\n' + JSON.stringify(body, null, 2);
+          const viewUrl = body?.generated?.view_url;
+          if (viewUrl) msg += `\n\nOpen PNG: ${viewUrl}`;
+          setStatus(msg);
+        } catch (e) {
+          setStatus('Error: ' + (e?.message || String(e)));
+        }
+      }
+
+      document.getElementById('btnAuto').addEventListener('click', () => autoGenerate(false));
+      document.getElementById('btnAutoRefresh').addEventListener('click', () => autoGenerate(true));
     </script>
   </body>
 </html>"""
-

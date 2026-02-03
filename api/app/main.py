@@ -5,14 +5,17 @@ import os
 import re
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from base64 import urlsafe_b64decode, urlsafe_b64encode
+from datetime import datetime, timedelta, timezone
+from hashlib import pbkdf2_hmac
 from pathlib import Path
+from secrets import token_bytes
 from typing import Any
 from urllib.parse import urlencode, urlparse
 from urllib.request import urlopen
 
 import psycopg
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -26,9 +29,14 @@ app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
 
 WEATHER_SCHEMA = "weather"
 USAGE_SCHEMA = os.environ.get("USAGE_SCHEMA", "ops").strip() or "ops"
+AUTH_SCHEMA = os.environ.get("AUTH_SCHEMA", "ops").strip() or "ops"
+SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "eti360_session").strip() or "eti360_session"
 
 
 def _auth_disabled() -> bool:
+    mode = os.environ.get("AUTH_MODE", "").strip().lower()
+    if mode in {"0", "false", "no", "off", "disabled"}:
+        return True
     v = os.environ.get("AUTH_DISABLED", "").strip().lower()
     return v in {"1", "true", "yes", "on"}
 
@@ -60,6 +68,11 @@ def _schema(sql: str) -> str:
 
 def _usage_schema(sql: str) -> str:
     schema = _require_safe_ident("USAGE_SCHEMA", USAGE_SCHEMA)
+    return sql.replace("__SCHEMA__", schema)
+
+
+def _auth_schema(sql: str) -> str:
+    schema = _require_safe_ident("AUTH_SCHEMA", AUTH_SCHEMA)
     return sql.replace("__SCHEMA__", schema)
 
 
@@ -181,6 +194,185 @@ def _ensure_usage_tables(cur: psycopg.Cursor) -> None:
             )
 
 
+_ROLE_RANK: dict[str, int] = {"viewer": 10, "account_manager": 20, "editor": 20, "admin": 30}
+
+
+def _role_ge(role: str, *, required: str) -> bool:
+    return _ROLE_RANK.get((role or "").strip().lower(), 0) >= _ROLE_RANK.get(required, 9999)
+
+
+def _session_ttl_seconds() -> int:
+    raw = os.environ.get("SESSION_TTL_DAYS", "").strip()
+    try:
+        days = int(raw) if raw else 30
+    except Exception:
+        days = 30
+    days = max(1, min(days, 365))
+    return days * 24 * 3600
+
+
+def _hash_password(password: str) -> str:
+    password = (password or "").strip()
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    iterations = 200_000
+    salt = token_bytes(16)
+    dk = pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, dklen=32)
+    return f"pbkdf2_sha256${iterations}${urlsafe_b64encode(salt).decode('ascii')}${urlsafe_b64encode(dk).decode('ascii')}"
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    password = (password or "").strip()
+    stored = (stored or "").strip()
+    if not (password and stored.startswith("pbkdf2_sha256$")):
+        return False
+    try:
+        _, iters_s, salt_b64, dk_b64 = stored.split("$", 3)
+        iterations = int(iters_s)
+        salt = urlsafe_b64decode(salt_b64.encode("ascii"))
+        expected = urlsafe_b64decode(dk_b64.encode("ascii"))
+        got = pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, dklen=len(expected))
+        return got == expected
+    except Exception:
+        return False
+
+
+def _ensure_auth_tables(cur: psycopg.Cursor) -> None:
+    """
+    Create generic DB tables for users + sessions in AUTH_SCHEMA (default: ops).
+    """
+    cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+    cur.execute(_auth_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
+    cur.execute(
+        _auth_schema(
+            """
+            CREATE TABLE IF NOT EXISTS "__SCHEMA__".users (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              username TEXT NOT NULL UNIQUE,
+              email TEXT NOT NULL DEFAULT '',
+              display_name TEXT NOT NULL DEFAULT '',
+              role TEXT NOT NULL DEFAULT 'viewer',
+              password_hash TEXT NOT NULL,
+              is_disabled BOOLEAN NOT NULL DEFAULT FALSE,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+              CONSTRAINT users_role_chk CHECK (role IN ('viewer','account_manager','editor','admin'))
+            );
+            """
+        ).strip()
+    )
+    # For older deployments.
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".users ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".users DROP CONSTRAINT IF EXISTS users_role_chk;'))
+    cur.execute(
+        _auth_schema(
+            "ALTER TABLE \"__SCHEMA__\".users ADD CONSTRAINT users_role_chk CHECK (role IN ('viewer','account_manager','editor','admin'));"
+        )
+    )
+    cur.execute(
+        _auth_schema(
+            'CREATE UNIQUE INDEX IF NOT EXISTS users_email_uniq_idx ON "__SCHEMA__".users (lower(email)) WHERE email <> \'\';'
+        )
+    )
+    cur.execute(
+        _auth_schema(
+            """
+            CREATE TABLE IF NOT EXISTS "__SCHEMA__".sessions (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              user_id UUID NOT NULL REFERENCES "__SCHEMA__".users(id) ON DELETE CASCADE,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+              last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+              expires_at TIMESTAMPTZ NOT NULL,
+              user_agent TEXT NOT NULL DEFAULT '',
+              ip TEXT NOT NULL DEFAULT ''
+            );
+            """
+        ).strip()
+    )
+    cur.execute(_auth_schema('CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON "__SCHEMA__".sessions(user_id);'))
+    cur.execute(_auth_schema('CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON "__SCHEMA__".sessions(expires_at DESC);'))
+
+
+def _get_current_user(request: Request) -> dict[str, Any] | None:
+    if _auth_disabled():
+        return {"id": "disabled", "username": "disabled", "display_name": "Auth disabled", "role": "admin"}
+
+    sid = (request.cookies.get(SESSION_COOKIE_NAME) or "").strip()
+    if not sid:
+        return None
+    try:
+        sid_uuid = uuid.UUID(sid)
+    except Exception:
+        return None
+
+    now = datetime.now(timezone.utc)
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_auth_tables(cur)
+            cur.execute(
+                _auth_schema(
+                    """
+                    SELECT
+                      u.id, u.username, u.display_name, u.role, u.is_disabled,
+                      s.expires_at
+                    FROM "__SCHEMA__".sessions s
+                    JOIN "__SCHEMA__".users u ON u.id = s.user_id
+                    WHERE s.id=%s
+                    LIMIT 1;
+                    """
+                ),
+                (sid_uuid,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            user_id, username, display_name, role, is_disabled, expires_at = row
+            if bool(is_disabled):
+                return None
+            if expires_at and expires_at <= now:
+                return None
+
+            try:
+                cur.execute(_auth_schema('UPDATE "__SCHEMA__".sessions SET last_seen_at=now() WHERE id=%s;'), (sid_uuid,))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
+            return {
+                "id": str(user_id),
+                "username": str(username),
+                "display_name": str(display_name or ""),
+                "role": str(role or "viewer"),
+            }
+
+
+def _require_access(
+    *,
+    request: Request,
+    x_api_key: str | None,
+    role: str = "viewer",
+) -> dict[str, Any] | None:
+    """
+    Enforce access for sensitive endpoints.
+
+    Priority:
+    1) AUTH_MODE/AUTH_DISABLED bypass
+    2) session cookie user with sufficient role
+    3) X-API-Key header
+    """
+    if _auth_disabled():
+        return {"id": "disabled", "username": "disabled", "display_name": "Auth disabled", "role": "admin"}
+
+    user = _get_current_user(request)
+    if user:
+        if _role_ge(str(user.get("role") or ""), required=role):
+            return user
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    _require_api_key(x_api_key)
+    return {"id": "api_key", "username": "api_key", "display_name": "API key", "role": "admin"}
+
+
 _UI_CSS = """
 :root {
   color-scheme: light;
@@ -300,7 +492,26 @@ def _ui_nav(*, active: str) -> str:
     return "".join(links)
 
 
-def _ui_shell(*, title: str, active: str, body_html: str, max_width_px: int = 1200, extra_head: str = "", extra_script: str = "") -> str:
+def _ui_shell(
+    *,
+    title: str,
+    active: str,
+    body_html: str,
+    max_width_px: int = 1200,
+    extra_head: str = "",
+    extra_script: str = "",
+    user: dict[str, Any] | None = None,
+) -> str:
+    right = ""
+    if _auth_disabled():
+        right = '<span class="muted">Auth: disabled</span>'
+    elif user:
+        name = (user.get("display_name") or user.get("username") or "").strip()
+        role = (user.get("role") or "").strip()
+        right = f'<span class="muted">Signed in as <strong>{name}</strong> · {role} · <a href="/logout">Logout</a></span>'
+    else:
+        right = '<a class="btn" href="/login">Login</a>'
+
     return f"""<!doctype html>
 <html lang="en">
   <head>
@@ -319,7 +530,10 @@ def _ui_shell(*, title: str, active: str, body_html: str, max_width_px: int = 12
             <span>ETI360</span>
             <span class="badge">Internal</span>
           </div>
-          <nav class="nav">{_ui_nav(active=active)}</nav>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end;">
+            <nav class="nav">{_ui_nav(active=active)}</nav>
+            {right}
+          </div>
         </div>
       </div>
       <div class="goldline"></div>
@@ -552,7 +766,9 @@ def _record_llm_usage(
     fail_count: int,
 ) -> dict[str, Any]:
     run_uuid = uuid.UUID(str(run_id))
-    cost_usd = float(estimate_cost_usd(provider=provider, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens))
+    cost_usd = float(
+        estimate_cost_usd(provider=provider, model=model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+    )
 
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -596,9 +812,10 @@ def _record_llm_usage(
 
 @app.get("/weather/usage")
 def weather_usage(
+    request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
 
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -671,10 +888,11 @@ def weather_usage(
 
 @app.get("/usage/log")
 def usage_log(
+    request: Request,
     limit: int = Query(default=200, ge=1, le=2000),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
 
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -762,7 +980,8 @@ def usage_log(
 
 
 @app.get("/usage/ui", response_class=HTMLResponse)
-def usage_ui() -> str:
+def usage_ui(request: Request) -> str:
+    user = _get_current_user(request)
     body_html = """
       <div class="card">
         <h1>API Usage Log</h1>
@@ -846,16 +1065,24 @@ def usage_ui() -> str:
     </script>
     """.strip()
 
-    return _ui_shell(title="ETI360 API Usage Log", active="usage", body_html=body_html, max_width_px=1400, extra_script=script)
+    return _ui_shell(
+        title="ETI360 API Usage Log",
+        active="usage",
+        body_html=body_html,
+        max_width_px=1400,
+        extra_script=script,
+        user=user,
+    )
 
 
 @app.get("/weather/locations")
 def list_weather_locations(
+    request: Request,
     limit: int = Query(default=50, ge=1, le=500),
     order: str = Query(default="alpha"),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
 
     cfg = get_s3_config()
 
@@ -945,16 +1172,17 @@ def list_weather_locations(
 
 
 @app.get("/", response_class=HTMLResponse)
-def home() -> str:
-    return apps_home()
+def home(request: Request) -> str:
+    return apps_home(request=request)
 
 
 @app.get("/apps", response_class=HTMLResponse)
-def apps_home() -> str:
+def apps_home(request: Request) -> str:
+    user = _get_current_user(request)
     body_html = """
       <div class="card">
         <h1>ETI360 Internal Apps</h1>
-        <p class="muted">Internal tools running inside a single Render service. Auth can be enabled via <code>X-API-Key</code> or disabled with <code>AUTH_DISABLED=true</code>.</p>
+        <p class="muted">Internal tools running inside a single Render service. Auth can be enabled via login sessions and/or <code>X-API-Key</code>. Fast iteration mode: set <code>AUTH_MODE=disabled</code>.</p>
       </div>
 
       <div class="card">
@@ -994,13 +1222,18 @@ def apps_home() -> str:
                 <td class="muted">Service + DB connectivity checks.</td>
                 <td><a href="/health">/health</a> · <a href="/health/db">/health/db</a></td>
               </tr>
+              <tr>
+                <td>Admin</td>
+                <td class="muted">User management (roles/permissions).</td>
+                <td><a href="/admin/users/ui">Open</a></td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
     """.strip()
 
-    return _ui_shell(title="ETI360 Apps", active="apps", body_html=body_html, max_width_px=1100)
+    return _ui_shell(title="ETI360 Apps", active="apps", body_html=body_html, max_width_px=1100, user=user)
 
 
 @app.get("/health")
@@ -1021,12 +1254,372 @@ def health_db() -> dict[str, bool]:
     return {"ok": True}
 
 
+class LoginIn(BaseModel):
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request) -> str:
+    user = _get_current_user(request)
+    if user and not _auth_disabled():
+        return _ui_shell(
+            title="Login",
+            active="apps",
+            user=user,
+            body_html="""
+              <div class="card">
+                <h1>Already signed in</h1>
+                <p class="muted">You are already signed in. Use Logout to switch users.</p>
+              </div>
+            """.strip(),
+            max_width_px=820,
+        )
+
+    body_html = f"""
+      <div class="card">
+        <h1>Login</h1>
+        <p class="muted">Sign in to access admin tools (DB schema, prompt editing, etc.).</p>
+        <div class="divider"></div>
+        <form method="post" action="/login">
+          <label>Username</label>
+          <input type="text" name="username" autocomplete="username" />
+          <div style="height:12px;"></div>
+          <label>Password</label>
+          <input type="password" name="password" autocomplete="current-password" />
+          <div class="btnrow">
+            <button class="btn primary" type="submit">Login</button>
+            <a class="btn" href="/apps">Cancel</a>
+          </div>
+          <p class="muted" style="margin-top:10px;">If you’re still building, you can temporarily bypass auth by setting <code>AUTH_MODE=disabled</code>.</p>
+        </form>
+      </div>
+    """.strip()
+    return _ui_shell(title="Login", active="apps", body_html=body_html, max_width_px=820, user=None)
+
+
+@app.post("/login")
+async def login_submit(request: Request) -> Response:
+    if _auth_disabled():
+        return Response(status_code=303, headers={"Location": "/apps"})
+
+    content_type = (request.headers.get("content-type") or "").lower()
+    username = ""
+    password = ""
+    if "application/json" in content_type:
+        payload = await request.json()
+        if isinstance(payload, dict):
+            username = str(payload.get("username") or "")
+            password = str(payload.get("password") or "")
+    else:
+        form = await request.form()
+        username = str(form.get("username") or "")
+        password = str(form.get("password") or "")
+
+    username = username.strip()
+    password = password.strip()
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="username and password are required")
+
+    now = datetime.now(timezone.utc)
+    ttl = _session_ttl_seconds()
+    expires_at = now + timedelta(seconds=ttl)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_auth_tables(cur)
+            cur.execute(_auth_schema('SELECT id, password_hash, is_disabled FROM "__SCHEMA__".users WHERE username=%s LIMIT 1;'), (username,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=401, detail="Invalid username or password")
+            user_id, password_hash, is_disabled = row
+            if bool(is_disabled):
+                raise HTTPException(status_code=403, detail="User is disabled")
+            if not _verify_password(password, str(password_hash or "")):
+                raise HTTPException(status_code=401, detail="Invalid username or password")
+
+            cur.execute(
+                _auth_schema(
+                    'INSERT INTO "__SCHEMA__".sessions (user_id, expires_at, user_agent, ip) VALUES (%s,%s,%s,%s) RETURNING id;'
+                ),
+                (
+                    user_id,
+                    expires_at,
+                    str(request.headers.get("user-agent") or "")[:512],
+                    str(request.client.host if request.client else "")[:128],
+                ),
+            )
+            (sid,) = cur.fetchone()  # type: ignore[misc]
+        conn.commit()
+
+    is_https = (request.headers.get("x-forwarded-proto") or "").lower() == "https" or request.url.scheme == "https"
+    resp = Response(status_code=303, headers={"Location": "/apps"})
+    resp.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=str(sid),
+        max_age=ttl,
+        httponly=True,
+        samesite="lax",
+        secure=is_https,
+        path="/",
+    )
+    return resp
+
+
+@app.get("/logout")
+def logout(request: Request) -> Response:
+    sid = (request.cookies.get(SESSION_COOKIE_NAME) or "").strip()
+    try:
+        sid_uuid = uuid.UUID(sid) if sid else None
+    except Exception:
+        sid_uuid = None
+
+    if sid_uuid:
+        try:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _ensure_auth_tables(cur)
+                    cur.execute(_auth_schema('DELETE FROM "__SCHEMA__".sessions WHERE id=%s;'), (sid_uuid,))
+                conn.commit()
+        except Exception:
+            pass
+
+    resp = Response(status_code=303, headers={"Location": "/apps"})
+    resp.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
+    return resp
+
+
+class UserCreateIn(BaseModel):
+    username: str = Field(..., min_length=1)
+    email: str = ""
+    password: str = Field(..., min_length=8)
+    display_name: str = ""
+    role: str = "account_manager"
+
+
+@app.get("/admin/users")
+def admin_users(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="admin")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_auth_tables(cur)
+            cur.execute(
+                _auth_schema(
+                    """
+                    SELECT id, username, display_name, role, is_disabled, created_at, updated_at
+                    FROM "__SCHEMA__".users
+                    ORDER BY username ASC;
+                    """
+                )
+            )
+            rows = cur.fetchall()
+
+    users = [
+        {
+            "id": str(uid),
+            "username": str(u),
+            "display_name": str(dn or ""),
+            "role": str(r or ""),
+            "is_disabled": bool(dis),
+            "created_at": ca.isoformat() if ca else None,
+            "updated_at": ua.isoformat() if ua else None,
+        }
+        for (uid, u, dn, r, dis, ca, ua) in rows
+    ]
+    return {"ok": True, "schema": _require_safe_ident("AUTH_SCHEMA", AUTH_SCHEMA), "users": users}
+
+
+@app.post("/admin/users")
+def admin_users_create(
+    body: UserCreateIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    # Admin-only, but allow bootstrap via X-API-Key even if no users exist yet.
+    _require_access(request=request, x_api_key=x_api_key, role="admin")
+
+    username = body.username.strip()
+    role = (body.role or "account_manager").strip().lower()
+    if role not in _ROLE_RANK:
+        raise HTTPException(status_code=400, detail="Invalid role (viewer/editor/admin)")
+
+    password_hash = _hash_password(body.password)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_auth_tables(cur)
+            cur.execute(
+                _auth_schema(
+                    'INSERT INTO "__SCHEMA__".users (username, email, display_name, role, password_hash) VALUES (%s,%s,%s,%s,%s) RETURNING id;'
+                ),
+                (username, (body.email or "").strip().lower(), (body.display_name or "").strip(), role, password_hash),
+            )
+            (user_id,) = cur.fetchone()  # type: ignore[misc]
+        conn.commit()
+
+    return {"ok": True, "user_id": str(user_id), "username": username, "role": role}
+
+
+@app.get("/admin/users/ui", response_class=HTMLResponse)
+def admin_users_ui(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="admin")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_auth_tables(cur)
+            cur.execute(
+                _auth_schema(
+                    """
+                    SELECT username, email, display_name, role, is_disabled, created_at
+                    FROM "__SCHEMA__".users
+                    ORDER BY username ASC;
+                    """
+                )
+            )
+            rows = cur.fetchall()
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    users_rows = ""
+    for (username, email, display_name, role, is_disabled, created_at) in rows:
+        users_rows += (
+            "<tr>"
+            f"<td><code>{_esc(username)}</code></td>"
+            f"<td class=\"muted\">{_esc(email or '')}</td>"
+            f"<td>{_esc(display_name or '')}</td>"
+            f"<td><span class=\"pill\">{_esc(role)}</span></td>"
+            f"<td>{'YES' if bool(is_disabled) else 'NO'}</td>"
+            f"<td class=\"muted\"><code>{_esc(created_at.isoformat() if created_at else '')}</code></td>"
+            "</tr>"
+        )
+    if not users_rows:
+        users_rows = '<tr><td colspan="6" class="muted">No users yet. Create the first one below.</td></tr>'
+
+    body_html = f"""
+      <div class="card">
+        <h1>User Administration</h1>
+        <p class="muted">Add users and assign roles. While you’re building, set <code>AUTH_MODE=disabled</code> to skip login. When enabled, sessions persist for <code>SESSION_TTL_DAYS</code>.</p>
+      </div>
+
+      <div class="card">
+        <h2>Users</h2>
+        <div class="section tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Display</th>
+                <th>Role</th>
+                <th>Disabled</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users_rows}
+            </tbody>
+          </table>
+        </div>
+        <div class="muted" style="margin-top:10px;">JSON: <a href="/admin/users">/admin/users</a></div>
+      </div>
+
+      <div class="card">
+        <h2>Add user</h2>
+        <form id="createForm">
+          <label>Username</label>
+          <input type="text" name="username" placeholder="e.g. dan" />
+          <div style="height:12px;"></div>
+
+          <label>Email (optional)</label>
+          <input type="text" name="email" placeholder="name@domain.com" />
+          <div style="height:12px;"></div>
+
+          <label>Display name</label>
+          <input type="text" name="display_name" placeholder="e.g. Dan" />
+          <div style="height:12px;"></div>
+
+          <label>Role</label>
+          <select name="role">
+            <option value="account_manager" selected>Account Manager</option>
+            <option value="admin">Admin</option>
+          </select>
+          <div style="height:12px;"></div>
+
+          <label>Password</label>
+          <input type="password" name="password" placeholder="min 8 characters" />
+          <div class="btnrow">
+            <button class="btn primary" type="submit">Create user</button>
+            <a class="btn" href="/apps">Back</a>
+          </div>
+          <div id="status" class="statusbox mono" style="display:none;"></div>
+        </form>
+      </div>
+    """.strip()
+
+    script = """
+    <script>
+      const form = document.getElementById('createForm');
+      const status = document.getElementById('status');
+      function show(msg) { status.style.display = 'block'; status.textContent = msg; }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const payload = {
+          username: String(fd.get('username') || '').trim(),
+          email: String(fd.get('email') || '').trim(),
+          display_name: String(fd.get('display_name') || '').trim(),
+          role: String(fd.get('role') || 'account_manager').trim(),
+          password: String(fd.get('password') || '').trim(),
+        };
+        if (!payload.username || !payload.password) {
+          show('Username and password are required.');
+          return;
+        }
+        try {
+          const res = await fetch('/admin/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+          show('Created: ' + payload.username + ' (' + payload.role + '). Refreshing…');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (err) {
+          show('Error: ' + String(err?.message || err));
+        }
+      });
+    </script>
+    """.strip()
+
+    return _ui_shell(title="ETI360 Admin Users", active="apps", body_html=body_html, max_width_px=1100, user=user, extra_script=script)
+
+
 @app.get("/db/schemas")
-def db_schemas(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> dict[str, Any]:
+def db_schemas(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
     """
     List non-system schemas. Useful for quickly confirming what namespaces exist in the DB.
     """
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="admin")
 
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -1045,6 +1638,7 @@ def db_schemas(x_api_key: str | None = Header(default=None, alias="X-API-Key")) 
 
 @app.get("/db/tables")
 def db_tables(
+    request: Request,
     schema: str = Query(default=WEATHER_SCHEMA, min_length=1),
     include_views: bool = Query(default=False),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
@@ -1052,7 +1646,7 @@ def db_tables(
     """
     List tables (and optionally views) for a schema.
     """
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="admin")
     schema = _require_safe_ident("schema", schema)
 
     types = ["BASE TABLE"]
@@ -1081,6 +1675,7 @@ def db_tables(
 
 @app.get("/db/columns")
 def db_columns(
+    request: Request,
     schema: str = Query(default=WEATHER_SCHEMA, min_length=1),
     table: str = Query(..., min_length=1),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
@@ -1088,7 +1683,7 @@ def db_columns(
     """
     Describe a table/view: columns, types, nullability, and defaults.
     """
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="admin")
     schema = _require_safe_ident("schema", schema)
     table = _require_safe_ident("table", table)
 
@@ -1132,20 +1727,21 @@ def db_columns(
 
 @app.get("/db/ui", response_class=HTMLResponse)
 def db_ui(
+    request: Request,
     schema: str = Query(default=WEATHER_SCHEMA, min_length=1),
     table: str = Query(default="", min_length=0),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> str:
-    _require_api_key(x_api_key)
+    user = _require_access(request=request, x_api_key=x_api_key, role="admin")
     schema = _require_safe_ident("schema", schema)
     picked_table = ""
     if (table or "").strip():
         picked_table = _require_safe_ident("table", table)
 
-    tables = db_tables(schema=schema, include_views=True, x_api_key=x_api_key)["tables"]
+    tables = db_tables(schema=schema, include_views=True, request=request, x_api_key=x_api_key)["tables"]
     cols: list[dict[str, Any]] = []
     if picked_table:
-        cols = db_columns(schema=schema, table=picked_table, x_api_key=x_api_key)["columns"]
+        cols = db_columns(schema=schema, table=picked_table, request=request, x_api_key=x_api_key)["columns"]
 
     def _esc(s: Any) -> str:
         return (
@@ -1220,7 +1816,7 @@ def db_ui(
       </div>
     """.strip()
 
-    return _ui_shell(title="ETI360 DB Schema", active="db", body_html=body_html, max_width_px=1400)
+    return _ui_shell(title="ETI360 DB Schema", active="db", body_html=body_html, max_width_px=1400, user=user)
 
 
 _SCHEMA_STATEMENTS: list[str] = [
@@ -1333,8 +1929,11 @@ _SCHEMA_STATEMENTS: list[str] = [
 
 
 @app.post("/admin/schema/init")
-def admin_schema_init(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+def admin_schema_init(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="admin")
 
     applied: list[str] = []
     try:
@@ -1360,10 +1959,11 @@ class PlaceCandidate(BaseModel):
 
 @app.get("/places/search")
 def places_search(
+    request: Request,
     q: str = Query(..., min_length=1),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
     key = _require_google_key()
 
     url = "https://maps.googleapis.com/maps/api/place/textsearch/json?" + urlencode({"query": q, "key": key})
@@ -1405,6 +2005,7 @@ def places_search(
 
 @app.get("/places/resolve")
 def places_resolve(
+    request: Request,
     q: str = Query(..., min_length=1),
     place_id: str = Query(default=""),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
@@ -1412,8 +2013,8 @@ def places_resolve(
     """
     Convenience wrapper: run a Places search and return a single picked result.
     """
-    _require_api_key(x_api_key)
-    results = (places_search(q=q, x_api_key=x_api_key) or {}).get("results") or []
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
+    results = (places_search(q=q, request=request, x_api_key=x_api_key) or {}).get("results") or []
     if not isinstance(results, list) or not results:
         raise HTTPException(status_code=404, detail="No Google Places results")
 
@@ -1571,18 +2172,20 @@ def _save_weather_payload(payload: WeatherPayloadIn) -> dict[str, Any]:
 @app.post("/weather/payload")
 def upsert_weather_payload(
     body: WeatherPayloadIn,
+    request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
     return _save_weather_payload(body)
 
 
 @app.post("/weather/import")
 def import_weather_json(
     body: WeatherJsonIn,
+    request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
 
     place_id = (body.place_id or "").strip()
     location_query = (body.location_query or "").strip()
@@ -1671,9 +2274,10 @@ class GenerateIn(BaseModel):
 @app.post("/weather/generate")
 def generate_weather_png(
     body: GenerateIn,
+    request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
     return _generate_weather_png_for_slug(location_slug=body.location_slug, year=body.year)
 
 
@@ -1827,19 +2431,21 @@ def _auto_generate_one(
 @app.post("/weather/auto")
 def auto_weather(
     body: AutoWeatherIn,
+    request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
     batch = AutoBatchIn(locations=[body.location_query], force_refresh=body.force_refresh)
-    return auto_weather_batch(batch, x_api_key=x_api_key)
+    return auto_weather_batch(batch, request=request, x_api_key=x_api_key)
 
 
 @app.post("/weather/auto_batch")
 def auto_weather_batch(
     body: AutoBatchIn,
+    request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
 
     locations = [str(x).strip() for x in (body.locations or []) if str(x).strip()]
     if not locations:
@@ -1891,7 +2497,7 @@ def auto_weather_batch(
             workflow=workflow,
             kind="auto_batch",
             provider="openai",
-            model=os.environ.get("OPENAI_MODEL", "").strip() or "unset",
+            model=os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
             prompt_tokens=0,
             completion_tokens=0,
             total_tokens=0,
@@ -1922,7 +2528,8 @@ def auto_weather_batch(
 
 
 @app.get("/weather/ui", response_class=HTMLResponse)
-def weather_ui() -> str:
+def weather_ui(request: Request) -> str:
+    user = _get_current_user(request)
     body_html = """
       <div class="card">
         <h1>Weather + Sunlight</h1>
@@ -2075,4 +2682,11 @@ def weather_ui() -> str:
     </script>
     """.strip()
 
-    return _ui_shell(title="ETI360 Weather", active="weather", body_html=body_html, max_width_px=1400, extra_script=script)
+    return _ui_shell(
+        title="ETI360 Weather",
+        active="weather",
+        body_html=body_html,
+        max_width_px=1400,
+        extra_script=script,
+        user=user,
+    )

@@ -16,6 +16,15 @@ Required:
 - `DATABASE_URL` (Render Postgres internal URL)
 - `ETI360_API_KEY` (shared secret for admin/write endpoints; sent as `X-API-Key`)
 
+Auth (recommended for browser UIs):
+
+- `AUTH_MODE`:
+  - `disabled` to bypass auth checks while building quickly
+  - otherwise, session login is enabled for protected endpoints
+- `AUTH_SCHEMA` (optional; default: `ops`) where users/sessions tables live
+- `SESSION_TTL_DAYS` (optional; default: `30`) how long browser sessions last
+- `SESSION_COOKIE_NAME` (optional; default: `eti360_session`)
+
 Optional / for assets:
 
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
@@ -28,6 +37,8 @@ Optional / for weather helpers:
 - `PERPLEXITY_MODEL` (default: `sonar-pro`)
 - `PERPLEXITY_PROMPT_COST_PER_1M_USD`, `PERPLEXITY_COMPLETION_COST_PER_1M_USD` (optional; enables cost estimates)
 - `OPENAI_PROMPT_COST_PER_1M_USD`, `OPENAI_COMPLETION_COST_PER_1M_USD` (optional; enables cost estimates)
+  - Model-specific override supported: `OPENAI_<MODEL>_PROMPT_COST_PER_1M_USD` and `OPENAI_<MODEL>_COMPLETION_COST_PER_1M_USD`
+  - Example for `gpt-4o-mini`: `OPENAI_GPT_4O_MINI_PROMPT_COST_PER_1M_USD` and `OPENAI_GPT_4O_MINI_COMPLETION_COST_PER_1M_USD`
 - `OPENAI_MODEL` (optional; displayed in tracker; this app currently doesn't call OpenAI)
 - `USAGE_SCHEMA` (optional; default: `ops`) shared schema for LLM run/usage logging across all apps
 
@@ -36,6 +47,8 @@ Optional / for weather helpers:
 - `GET /health`
 - `GET /health/db`
 - DB schema browser: `GET /db/ui` (and JSON helpers `GET /db/schemas`, `GET /db/tables`, `GET /db/columns`)
+- Auth: `GET /login`, `POST /login`, `GET /logout` (cookie sessions)
+- Admin users: `GET /admin/users/ui` (UI), `GET /admin/users`, `POST /admin/users` (requires admin access)
 - `POST /admin/schema/init` (one-time DB schema init; requires `X-API-Key`)
 - Weather UI: `GET /weather/ui`
 - Weather automation: `POST /weather/auto_batch`

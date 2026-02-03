@@ -1727,7 +1727,131 @@ def prompts_list(
     return {"ok": True, "schema": _require_safe_ident("PROMPTS_SCHEMA", PROMPTS_SCHEMA), "prompts": prompts}
 
 
-@app.get("/prompts/{prompt_key}")
+def _default_weather_normals_prompt_template(*, accessed_utc: str, location_label: str, location_hint: str) -> str:
+    hint = f"\n\nLocation hint: {location_hint.strip()}" if location_hint.strip() else ""
+    return (
+        f"""
+Return ONLY a single JSON object (no markdown) with exactly these keys:
+
+- title (string, <= 120 chars): headline describing the climate pattern
+- subtitle (string, <= 140 chars): supporting statement
+- weather_overview (string, <= 40 words)
+- source (object):
+  - label (string)
+  - url (string, must be a real public URL)
+  - accessed_utc (string, ISO8601 UTC, use "{accessed_utc}")
+  - notes (string)
+- months (array): ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+- high_c (array of 12 numbers): monthly average daily HIGH temperature in °C
+- low_c (array of 12 numbers): monthly average daily LOW temperature in °C
+- precip_cm (array of 12 numbers): monthly total precipitation in cm (NOT mm)
+
+Constraints:
+- Arrays must be length 12, in the same month order.
+- For each month, high_c >= low_c.
+- Prefer authoritative climate-normal sources (national met agencies, NOAA, Meteostat, etc.).
+
+Location: {location_label.strip()}{hint}
+""".strip()
+    )
+
+
+def _required_prompts() -> list[dict[str, str]]:
+    """
+    Returns prompt definitions that the codebase expects to exist.
+    """
+    return [
+        {
+            "prompt_key": "weather_normals_perplexity_v1",
+            "name": "Weather normals (Perplexity)",
+            "description": "Fetch monthly climate normals (high/low °C, precip cm) as strict JSON.",
+            "provider": "perplexity",
+            "model": os.environ.get("PERPLEXITY_MODEL", "").strip() or "sonar-pro",
+            # Stored as a template; code will fill {accessed_utc}/{location_label}/{location_hint}.
+            "prompt_text": (
+                "TEMPLATE: used by code. This text is regenerated from the current code default.\n\n"
+                + _default_weather_normals_prompt_template(accessed_utc="{accessed_utc}", location_label="{location_label}", location_hint="{location_hint}")
+            ),
+        },
+        {
+            "prompt_key": "chart_titles_openai_v1",
+            "name": "Chart titles (OpenAI)",
+            "description": "Generate human-friendly chart title/subtitle for PNGs (not yet wired).",
+            "provider": "openai",
+            "model": os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
+            "prompt_text": "Placeholder (not yet wired). Provide a short title and subtitle based on location + data.",
+        },
+    ]
+
+
+@app.get("/prompts/required")
+def prompts_required(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    reqs = _required_prompts()
+    return {"ok": True, "required": [{k: v for k, v in r.items() if k != "prompt_text"} for r in reqs]}
+
+
+@app.post("/prompts/seed")
+def prompts_seed(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    actor = _require_access(request=request, x_api_key=x_api_key, role="editor") or {}
+    reqs = _required_prompts()
+
+    created: list[str] = []
+    skipped: list[str] = []
+
+    username = str(actor.get("username") or "")
+    role = str(actor.get("role") or "")
+    user_id_uuid = None
+    try:
+        if str(actor.get("id") or "").strip() and str(actor.get("id")) not in {"disabled", "api_key"}:
+            user_id_uuid = uuid.UUID(str(actor.get("id")))
+    except Exception:
+        user_id_uuid = None
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_prompts_tables(cur)
+            for r in reqs:
+                key = _require_prompt_key(r["prompt_key"])
+                cur.execute(_prompts_schema('SELECT id FROM "__SCHEMA__".prompts WHERE prompt_key=%s LIMIT 1;'), (key,))
+                if cur.fetchone():
+                    skipped.append(key)
+                    continue
+                cur.execute(
+                    _prompts_schema(
+                        """
+                        INSERT INTO "__SCHEMA__".prompts (prompt_key, name, description, provider, model, prompt_text)
+                        VALUES (%s,%s,%s,%s,%s,%s)
+                        RETURNING id;
+                        """
+                    ),
+                    (key, r["name"], r["description"], r["provider"], r["model"], r["prompt_text"]),
+                )
+                (pid,) = cur.fetchone()  # type: ignore[misc]
+                cur.execute(
+                    _prompts_schema(
+                        """
+                        INSERT INTO "__SCHEMA__".prompt_revisions
+                          (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
+                           before_text, after_text, before_provider, after_provider, before_model, after_model)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                        """
+                    ),
+                    (pid, key, user_id_uuid, username, role, "Seed default prompt", "", r["prompt_text"], "", r["provider"], "", r["model"]),
+                )
+                created.append(key)
+        conn.commit()
+
+    return {"ok": True, "created": created, "skipped": skipped}
+
+
+@app.get("/prompts/item/{prompt_key}")
 def prompts_get(
     prompt_key: str,
     request: Request,
@@ -1771,7 +1895,7 @@ def prompts_get(
     }
 
 
-@app.post("/prompts/{prompt_key}")
+@app.post("/prompts/item/{prompt_key}")
 def prompts_upsert(
     prompt_key: str,
     body: PromptUpsertIn,
@@ -1964,16 +2088,19 @@ def prompts_ui(
       <div class="section grid-sidebar">
         <div class="card">
           <h2>Prompt list</h2>
-          <div class="muted">Click to edit.</div>
+          <div class="muted">Prompts stored in the database.</div>
           <div class="divider"></div>
           <div id="promptList" class="muted">Loading…</div>
           <div class="divider"></div>
-          <div class="muted">Changes: <a href="/prompts/log/ui">Prompt log</a></div>
+          <div class="muted">
+            <a href="/prompts/log/ui">Prompt log</a>
+            · <button id="btnSeed" class="btn" type="button">Seed defaults</button>
+          </div>
         </div>
         <div class="card">
           <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
             <h2>Edit</h2>
-            <span class="pill">Viewer</span>
+            <span id="rolePill" class="pill">Viewer</span>
           </div>
           <div class="divider"></div>
           <div id="editor" class="muted">Select a prompt.</div>
@@ -1985,6 +2112,8 @@ def prompts_ui(
     <script>
       const promptListEl = document.getElementById('promptList');
       const editorEl = document.getElementById('editor');
+      const rolePill = document.getElementById('rolePill');
+      const btnSeed = document.getElementById('btnSeed');
       const selectedKey = {json.dumps(key)};
 
       function esc(s) {{
@@ -2001,19 +2130,41 @@ def prompts_ui(
         return role === 'admin' || role === 'editor' || role === 'account_manager';
       }}
 
+      const role = {json.dumps((user or {}).get('role') if isinstance(user, dict) else '')};
+      rolePill.textContent = role ? role : 'viewer';
+
+      btnSeed.addEventListener('click', async () => {{
+        btnSeed.disabled = true;
+        btnSeed.textContent = 'Seeding…';
+        try {{
+          const res = await fetch('/prompts/seed', {{ method: 'POST', headers: {{ 'Content-Type': 'application/json' }} }});
+          const body = await res.json().catch(() => ({{}}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
+          btnSeed.textContent = 'Seeded';
+          setTimeout(() => window.location.reload(), 500);
+        }} catch (e) {{
+          btnSeed.textContent = 'Seed defaults';
+          alert('Error: ' + String(e.message || e));
+        }} finally {{
+          btnSeed.disabled = false;
+        }}
+      }});
+
       async function loadList() {{
         try {{
           const res = await fetch('/prompts', {{ headers: {{ 'Content-Type': 'application/json' }} }});
           const body = await res.json().catch(() => ({{}}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
           const prompts = body.prompts || [];
-          if (!prompts.length) {{
-            promptListEl.innerHTML = '<div class="muted">No prompts yet.</div>';
-            return;
-          }}
           const ul = document.createElement('ul');
           ul.style.margin = '10px 0 0 18px';
           ul.style.padding = '0';
+          if (!prompts.length) {{
+            const li = document.createElement('li');
+            li.className = 'muted';
+            li.textContent = 'No prompts yet. Click “Seed defaults”.';
+            ul.appendChild(li);
+          }}
           for (const p of prompts) {{
             const k = String(p.prompt_key || '');
             const li = document.createElement('li');
@@ -2034,12 +2185,11 @@ def prompts_ui(
       async function loadPrompt(key) {{
         if (!key) return;
         try {{
-          const res = await fetch('/prompts/' + encodeURIComponent(key), {{ headers: {{ 'Content-Type': 'application/json' }} }});
+          const res = await fetch('/prompts/item/' + encodeURIComponent(key), {{ headers: {{ 'Content-Type': 'application/json' }} }});
           const body = await res.json().catch(() => ({{}}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
           const p = body.prompt || {{}};
 
-          const role = {json.dumps((user or {{}}).get('role') if isinstance(user, dict) else '')};
           const editable = canEdit(role);
 
           editorEl.innerHTML = `
@@ -2089,7 +2239,7 @@ def prompts_ui(
               status.style.display = 'block';
               status.textContent = 'Saving…';
               try {{
-                const res2 = await fetch('/prompts/' + encodeURIComponent(payload.prompt_key), {{
+                const res2 = await fetch('/prompts/item/' + encodeURIComponent(payload.prompt_key), {{
                   method: 'POST',
                   headers: {{ 'Content-Type': 'application/json' }},
                   body: JSON.stringify(payload)

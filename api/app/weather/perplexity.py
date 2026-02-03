@@ -13,6 +13,10 @@ from urllib.request import Request, urlopen
 class PerplexityResult:
     payload: dict[str, Any]
     citations: list[str]
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
 
 
 def require_perplexity_key() -> str:
@@ -113,6 +117,14 @@ Location: {location_label.strip()}{hint}
         citations = []
     citations_out = [str(u) for u in citations if isinstance(u, str)]
 
+    usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+    prompt_tokens = int(usage.get("prompt_tokens") or 0) if isinstance(usage.get("prompt_tokens"), (int, float)) else 0
+    completion_tokens = (
+        int(usage.get("completion_tokens") or 0) if isinstance(usage.get("completion_tokens"), (int, float)) else 0
+    )
+    total_tokens = int(usage.get("total_tokens") or 0) if isinstance(usage.get("total_tokens"), (int, float)) else 0
+    model_used = str(data.get("model") or model).strip() or model
+
     choices = data.get("choices") or []
     if not isinstance(choices, list) or not choices:
         raise ValueError("Perplexity returned no choices")
@@ -122,4 +134,11 @@ Location: {location_label.strip()}{hint}
         raise ValueError("Perplexity response missing message.content")
 
     payload = _extract_json_object(content)
-    return PerplexityResult(payload=payload, citations=citations_out)
+    return PerplexityResult(
+        payload=payload,
+        citations=citations_out,
+        model=model_used,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+    )

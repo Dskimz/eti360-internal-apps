@@ -4,6 +4,7 @@ import json
 import os
 import re
 import tempfile
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,8 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.weather.perplexity import fetch_monthly_weather_normals
+from app.weather.daylight_chart import MonthlyDaylight, render_daylight_chart
+from app.weather.llm_usage import estimate_cost_usd
 from app.weather.s3 import get_s3_config, presign_get, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
@@ -181,9 +184,286 @@ def _generate_weather_png_for_slug(*, location_slug: str, year: int) -> dict[str
     return {"ok": True, "asset_id": str(asset_id), "s3_bucket": cfg.bucket, "s3_key": key, "view_url": view_url}
 
 
+def _require_timezone_id(*, lat: float, lng: float) -> str:
+    key = _require_google_key()
+    ts = int(datetime.now(timezone.utc).timestamp())
+    url = "https://maps.googleapis.com/maps/api/timezone/json?" + urlencode(
+        {"location": f"{lat},{lng}", "timestamp": str(ts), "key": key}
+    )
+    data = _fetch_json(url)
+    status = str(data.get("status") or "")
+    if status != "OK":
+        raise HTTPException(status_code=400, detail=f"Google Time Zone status: {status}")
+    tzid = str(data.get("timeZoneId") or "").strip()
+    if not tzid:
+        raise HTTPException(status_code=500, detail="Google Time Zone did not return timeZoneId")
+    return tzid
+
+
+def _compute_monthly_daylight_hours(*, lat: float, lng: float, timezone_id: str, year: int) -> list[MonthlyDaylight]:
+    from datetime import date
+    from zoneinfo import ZoneInfo
+
+    from astral import LocationInfo
+    from astral.sun import sun
+
+    tz = ZoneInfo(timezone_id)
+    loc = LocationInfo(name="location", region="", timezone=timezone_id, latitude=lat, longitude=lng)
+    monthly: list[MonthlyDaylight] = []
+    for month_idx, month_name in enumerate(MONTHS, start=1):
+        d = date(year, month_idx, 15)
+        s = sun(loc.observer, date=d, tzinfo=tz)
+        sunrise = s["sunrise"]
+        sunset = s["sunset"]
+        hours = max(0.0, float((sunset - sunrise).total_seconds() / 3600.0))
+        monthly.append(MonthlyDaylight(month=month_name, daylight_hours=hours))
+    return monthly
+
+
+def _generate_daylight_png_for_slug(*, location_slug: str, year: int) -> dict[str, Any]:
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                _schema('SELECT id, lat, lng, timezone_id, city, country FROM "__SCHEMA__".locations WHERE location_slug=%s;'),
+                (location_slug,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Unknown location_slug")
+            location_id, lat, lng, timezone_id, city, country = row
+            lat_f = float(lat)
+            lng_f = float(lng)
+            tzid = str(timezone_id or "").strip()
+            if not tzid:
+                tzid = _require_timezone_id(lat=lat_f, lng=lng_f)
+                cur.execute(
+                    _schema('UPDATE "__SCHEMA__".locations SET timezone_id=%s, updated_at=now() WHERE id=%s;'),
+                    (tzid, location_id),
+                )
+                conn.commit()
+
+    monthly = _compute_monthly_daylight_hours(lat=lat_f, lng=lng_f, timezone_id=tzid, year=year)
+
+    title_city = str(city or "").strip() or location_slug
+    title_country = str(country or "").strip()
+    title = f"{title_city}{', ' + title_country if title_country else ''} daylight varies by season"
+    subtitle = f"Estimated daylight hours by month (year {year})"
+    source_left = "Source: Astral (computed from lat/lng + timezone)"
+
+    tmpdir = Path(tempfile.gettempdir())
+    out_path = tmpdir / f"eti360-daylight-{location_slug}-{year}.png"
+    render_daylight_chart(monthly=monthly, title=title, subtitle=subtitle, source_left=source_left, output_path=out_path)
+    png_bytes = out_path.read_bytes()
+
+    cfg = get_s3_config()
+    key = f"{cfg.prefix}{location_slug}/daylight/{year}.png"
+    put_png(region=cfg.region, bucket=cfg.bucket, key=key, body=png_bytes)
+
+    generated_at = datetime.now(timezone.utc)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                _schema(
+                    'INSERT INTO "__SCHEMA__".assets (location_id, kind, year, s3_bucket, s3_key, bytes, content_type, generated_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id;'
+                ),
+                (location_id, "daylight", year, cfg.bucket, key, len(png_bytes), "image/png", generated_at),
+            )
+            (asset_id,) = cur.fetchone()  # type: ignore[misc]
+        conn.commit()
+
+    view_url = presign_get(region=cfg.region, bucket=cfg.bucket, key=key, expires_in=3600)
+    return {"ok": True, "asset_id": str(asset_id), "s3_bucket": cfg.bucket, "s3_key": key, "view_url": view_url}
+
+
+def _create_run_id() -> str:
+    return str(uuid.uuid4())
+
+
+def _record_llm_usage(
+    *,
+    run_id: str,
+    kind: str,
+    provider: str,
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+    total_tokens: int,
+) -> dict[str, Any]:
+    run_uuid = uuid.UUID(str(run_id))
+    cost_usd = float(estimate_cost_usd(provider=provider, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens))
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            # Ensure tracker tables exist even if /admin/schema/init hasn't been run since adding them.
+            cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+            cur.execute(_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
+            cur.execute(
+                _schema(
+                    """
+                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_runs (
+                      id UUID PRIMARY KEY,
+                      kind TEXT NOT NULL DEFAULT '',
+                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                ).strip()
+            )
+            cur.execute(
+                _schema(
+                    """
+                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
+                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                      run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
+                      provider TEXT NOT NULL,
+                      model TEXT NOT NULL DEFAULT '',
+                      prompt_tokens INTEGER NOT NULL DEFAULT 0,
+                      completion_tokens INTEGER NOT NULL DEFAULT 0,
+                      total_tokens INTEGER NOT NULL DEFAULT 0,
+                      cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
+                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                ).strip()
+            )
+            cur.execute(_schema('CREATE INDEX IF NOT EXISTS llm_usage_run_id_idx ON "__SCHEMA__".llm_usage(run_id);'))
+            cur.execute(_schema('CREATE INDEX IF NOT EXISTS llm_usage_created_at_idx ON "__SCHEMA__".llm_usage(created_at DESC);'))
+
+            cur.execute(
+                _schema('INSERT INTO "__SCHEMA__".llm_runs (id, kind) VALUES (%s,%s) ON CONFLICT (id) DO NOTHING;'),
+                (run_uuid, kind),
+            )
+            cur.execute(
+                _schema(
+                    """
+                    INSERT INTO "__SCHEMA__".llm_usage (run_id, provider, model, prompt_tokens, completion_tokens, total_tokens, cost_usd)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s);
+                    """
+                ),
+                (run_uuid, provider, model, int(prompt_tokens), int(completion_tokens), int(total_tokens), cost_usd),
+            )
+        conn.commit()
+
+    return {
+        "provider": provider,
+        "model": model,
+        "prompt_tokens": int(prompt_tokens),
+        "completion_tokens": int(completion_tokens),
+        "total_tokens": int(total_tokens),
+        "cost_usd": cost_usd,
+    }
+
+
+@app.get("/weather/usage")
+def weather_usage(
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+            cur.execute(_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
+            cur.execute(
+                _schema(
+                    """
+                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_runs (
+                      id UUID PRIMARY KEY,
+                      kind TEXT NOT NULL DEFAULT '',
+                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                ).strip()
+            )
+            cur.execute(
+                _schema(
+                    """
+                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
+                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                      run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
+                      provider TEXT NOT NULL,
+                      model TEXT NOT NULL DEFAULT '',
+                      prompt_tokens INTEGER NOT NULL DEFAULT 0,
+                      completion_tokens INTEGER NOT NULL DEFAULT 0,
+                      total_tokens INTEGER NOT NULL DEFAULT 0,
+                      cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
+                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                ).strip()
+            )
+
+            cur.execute(
+                _schema(
+                    """
+                    SELECT provider, model,
+                           COALESCE(SUM(prompt_tokens),0) AS prompt_tokens,
+                           COALESCE(SUM(completion_tokens),0) AS completion_tokens,
+                           COALESCE(SUM(total_tokens),0) AS total_tokens,
+                           COALESCE(SUM(cost_usd),0) AS cost_usd
+                    FROM "__SCHEMA__".llm_usage
+                    GROUP BY provider, model
+                    ORDER BY provider, model;
+                    """
+                )
+            )
+            rows = cur.fetchall()
+
+            cur.execute(_schema('SELECT id, kind, created_at FROM "__SCHEMA__".llm_runs ORDER BY created_at DESC LIMIT 1;'))
+            last_run = cur.fetchone()
+            last = None
+            if last_run:
+                run_id, kind, created_at = last_run
+                cur.execute(
+                    _schema(
+                        """
+                        SELECT provider, model, prompt_tokens, completion_tokens, total_tokens, cost_usd
+                        FROM "__SCHEMA__".llm_usage
+                        WHERE run_id=%s
+                        ORDER BY provider, model;
+                        """
+                    ),
+                    (run_id,),
+                )
+                last_usage = cur.fetchall()
+                last = {
+                    "run_id": str(run_id),
+                    "kind": str(kind or ""),
+                    "created_at": created_at.isoformat() if created_at else None,
+                    "usage": [
+                        {
+                            "provider": str(p),
+                            "model": str(m),
+                            "prompt_tokens": int(pt),
+                            "completion_tokens": int(ct),
+                            "total_tokens": int(tt),
+                            "cost_usd": float(c),
+                        }
+                        for (p, m, pt, ct, tt, c) in last_usage
+                    ],
+                }
+
+    cumulative = [
+        {
+            "provider": str(p),
+            "model": str(m),
+            "prompt_tokens": int(pt),
+            "completion_tokens": int(ct),
+            "total_tokens": int(tt),
+            "cost_usd": float(c),
+        }
+        for (p, m, pt, ct, tt, c) in rows
+    ]
+    total_cost = float(sum(r["cost_usd"] for r in cumulative))
+    return {"ok": True, "last_run": last, "cumulative": cumulative, "cumulative_total_cost_usd": total_cost}
+
+
 @app.get("/weather/locations")
 def list_weather_locations(
     limit: int = Query(default=50, ge=1, le=500),
+    order: str = Query(default="alpha"),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
     _require_api_key(x_api_key)
@@ -221,11 +501,15 @@ def list_weather_locations(
                       ORDER BY a.generated_at DESC
                       LIMIT 1
                     ) ad ON true
-                    ORDER BY l.updated_at DESC
+                    ORDER BY
+                      CASE WHEN %s = 'recent' THEN l.updated_at END DESC,
+                      COALESCE(NULLIF(l.city,''), l.location_slug) ASC,
+                      l.country ASC,
+                      l.location_slug ASC
                     LIMIT %s;
                     """
                 ),
-                (limit,),
+                ((order or "").strip().lower(), limit),
             )
             rows = cur.fetchall()
 
@@ -403,6 +687,32 @@ _SCHEMA_STATEMENTS: list[str] = [
     ).strip(),
     _schema('CREATE INDEX IF NOT EXISTS assets_location_kind_idx ON "__SCHEMA__".assets(location_id, kind);'),
     _schema('CREATE INDEX IF NOT EXISTS assets_generated_at_idx ON "__SCHEMA__".assets(generated_at DESC);'),
+    _schema(
+        """
+        CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_runs (
+          id UUID PRIMARY KEY,
+          kind TEXT NOT NULL DEFAULT '',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+        """
+    ).strip(),
+    _schema(
+        """
+        CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
+          provider TEXT NOT NULL,
+          model TEXT NOT NULL DEFAULT '',
+          prompt_tokens INTEGER NOT NULL DEFAULT 0,
+          completion_tokens INTEGER NOT NULL DEFAULT 0,
+          total_tokens INTEGER NOT NULL DEFAULT 0,
+          cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+        """
+    ).strip(),
+    _schema('CREATE INDEX IF NOT EXISTS llm_usage_run_id_idx ON "__SCHEMA__".llm_usage(run_id);'),
+    _schema('CREATE INDEX IF NOT EXISTS llm_usage_created_at_idx ON "__SCHEMA__".llm_usage(created_at DESC);'),
 ]
 
 
@@ -758,21 +1068,20 @@ class AutoWeatherIn(BaseModel):
     force_refresh: bool = False
 
 
-@app.post("/weather/auto")
-def auto_weather(
-    body: AutoWeatherIn,
-    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> dict[str, Any]:
-    """
-    City-only flow:
-    - Resolve Google Place (place_id + lat/lng)
-    - Fetch monthly normals via Perplexity
-    - Import into DB (atomic rows)
-    - Generate PNG to S3
-    """
-    _require_api_key(x_api_key)
+class AutoBatchIn(BaseModel):
+    locations: list[str] = Field(..., min_length=1, max_length=250)
+    force_refresh: bool = False
 
-    location_query = (body.location_query or "").strip()
+
+def _auto_generate_one(
+    *,
+    location_query: str,
+    force_refresh: bool,
+) -> tuple[dict[str, Any], dict[str, int], str]:
+    """
+    Returns (result, perplexity_token_totals, perplexity_model).
+    """
+    location_query = (location_query or "").strip()
     if not location_query:
         raise HTTPException(status_code=400, detail="location_query is required")
 
@@ -829,12 +1138,21 @@ def auto_weather(
 
     effective_slug = existing_slug or default_slug
 
+    perplexity_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    perplexity_model = ""
+
     imported = False
-    if body.force_refresh or not has_dataset:
+    if force_refresh or not has_dataset:
         try:
             hint = f"{formatted_address} (place_id {place_id}, lat {lat_f}, lng {lng_f})".strip()
             pr = fetch_monthly_weather_normals(location_label=(name or location_query), location_hint=hint)
             payload_obj = pr.payload
+            perplexity_tokens = {
+                "prompt_tokens": int(pr.prompt_tokens),
+                "completion_tokens": int(pr.completion_tokens),
+                "total_tokens": int(pr.total_tokens),
+            }
+            perplexity_model = pr.model
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Perplexity fetch failed: {e}") from e
 
@@ -877,74 +1195,165 @@ def auto_weather(
         imported = True
 
     year = datetime.now(timezone.utc).year
-    generated = _generate_weather_png_for_slug(location_slug=effective_slug, year=year)
-    return {
+    generated_weather = _generate_weather_png_for_slug(location_slug=effective_slug, year=year)
+    generated_daylight = _generate_daylight_png_for_slug(location_slug=effective_slug, year=year)
+
+    result = {
         "ok": True,
         "picked_place": picked_place,
         "location_query": location_query,
         "location_slug": effective_slug,
         "imported": imported,
         "year": year,
-        "generated": generated,
+        "generated": {"weather": generated_weather, "daylight": generated_daylight},
+    }
+    return result, perplexity_tokens, perplexity_model
+
+
+@app.post("/weather/auto")
+def auto_weather(
+    body: AutoWeatherIn,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+    batch = AutoBatchIn(locations=[body.location_query], force_refresh=body.force_refresh)
+    return auto_weather_batch(batch, x_api_key=x_api_key)
+
+
+@app.post("/weather/auto_batch")
+def auto_weather_batch(
+    body: AutoBatchIn,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+
+    locations = [str(x).strip() for x in (body.locations or []) if str(x).strip()]
+    if not locations:
+        raise HTTPException(status_code=400, detail="Provide at least one location")
+
+    run_id = _create_run_id()
+    results: list[dict[str, Any]] = []
+    perplexity_prompt = 0
+    perplexity_completion = 0
+    perplexity_total = 0
+    perplexity_model = ""
+
+    for q in locations:
+        try:
+            res, tok, model = _auto_generate_one(location_query=q, force_refresh=body.force_refresh)
+            results.append(res)
+            perplexity_prompt += int(tok.get("prompt_tokens") or 0)
+            perplexity_completion += int(tok.get("completion_tokens") or 0)
+            perplexity_total += int(tok.get("total_tokens") or 0)
+            perplexity_model = model or perplexity_model
+        except Exception as e:
+            results.append({"ok": False, "location_query": q, "error": str(getattr(e, "detail", e))})
+
+    usage_rows: list[dict[str, Any]] = []
+    usage_rows.append(
+        _record_llm_usage(
+            run_id=run_id,
+            kind="weather_auto_batch",
+            provider="perplexity",
+            model=perplexity_model or os.environ.get("PERPLEXITY_MODEL", "").strip() or "unused",
+            prompt_tokens=perplexity_prompt,
+            completion_tokens=perplexity_completion,
+            total_tokens=perplexity_total,
+        )
+    )
+
+    # Always record OpenAI as 0 for this app (placeholder for shared tracker).
+    usage_rows.append(
+        _record_llm_usage(
+            run_id=run_id,
+            kind="weather_auto_batch",
+            provider="openai",
+            model=os.environ.get("OPENAI_MODEL", "").strip() or "unused",
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+        )
+    )
+
+    run_cost_usd = float(sum(r.get("cost_usd", 0.0) for r in usage_rows))
+
+    # Cumulative total cost (all runs).
+    cumulative_total = 0.0
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(_schema('SELECT COALESCE(SUM(cost_usd),0) FROM "__SCHEMA__".llm_usage;'))
+            (cumulative_total,) = cur.fetchone()  # type: ignore[misc]
+
+    return {
+        "ok": True,
+        "run_id": run_id,
+        "results": results,
+        "usage": usage_rows,
+        "run_cost_usd": run_cost_usd,
+        "cumulative_total_cost_usd": float(cumulative_total),
     }
 
 
 @app.get("/weather/ui", response_class=HTMLResponse)
 def weather_ui() -> str:
     return """<!doctype html>
-<html lang=\"en\">
+<html lang="en">
   <head>
-    <meta charset=\"utf-8\" />
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ETI360 Weather</title>
     <style>
       :root { color-scheme: light; }
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px; color: #0f172a; background: #f8fafc; }
-      .wrap { max-width: 1100px; margin: 0 auto; }
+      .wrap { max-width: 1600px; margin: 0 auto; }
       header { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
       h1 { margin: 0 0 6px 0; font-size: 18px; }
       .muted { color: #475569; font-size: 13px; }
-      .grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
-      .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .layout { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; align-items: start; }
+      @media (min-width: 1100px) { .layout { grid-template-columns: 0.9fr 1.2fr 0.9fr; } }
       .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
       label { display: block; font-size: 12px; color: #334155; margin-bottom: 6px; }
-      input[type=\"text\"], input[type=\"number\"], textarea { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: white; }
-      textarea { min-height: 280px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
+      input[type="text"], textarea { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: white; }
+      textarea { min-height: 220px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
       .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
       button { padding: 10px 12px; border-radius: 10px; border: 1px solid #0f172a; background: #0f172a; color: white; cursor: pointer; font-size: 14px; }
       button.secondary { background: white; color: #0f172a; }
-      .status { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; font-size: 12px; white-space: pre-wrap; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
+      .status { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; white-space: pre-wrap; }
       table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
       th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
       th { font-size: 12px; letter-spacing: 0.2px; color: #475569; background: #f8fafc; }
       a { color: #2563eb; text-decoration: none; }
       a:hover { text-decoration: underline; }
-      @media (max-width: 980px) { .row2 { grid-template-columns: 1fr; } }
+      .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; }
+      .right { text-align: right; }
     </style>
   </head>
   <body>
-    <div class=\"wrap\">
+    <div class="wrap">
       <header>
         <h1>ETI360 Weather</h1>
-        <div class=\"muted\">Enter a city, click Submit. The system resolves Google Places, fetches monthly normals, then generates charts. Your saved locations appear below.</div>
+        <div class="muted">Paste one city per line, click Run. Column 2 shows saved cities + chart links. Column 3 tracks tokens and estimated costs.</div>
       </header>
 
-      <div class=\"grid\">
-        <div class=\"card\">
-          <label>City</label>
-          <input id=\"locationQuery\" type=\"text\" placeholder=\"e.g. Cleveland, Ohio\" />
-
-          <div class=\"actions\">
-            <button id=\"btnSubmit\" type=\"button\">Submit</button>
+      <div class="layout">
+        <div class="card">
+          <label>Location Input (one per line)</label>
+          <textarea id="citiesInput" placeholder="Lima, Peru&#10;Nagasaki, Japan"></textarea>
+          <div class="actions">
+            <button id="btnRun" type="button">Run</button>
+            <button id="btnClear" class="secondary" type="button">Clear</button>
           </div>
-
-          <div id=\"status\" class=\"status\">Ready.</div>
+          <div id="status" class="status">Ready.</div>
         </div>
 
-        <div class=\"card\">
-          <h2 style=\"margin:0 0 10px 0; font-size: 14px;\">Locations</h2>
-          <div style=\"overflow:auto;\">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
+            <h2 style="margin:0; font-size: 14px;">Cities and Links</h2>
+            <span class="pill">Alphabetical</span>
+          </div>
+          <div style="overflow:auto; margin-top: 8px;">
             <table>
               <thead>
                 <tr>
@@ -953,18 +1362,26 @@ def weather_ui() -> str:
                   <th>Sunlight</th>
                 </tr>
               </thead>
-              <tbody id=\"locRows\"></tbody>
+              <tbody id="locRows"></tbody>
             </table>
           </div>
-          <div class=\"muted\" style=\"margin-top: 8px;\">Sunlight links appear once daylight generation is enabled for this service.</div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin:0 0 10px 0; font-size: 14px;">Token Tracker</h2>
+          <div class="muted">Costs use env pricing vars. If unset, costs show as $0.</div>
+          <div class="divider" style="height:1px; background:#e2e8f0; margin:10px 0;"></div>
+          <div id="usageBox" class="status">Loading…</div>
         </div>
       </div>
     </div>
 
     <script>
-      const locationQueryEl = document.getElementById('locationQuery');
+      const citiesEl = document.getElementById('citiesInput');
       const statusEl = document.getElementById('status');
       const locRowsEl = document.getElementById('locRows');
+      const usageBoxEl = document.getElementById('usageBox');
+      const btnRun = document.getElementById('btnRun');
 
       window.addEventListener('error', (e) => {
         statusEl.textContent = 'JS Error: ' + (e?.message || e);
@@ -972,21 +1389,26 @@ def weather_ui() -> str:
 
       function setStatus(msg) { statusEl.textContent = msg; }
 
-      function headers() {
-        const h = { 'Content-Type': 'application/json' };
-        return h;
-      }
+      function headers() { return { 'Content-Type': 'application/json' }; }
 
-      function saveLocal() {
-        localStorage.setItem('eti360_weather_city', locationQueryEl.value || '');
-      }
-
-      function loadLocal() {
-        locationQueryEl.value = localStorage.getItem('eti360_weather_city') || '';
-      }
-
+      function saveLocal() { localStorage.setItem('eti360_weather_cities', citiesEl.value || ''); }
+      function loadLocal() { citiesEl.value = localStorage.getItem('eti360_weather_cities') || ''; }
       loadLocal();
-      locationQueryEl.addEventListener('input', saveLocal);
+      citiesEl.addEventListener('input', saveLocal);
+
+      function parseCities() {
+        const raw = String(citiesEl.value || '');
+        const lines = raw.split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
+        const seen = new Set();
+        const out = [];
+        for (const s of lines) {
+          const key = s.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          out.push(s);
+        }
+        return out;
+      }
 
       function renderLocations(locations) {
         locRowsEl.innerHTML = '';
@@ -996,9 +1418,7 @@ def weather_ui() -> str:
           const placeId = String(r.place_id || '');
           const weatherUrl = String(r.weather_url || '');
           const daylightUrl = String(r.daylight_url || '');
-
           const mapsUrl = placeId ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}` : '';
-
           tr.innerHTML = `
             <td>${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener">${locLabel}</a>` : locLabel}</td>
             <td>${weatherUrl ? `<a href="${weatherUrl}" target="_blank" rel="noopener">Weather PNG</a>` : '<span class="muted">—</span>'}</td>
@@ -1006,53 +1426,106 @@ def weather_ui() -> str:
           `;
           locRowsEl.appendChild(tr);
         }
+        if (!locations || locations.length === 0) {
+          locRowsEl.innerHTML = '<tr><td colspan="3" class="muted">No locations yet.</td></tr>';
+        }
       }
 
       async function refreshLocations() {
         try {
-          const res = await fetch('/weather/locations?limit=100', { headers: headers() });
+          const res = await fetch('/weather/locations?limit=500&order=alpha', { headers: headers() });
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || (res.status === 401 ? 'Auth required (set AUTH_DISABLED=true)' : `HTTP ${res.status}`));
           renderLocations(body.locations || []);
         } catch (e) {
-          // Keep UI usable even if listing fails.
           locRowsEl.innerHTML = `<tr><td colspan="3" class="muted">Could not load locations: ${String(e?.message || e)}</td></tr>`;
         }
       }
 
-      async function submitCity(forceRefresh) {
-        try {
-          saveLocal();
-          const q = String(locationQueryEl.value || '').trim();
-          if (!q) throw new Error('Enter a location search first');
+      function renderUsage(data) {
+        if (!data || !data.ok) {
+          usageBoxEl.textContent = 'Could not load usage.';
+          return;
+        }
+        const lines = [];
+        const last = data.last_run;
+        if (last) {
+          lines.push(`Last run: ${last.kind || ''} (${last.created_at || ''})`);
+          for (const r of (last.usage || [])) {
+            lines.push(`- ${r.provider} / ${r.model}: in ${r.prompt_tokens}, out ${r.completion_tokens}, total ${r.total_tokens}, cost $${Number(r.cost_usd || 0).toFixed(6)}`);
+          }
+          lines.push('');
+        } else {
+          lines.push('Last run: (none)');
+          lines.push('');
+        }
+        lines.push('Cumulative:');
+        for (const r of (data.cumulative || [])) {
+          lines.push(`- ${r.provider} / ${r.model}: in ${r.prompt_tokens}, out ${r.completion_tokens}, total ${r.total_tokens}, cost $${Number(r.cost_usd || 0).toFixed(6)}`);
+        }
+        lines.push(``);
+        lines.push(`Cumulative total: $${Number(data.cumulative_total_cost_usd || 0).toFixed(6)}`);
+        usageBoxEl.textContent = lines.join('\\n');
+      }
 
-          const btn = document.getElementById('btnSubmit');
-          btn.disabled = true;
-          setStatus(forceRefresh ? 'Submitting (refresh)…' : 'Submitting…');
-          const res = await fetch('/weather/auto', {
+      async function refreshUsage() {
+        try {
+          const res = await fetch('/weather/usage', { headers: headers() });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+          renderUsage(body);
+        } catch (e) {
+          usageBoxEl.textContent = 'Could not load usage: ' + String(e?.message || e);
+        }
+      }
+
+      async function runBatch() {
+        const cities = parseCities();
+        if (cities.length === 0) {
+          setStatus('Enter at least one city.');
+          return;
+        }
+        btnRun.disabled = true;
+        setStatus(`Running ${cities.length}…`);
+        try {
+          const res = await fetch('/weather/auto_batch', {
             method: 'POST',
             headers: headers(),
-            body: JSON.stringify({ location_query: q, force_refresh: !!forceRefresh })
+            body: JSON.stringify({ locations: cities })
           });
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || (res.status === 401 ? 'Auth required (set AUTH_DISABLED=true)' : `HTTP ${res.status}`));
 
-          let msg = 'Done.\\n' + JSON.stringify(body, null, 2);
-          const viewUrl = body?.generated?.view_url;
-          if (viewUrl) msg += `\n\nOpen PNG: ${viewUrl}`;
-          setStatus(msg);
+          const okCount = (body.results || []).filter(r => r && r.ok).length;
+          const failCount = (body.results || []).filter(r => r && !r.ok).length;
+          const lines = [];
+          lines.push(`Done. Run: ${body.run_id || ''}`);
+          lines.push(`OK: ${okCount}, Failed: ${failCount}`);
+          lines.push(`Run cost: $${Number(body.run_cost_usd || 0).toFixed(6)} | Cumulative: $${Number(body.cumulative_total_cost_usd || 0).toFixed(6)}`);
+          if (failCount) {
+            lines.push('');
+            lines.push('Failures:');
+            for (const r of (body.results || [])) {
+              if (!r || r.ok) continue;
+              lines.push(`- ${r.location_query}: ${r.error}`);
+            }
+          }
+          setStatus(lines.join('\\n'));
           await refreshLocations();
-          btn.disabled = false;
+          await refreshUsage();
         } catch (e) {
-          setStatus('Error: ' + (e?.message || String(e)));
-          try { document.getElementById('btnSubmit').disabled = false; } catch {}
+          setStatus('Error: ' + String(e?.message || e));
+        } finally {
+          btnRun.disabled = false;
         }
       }
 
-      document.getElementById('btnSubmit').addEventListener('click', () => submitCity(false));
-      locationQueryEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitCity(false); });
+      document.getElementById('btnRun').addEventListener('click', runBatch);
+      document.getElementById('btnClear').addEventListener('click', () => { citiesEl.value = ''; saveLocal(); setStatus('Ready.'); });
+      citiesEl.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runBatch(); });
 
       refreshLocations();
+      refreshUsage();
     </script>
   </body>
 </html>"""

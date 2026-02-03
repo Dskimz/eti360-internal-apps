@@ -78,6 +78,19 @@ def _extract_url(s: str) -> str:
     return m.group(0) if m else s
 
 
+def _domain_only(url: str) -> str:
+    url = (url or "").strip()
+    if not url:
+        return ""
+    parsed = urlparse(url)
+    if not (parsed.scheme and parsed.netloc):
+        parsed = urlparse("https://" + url)
+    host = (parsed.netloc or "").strip().lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
 def _require_google_key() -> str:
     key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
     if not key:
@@ -229,7 +242,7 @@ def _generate_daylight_png_for_slug(*, location_slug: str, year: int) -> dict[st
     display_name = f"{title_city}{', ' + title_country if title_country else ''}"
     title = f"{year} Sun Graph for {display_name}"
     subtitle = f"Rise/set times and twilight bands (nautical/civil) • {tzid}"
-    source_left = "Computed from lat/lng + timezone (Astral; civil + nautical twilight)."
+    source_left = "Source: astral.readthedocs.io"
 
     tmpdir = Path(tempfile.gettempdir())
     out_path = tmpdir / f"eti360-daylight-{location_slug}-{year}.png"
@@ -575,7 +588,23 @@ def usage_log(
             created_at,
         ) in rows
     ]
-    return {"ok": True, "items": items, "cumulative_total_cost_usd": float(cumulative_total)}
+
+    totals_by_provider: dict[str, dict[str, int]] = {}
+    for r in items:
+        p = r["provider"]
+        t = totals_by_provider.setdefault(
+            p, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        )
+        t["prompt_tokens"] += int(r["prompt_tokens"])
+        t["completion_tokens"] += int(r["completion_tokens"])
+        t["total_tokens"] += int(r["total_tokens"])
+
+    return {
+        "ok": True,
+        "items": items,
+        "cumulative_total_cost_usd": float(cumulative_total),
+        "totals_by_provider": totals_by_provider,
+    }
 
 
 @app.get("/usage/ui", response_class=HTMLResponse)
@@ -646,7 +675,13 @@ def usage_ui() -> str:
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
 
-          summaryEl.textContent = `Cumulative total: ${money(body.cumulative_total_cost_usd)} (rows: ${(body.items || []).length})`;
+          const totals = body.totals_by_provider || {};
+          const p = totals.perplexity || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+          const o = totals.openai || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+          summaryEl.textContent =
+            `Cumulative total: ${money(body.cumulative_total_cost_usd)} (rows: ${(body.items || []).length}) | ` +
+            `Perplexity in/out: ${p.prompt_tokens}/${p.completion_tokens} | ` +
+            `OpenAI in/out: ${o.prompt_tokens}/${o.completion_tokens}`;
 
           const items = body.items || [];
           rowsEl.innerHTML = '';
@@ -1174,7 +1209,7 @@ def _save_weather_payload(payload: WeatherPayloadIn) -> dict[str, Any]:
                 _schema(
                     'INSERT INTO "__SCHEMA__".weather_sources (label, url, accessed_utc, notes) VALUES (%s,%s,%s,%s) RETURNING id;'
                 ),
-                (payload.source.label, payload.source.url, payload.source.accessed_utc, payload.source.notes),
+                (payload.source.label, _domain_only(payload.source.url), payload.source.accessed_utc, payload.source.notes),
             )
             (source_id,) = cur.fetchone()  # type: ignore[misc]
 
@@ -1295,13 +1330,11 @@ def _parse_accessed_utc(s: str) -> datetime | None:
 
 
 def _source_left(label: str, url: str) -> str:
-    label = (label or "Source").strip()
-    url = (url or "").strip()
-    if url:
-        parsed = urlparse(url)
-        if parsed.scheme and parsed.netloc:
-            url = f"{parsed.scheme}://{parsed.netloc}"
-    return f"{label}: {url}".strip() if url else f"{label}:".strip()
+    domain = _domain_only(url)
+    if domain:
+        return f"Source: {domain}"
+    label = (label or "").strip()
+    return f"Source: {label}".strip() if label else "Source:"
 
 
 class GenerateIn(BaseModel):
@@ -1532,7 +1565,7 @@ def auto_weather_batch(
             workflow=workflow,
             kind="auto_batch",
             provider="openai",
-            model=os.environ.get("OPENAI_MODEL", "").strip() or "unused",
+            model=os.environ.get("OPENAI_MODEL", "").strip() or "unset",
             prompt_tokens=0,
             completion_tokens=0,
             total_tokens=0,

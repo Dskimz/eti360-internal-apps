@@ -1037,7 +1037,7 @@ def weather_ui() -> str:
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || (res.status === 401 ? 'Auth required (set AUTH_DISABLED=true)' : `HTTP ${res.status}`));
 
-          let msg = 'Done.\n' + JSON.stringify(body, null, 2);
+          let msg = 'Done.\\n' + JSON.stringify(body, null, 2);
           const viewUrl = body?.generated?.view_url;
           if (viewUrl) msg += `\n\nOpen PNG: ${viewUrl}`;
           setStatus(msg);

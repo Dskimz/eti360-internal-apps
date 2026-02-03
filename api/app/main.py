@@ -25,6 +25,7 @@ from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_cha
 app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
 
 WEATHER_SCHEMA = "weather"
+USAGE_SCHEMA = os.environ.get("USAGE_SCHEMA", "ops").strip() or "ops"
 
 
 def _auth_disabled() -> bool:
@@ -57,6 +58,11 @@ def _schema(sql: str) -> str:
     return sql.replace("__SCHEMA__", WEATHER_SCHEMA)
 
 
+def _usage_schema(sql: str) -> str:
+    schema = _require_safe_ident("USAGE_SCHEMA", USAGE_SCHEMA)
+    return sql.replace("__SCHEMA__", schema)
+
+
 def _slugify(s: str) -> str:
     s = (s or "").strip().lower()
     out: list[str] = []
@@ -86,6 +92,93 @@ def _require_safe_ident(label: str, value: str) -> str:
     if not value or not _SAFE_IDENT_RE.match(value):
         raise HTTPException(status_code=400, detail=f"Invalid {label}")
     return value
+
+
+def _ensure_usage_tables(cur: psycopg.Cursor) -> None:
+    """
+    Ensure the shared usage tables exist in USAGE_SCHEMA.
+
+    Also attempts a one-way migration from legacy weather.* tracker tables
+    into the shared schema when USAGE_SCHEMA != WEATHER_SCHEMA.
+    """
+    cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+    cur.execute(_usage_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
+
+    cur.execute(
+        _usage_schema(
+            """
+            CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_runs (
+              id UUID PRIMARY KEY,
+              workflow TEXT NOT NULL DEFAULT '',
+              kind TEXT NOT NULL DEFAULT '',
+              locations_count INTEGER NOT NULL DEFAULT 0,
+              ok_count INTEGER NOT NULL DEFAULT 0,
+              fail_count INTEGER NOT NULL DEFAULT 0,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            """
+        ).strip()
+    )
+    # For older deployments where llm_runs existed without these columns.
+    cur.execute(_usage_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_usage_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS locations_count INTEGER NOT NULL DEFAULT 0;'))
+    cur.execute(_usage_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS ok_count INTEGER NOT NULL DEFAULT 0;'))
+    cur.execute(_usage_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS fail_count INTEGER NOT NULL DEFAULT 0;'))
+
+    cur.execute(
+        _usage_schema(
+            """
+            CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
+              provider TEXT NOT NULL,
+              model TEXT NOT NULL DEFAULT '',
+              prompt_tokens INTEGER NOT NULL DEFAULT 0,
+              completion_tokens INTEGER NOT NULL DEFAULT 0,
+              total_tokens INTEGER NOT NULL DEFAULT 0,
+              cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            """
+        ).strip()
+    )
+    cur.execute(_usage_schema('CREATE INDEX IF NOT EXISTS llm_usage_run_id_idx ON "__SCHEMA__".llm_usage(run_id);'))
+    cur.execute(_usage_schema('CREATE INDEX IF NOT EXISTS llm_usage_created_at_idx ON "__SCHEMA__".llm_usage(created_at DESC);'))
+
+    # Best-effort migration from legacy weather.* usage tables.
+    if _require_safe_ident("USAGE_SCHEMA", USAGE_SCHEMA) != WEATHER_SCHEMA:
+        cur.execute("SELECT to_regclass(%s);", (f"{WEATHER_SCHEMA}.llm_runs",))
+        has_old_runs = cur.fetchone()[0] is not None  # type: ignore[index]
+        cur.execute("SELECT to_regclass(%s);", (f"{WEATHER_SCHEMA}.llm_usage",))
+        has_old_usage = cur.fetchone()[0] is not None  # type: ignore[index]
+
+        if has_old_runs:
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS locations_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS ok_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS fail_count INTEGER NOT NULL DEFAULT 0;'))
+            cur.execute(
+                _usage_schema(
+                    f"""
+                    INSERT INTO "__SCHEMA__".llm_runs (id, workflow, kind, locations_count, ok_count, fail_count, created_at)
+                    SELECT id, workflow, kind, locations_count, ok_count, fail_count, created_at
+                    FROM {WEATHER_SCHEMA}.llm_runs
+                    ON CONFLICT (id) DO NOTHING;
+                    """
+                ).strip()
+            )
+
+        if has_old_usage:
+            cur.execute(
+                _usage_schema(
+                    f"""
+                    INSERT INTO "__SCHEMA__".llm_usage (id, run_id, provider, model, prompt_tokens, completion_tokens, total_tokens, cost_usd, created_at)
+                    SELECT id, run_id, provider, model, prompt_tokens, completion_tokens, total_tokens, cost_usd, created_at
+                    FROM {WEATHER_SCHEMA}.llm_usage
+                    ON CONFLICT (id) DO NOTHING;
+                    """
+                ).strip()
+            )
 
 
 _UI_CSS = """
@@ -463,46 +556,10 @@ def _record_llm_usage(
 
     with _connect() as conn:
         with conn.cursor() as cur:
-            # Ensure tracker tables exist even if /admin/schema/init hasn't been run since adding them.
-            cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
-            cur.execute(_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
-            cur.execute(
-                _schema(
-                    """
-                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_runs (
-                      id UUID PRIMARY KEY,
-                      kind TEXT NOT NULL DEFAULT '',
-                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                    );
-                    """
-                ).strip()
-            )
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS locations_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS ok_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS fail_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(
-                _schema(
-                    """
-                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
-                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                      run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
-                      provider TEXT NOT NULL,
-                      model TEXT NOT NULL DEFAULT '',
-                      prompt_tokens INTEGER NOT NULL DEFAULT 0,
-                      completion_tokens INTEGER NOT NULL DEFAULT 0,
-                      total_tokens INTEGER NOT NULL DEFAULT 0,
-                      cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
-                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                    );
-                    """
-                ).strip()
-            )
-            cur.execute(_schema('CREATE INDEX IF NOT EXISTS llm_usage_run_id_idx ON "__SCHEMA__".llm_usage(run_id);'))
-            cur.execute(_schema('CREATE INDEX IF NOT EXISTS llm_usage_created_at_idx ON "__SCHEMA__".llm_usage(created_at DESC);'))
+            _ensure_usage_tables(cur)
 
             cur.execute(
-                _schema(
+                _usage_schema(
                     """
                     INSERT INTO "__SCHEMA__".llm_runs (id, workflow, kind, locations_count, ok_count, fail_count)
                     VALUES (%s,%s,%s,%s,%s,%s)
@@ -517,7 +574,7 @@ def _record_llm_usage(
                 (run_uuid, (workflow or "").strip(), kind, int(locations_count), int(ok_count), int(fail_count)),
             )
             cur.execute(
-                _schema(
+                _usage_schema(
                     """
                     INSERT INTO "__SCHEMA__".llm_usage (run_id, provider, model, prompt_tokens, completion_tokens, total_tokens, cost_usd)
                     VALUES (%s,%s,%s,%s,%s,%s,%s);
@@ -545,43 +602,10 @@ def weather_usage(
 
     with _connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
-            cur.execute(_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
-            cur.execute(
-                _schema(
-                    """
-                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_runs (
-                      id UUID PRIMARY KEY,
-                      kind TEXT NOT NULL DEFAULT '',
-                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                    );
-                    """
-                ).strip()
-            )
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS locations_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS ok_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS fail_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(
-                _schema(
-                    """
-                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
-                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                      run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
-                      provider TEXT NOT NULL,
-                      model TEXT NOT NULL DEFAULT '',
-                      prompt_tokens INTEGER NOT NULL DEFAULT 0,
-                      completion_tokens INTEGER NOT NULL DEFAULT 0,
-                      total_tokens INTEGER NOT NULL DEFAULT 0,
-                      cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
-                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                    );
-                    """
-                ).strip()
-            )
+            _ensure_usage_tables(cur)
 
             cur.execute(
-                _schema(
+                _usage_schema(
                     """
                     SELECT provider, model,
                            COALESCE(SUM(prompt_tokens),0) AS prompt_tokens,
@@ -596,13 +620,13 @@ def weather_usage(
             )
             rows = cur.fetchall()
 
-            cur.execute(_schema('SELECT id, kind, created_at FROM "__SCHEMA__".llm_runs ORDER BY created_at DESC LIMIT 1;'))
+            cur.execute(_usage_schema('SELECT id, kind, created_at FROM "__SCHEMA__".llm_runs ORDER BY created_at DESC LIMIT 1;'))
             last_run = cur.fetchone()
             last = None
             if last_run:
                 run_id, kind, created_at = last_run
                 cur.execute(
-                    _schema(
+                    _usage_schema(
                         """
                         SELECT provider, model, prompt_tokens, completion_tokens, total_tokens, cost_usd
                         FROM "__SCHEMA__".llm_usage
@@ -654,43 +678,10 @@ def usage_log(
 
     with _connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
-            cur.execute(_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
-            cur.execute(
-                _schema(
-                    """
-                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_runs (
-                      id UUID PRIMARY KEY,
-                      kind TEXT NOT NULL DEFAULT '',
-                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                    );
-                    """
-                ).strip()
-            )
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS locations_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS ok_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(_schema('ALTER TABLE "__SCHEMA__".llm_runs ADD COLUMN IF NOT EXISTS fail_count INTEGER NOT NULL DEFAULT 0;'))
-            cur.execute(
-                _schema(
-                    """
-                    CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
-                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                      run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
-                      provider TEXT NOT NULL,
-                      model TEXT NOT NULL DEFAULT '',
-                      prompt_tokens INTEGER NOT NULL DEFAULT 0,
-                      completion_tokens INTEGER NOT NULL DEFAULT 0,
-                      total_tokens INTEGER NOT NULL DEFAULT 0,
-                      cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
-                      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                    );
-                    """
-                ).strip()
-            )
+            _ensure_usage_tables(cur)
 
             cur.execute(
-                _schema(
+                _usage_schema(
                     """
                     SELECT
                       r.id,
@@ -716,7 +707,7 @@ def usage_log(
             )
             rows = cur.fetchall()
 
-            cur.execute(_schema('SELECT COALESCE(SUM(cost_usd),0) FROM "__SCHEMA__".llm_usage;'))
+            cur.execute(_usage_schema('SELECT COALESCE(SUM(cost_usd),0) FROM "__SCHEMA__".llm_usage;'))
             (cumulative_total,) = cur.fetchone()  # type: ignore[misc]
 
     items = [
@@ -1916,7 +1907,8 @@ def auto_weather_batch(
     cumulative_total = 0.0
     with _connect() as conn:
         with conn.cursor() as cur:
-            cur.execute(_schema('SELECT COALESCE(SUM(cost_usd),0) FROM "__SCHEMA__".llm_usage;'))
+            _ensure_usage_tables(cur)
+            cur.execute(_usage_schema('SELECT COALESCE(SUM(cost_usd),0) FROM "__SCHEMA__".llm_usage;'))
             (cumulative_total,) = cur.fetchone()  # type: ignore[misc]
 
     return {

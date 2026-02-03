@@ -29,6 +29,7 @@ Optional / for weather helpers:
 - `PERPLEXITY_PROMPT_COST_PER_1M_USD`, `PERPLEXITY_COMPLETION_COST_PER_1M_USD` (optional; enables cost estimates)
 - `OPENAI_PROMPT_COST_PER_1M_USD`, `OPENAI_COMPLETION_COST_PER_1M_USD` (optional; enables cost estimates)
 - `OPENAI_MODEL` (optional; displayed in tracker; this app currently doesn't call OpenAI)
+- `USAGE_SCHEMA` (optional; default: `ops`) shared schema for LLM run/usage logging across all apps
 
 ## Endpoints
 

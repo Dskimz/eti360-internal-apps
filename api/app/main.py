@@ -181,6 +181,96 @@ def _generate_weather_png_for_slug(*, location_slug: str, year: int) -> dict[str
     return {"ok": True, "asset_id": str(asset_id), "s3_bucket": cfg.bucket, "s3_key": key, "view_url": view_url}
 
 
+@app.get("/weather/locations")
+def list_weather_locations(
+    limit: int = Query(default=50, ge=1, le=500),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+
+    cfg = get_s3_config()
+
+    rows_out: list[dict[str, Any]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                _schema(
+                    """
+                    SELECT
+                      l.id,
+                      l.location_slug,
+                      l.city,
+                      l.country,
+                      l.place_id,
+                      aw.s3_bucket AS weather_bucket,
+                      aw.s3_key    AS weather_key,
+                      ad.s3_bucket AS daylight_bucket,
+                      ad.s3_key    AS daylight_key
+                    FROM "__SCHEMA__".locations l
+                    LEFT JOIN LATERAL (
+                      SELECT a.s3_bucket, a.s3_key
+                      FROM "__SCHEMA__".assets a
+                      WHERE a.location_id = l.id AND a.kind = 'weather'
+                      ORDER BY a.generated_at DESC
+                      LIMIT 1
+                    ) aw ON true
+                    LEFT JOIN LATERAL (
+                      SELECT a.s3_bucket, a.s3_key
+                      FROM "__SCHEMA__".assets a
+                      WHERE a.location_id = l.id AND a.kind = 'daylight'
+                      ORDER BY a.generated_at DESC
+                      LIMIT 1
+                    ) ad ON true
+                    ORDER BY l.updated_at DESC
+                    LIMIT %s;
+                    """
+                ),
+                (limit,),
+            )
+            rows = cur.fetchall()
+
+    for (
+        _location_id,
+        location_slug,
+        city,
+        country,
+        place_id,
+        weather_bucket,
+        weather_key,
+        daylight_bucket,
+        daylight_key,
+    ) in rows:
+        city_s = str(city or "").strip()
+        country_s = str(country or "").strip()
+        label = city_s or str(location_slug)
+        if city_s and country_s:
+            label = f"{city_s}, {country_s}"
+
+        weather_url = ""
+        if weather_key:
+            weather_url = presign_get(region=cfg.region, bucket=str(weather_bucket or cfg.bucket), key=str(weather_key), expires_in=3600)
+
+        daylight_url = ""
+        if daylight_key:
+            daylight_url = presign_get(
+                region=cfg.region, bucket=str(daylight_bucket or cfg.bucket), key=str(daylight_key), expires_in=3600
+            )
+
+        rows_out.append(
+            {
+                "location_slug": str(location_slug),
+                "label": label,
+                "city": city_s,
+                "country": country_s,
+                "place_id": str(place_id or "").strip(),
+                "weather_url": weather_url,
+                "daylight_url": daylight_url,
+            }
+        )
+
+    return {"ok": True, "locations": rows_out}
+
+
 @app.get("/", response_class=HTMLResponse)
 def home() -> str:
     return """<!doctype html>
@@ -665,8 +755,6 @@ def generate_weather_png(
 
 class AutoWeatherIn(BaseModel):
     location_query: str = Field(..., min_length=1)
-    location_slug: str = ""
-    year: int = 2026
     force_refresh: bool = False
 
 
@@ -725,8 +813,7 @@ def auto_weather(
         "lng": lng_f,
     }
 
-    requested_slug = (body.location_slug or "").strip()
-    default_slug = requested_slug or _slugify(location_query or name or formatted_address)
+    default_slug = _slugify(location_query or name or formatted_address)
 
     existing_slug = ""
     existing_location_id = None
@@ -789,13 +876,15 @@ def auto_weather(
         effective_slug = str(saved.get("location_slug") or effective_slug)
         imported = True
 
-    generated = _generate_weather_png_for_slug(location_slug=effective_slug, year=body.year)
+    year = datetime.now(timezone.utc).year
+    generated = _generate_weather_png_for_slug(location_slug=effective_slug, year=year)
     return {
         "ok": True,
         "picked_place": picked_place,
         "location_query": location_query,
         "location_slug": effective_slug,
         "imported": imported,
+        "year": year,
         "generated": generated,
     }
 
@@ -838,88 +927,44 @@ def weather_ui() -> str:
     <div class=\"wrap\">
       <header>
         <h1>ETI360 Weather</h1>
-        <div class=\"muted\">Type a city, click Auto Generate. The server resolves Google Places, fetches monthly normals via Perplexity, stores them, then generates a PNG to S3.</div>
+        <div class=\"muted\">Enter a city, click Submit. The system resolves Google Places, fetches monthly normals, then generates charts. Your saved locations appear below.</div>
       </header>
 
       <div class=\"grid\">
         <div class=\"card\">
-          <div class=\"row2\">
-            <div>
-              <label>City</label>
-              <input id=\"locationQuery\" type=\"text\" placeholder=\"e.g. Cleveland, Ohio\" />
-            </div>
-            <div>
-              <label>Year (Generate)</label>
-              <input id=\"year\" type=\"number\" value=\"2026\" />
-            </div>
-          </div>
+          <label>City</label>
+          <input id=\"locationQuery\" type=\"text\" placeholder=\"e.g. Cleveland, Ohio\" />
 
           <div class=\"actions\">
-            <button id=\"btnAuto\" type=\"button\">Auto Generate</button>
-            <button id=\"btnAutoRefresh\" class=\"secondary\" type=\"button\">Auto Generate (refresh)</button>
+            <button id=\"btnSubmit\" type=\"button\">Submit</button>
           </div>
 
           <div id=\"status\" class=\"status\">Ready.</div>
         </div>
 
-        <details class=\"card\">
-          <summary style=\"cursor:pointer; font-size: 13px; color:#334155; font-weight:600;\">Advanced (optional)</summary>
-          <div class=\"row2\">
-            <div>
-              <label>API key (required unless AUTH_DISABLED=true)</label>
-              <input id=\"apiKey\" type=\"text\" placeholder=\"ETI360 API key\" autocomplete=\"off\" />
-            </div>
-            <div>
-              <label>Location slug (used as ID in the system)</label>
-              <input id=\"locationSlug\" type=\"text\" placeholder=\"bali\" />
-              <div class=\"muted\" style=\"margin-top:6px;\">If blank, it will be auto-generated from the search.</div>
-            </div>
-          </div>
-
-          <div class=\"actions\">
-            <button id=\"btnSearch\" class=\"secondary\" type=\"button\">Search Places</button>
-            <button id=\"btnImport\" type=\"button\">Import to DB</button>
-            <button id=\"btnGenerate\" type=\"button\">Generate PNG</button>
-            <button id=\"btnSample\" class=\"secondary\" type=\"button\">Load sample (Bali)</button>
-          </div>
-
-          <div style=\"margin-top: 12px; overflow: auto;\">
+        <div class=\"card\">
+          <h2 style=\"margin:0 0 10px 0; font-size: 14px;\">Locations</h2>
+          <div style=\"overflow:auto;\">
             <table>
               <thead>
                 <tr>
-                  <th>Pick</th>
-                  <th>Name</th>
-                  <th>Address</th>
-                  <th class=\"mono\">Place ID</th>
-                  <th class=\"mono\">Lat</th>
-                  <th class=\"mono\">Lng</th>
+                  <th>Location</th>
+                  <th>Weather</th>
+                  <th>Sunlight</th>
                 </tr>
               </thead>
-              <tbody id=\"placeRows\"></tbody>
+              <tbody id=\"locRows\"></tbody>
             </table>
           </div>
-
-          <div class=\"muted\" style=\"margin-top: 10px;\">Selected: <span id=\"picked\" class=\"mono\">(none)</span></div>
-          <div style=\"margin-top: 12px;\">
-            <label>Weather JSON (manual import)</label>
-            <textarea id=\"weatherJson\" spellcheck=\"false\"></textarea>
-            <div class=\"muted\" style=\"margin-top: 8px;\">We store atomic rows in Postgres; this JSON is only an input convenience.</div>
-          </div>
-        </details>
+          <div class=\"muted\" style=\"margin-top: 8px;\">Sunlight links appear once daylight generation is enabled for this service.</div>
+        </div>
       </div>
     </div>
 
     <script>
-      const apiKeyEl = document.getElementById('apiKey');
-      const yearEl = document.getElementById('year');
       const locationQueryEl = document.getElementById('locationQuery');
-      const locationSlugEl = document.getElementById('locationSlug');
-      const weatherJsonEl = document.getElementById('weatherJson');
       const statusEl = document.getElementById('status');
-      const rowsEl = document.getElementById('placeRows');
-      const pickedEl = document.getElementById('picked');
-
-      let picked = null;
+      const locRowsEl = document.getElementById('locRows');
 
       window.addEventListener('error', (e) => {
         statusEl.textContent = 'JS Error: ' + (e?.message || e);
@@ -929,187 +974,85 @@ def weather_ui() -> str:
 
       function headers() {
         const h = { 'Content-Type': 'application/json' };
-        const k = String(apiKeyEl.value || '').trim();
-        if (k) h['X-API-Key'] = k;
         return h;
       }
 
-      function slugify(s) {
-        return String(s || '').trim().toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 64) || 'location';
-      }
-
       function saveLocal() {
-        localStorage.setItem('eti360_api_key', apiKeyEl.value || '');
-        localStorage.setItem('eti360_weather_year', yearEl.value || '2026');
-        localStorage.setItem('eti360_weather_q', locationQueryEl.value || '');
-        localStorage.setItem('eti360_weather_slug', locationSlugEl.value || '');
-        localStorage.setItem('eti360_weather_json', weatherJsonEl.value || '');
+        localStorage.setItem('eti360_weather_city', locationQueryEl.value || '');
       }
 
       function loadLocal() {
-        apiKeyEl.value = localStorage.getItem('eti360_api_key') || '';
-        yearEl.value = localStorage.getItem('eti360_weather_year') || '2026';
-        locationQueryEl.value = localStorage.getItem('eti360_weather_q') || '';
-        locationSlugEl.value = localStorage.getItem('eti360_weather_slug') || '';
-        weatherJsonEl.value = localStorage.getItem('eti360_weather_json') || '';
+        locationQueryEl.value = localStorage.getItem('eti360_weather_city') || '';
       }
 
       loadLocal();
-      [apiKeyEl, yearEl, locationQueryEl, locationSlugEl, weatherJsonEl].forEach((el) => el.addEventListener('input', saveLocal));
+      locationQueryEl.addEventListener('input', saveLocal);
 
-      function renderPlaces(results) {
-        rowsEl.innerHTML = '';
-        picked = null;
-        pickedEl.textContent = '(none)';
-
-        for (const r of results) {
+      function renderLocations(locations) {
+        locRowsEl.innerHTML = '';
+        for (const r of (locations || [])) {
           const tr = document.createElement('tr');
-          const id = r.place_id;
+          const locLabel = String(r.label || r.location_slug || '');
+          const placeId = String(r.place_id || '');
+          const weatherUrl = String(r.weather_url || '');
+          const daylightUrl = String(r.daylight_url || '');
+
+          const mapsUrl = placeId ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}` : '';
+
           tr.innerHTML = `
-            <td><input type="radio" name="pick" value="${id}" /></td>
-            <td>${String(r.name || '')}</td>
-            <td>${String(r.formatted_address || '')}</td>
-            <td class="mono" style="max-width: 360px; overflow:hidden; text-overflow: ellipsis;">${String(r.place_id || '')}</td>
-            <td class="mono">${r.lat ?? ''}</td>
-            <td class="mono">${r.lng ?? ''}</td>
+            <td>${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener">${locLabel}</a>` : locLabel}</td>
+            <td>${weatherUrl ? `<a href="${weatherUrl}" target="_blank" rel="noopener">Weather PNG</a>` : '<span class="muted">—</span>'}</td>
+            <td>${daylightUrl ? `<a href="${daylightUrl}" target="_blank" rel="noopener">Sunlight PNG</a>` : '<span class="muted">—</span>'}</td>
           `;
-          tr.querySelector('input').addEventListener('change', () => {
-            picked = r;
-            pickedEl.textContent = r.place_id;
-            if (!locationSlugEl.value) {
-              locationSlugEl.value = slugify(locationQueryEl.value || r.name || r.formatted_address);
-            }
-            saveLocal();
-          });
-          rowsEl.appendChild(tr);
+          locRowsEl.appendChild(tr);
         }
       }
 
-      document.getElementById('btnSearch').addEventListener('click', async () => {
+      async function refreshLocations() {
+        try {
+          const res = await fetch('/weather/locations?limit=100', { headers: headers() });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || (res.status === 401 ? 'Auth required (set AUTH_DISABLED=true)' : `HTTP ${res.status}`));
+          renderLocations(body.locations || []);
+        } catch (e) {
+          // Keep UI usable even if listing fails.
+          locRowsEl.innerHTML = `<tr><td colspan="3" class="muted">Could not load locations: ${String(e?.message || e)}</td></tr>`;
+        }
+      }
+
+      async function submitCity(forceRefresh) {
         try {
           saveLocal();
           const q = String(locationQueryEl.value || '').trim();
           if (!q) throw new Error('Enter a location search first');
-          setStatus('Searching Places…');
 
-          const res = await fetch(`/places/search?q=${encodeURIComponent(q)}`, { headers: headers() });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-
-          renderPlaces(body.results || []);
-          setStatus(`Places found: ${(body.results || []).length}. Pick one.`);
-        } catch (e) {
-          setStatus('Error: ' + (e?.message || String(e)));
-        }
-      });
-
-      document.getElementById('btnSample').addEventListener('click', () => {
-        const sample = {
-          place_id: 'ChIJoQ8Q6NNB0S0RkOYkS7EPkSQ',
-          weather_overview: 'Bali has a tropical climate with consistently warm temperatures year-round and a pronounced wet season with heavy rainfall from November to March and a distinct drier period from May to October. Temperature variation is minimal throughout the year.',
-          title: 'Bali’s climate has year-round warmth with a wet monsoon season',
-          subtitle: 'Temperatures remain stable while rainfall peaks in the wet months and drops markedly in the dry months',
-          source: {
-            label: 'WeatherWonderer Bali monthly averages',
-            url: 'https://weatherwonderer.com/roundups/bali/',
-            accessed_utc: '2026-01-31T00:00:00Z',
-            notes: 'Monthly average high, low and precipitation converted from mm to cm.'
-          },
-          months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
-          high_c: [30, 30, 31, 31, 31, 30, 29, 29, 30, 31, 31, 30],
-          low_c: [23, 23, 23, 24, 24, 23, 23, 22, 23, 24, 24, 23],
-          precip_cm: [34.5, 27.4, 23.4, 10.2, 9.2, 5.1, 4.3, 2.5, 4.3, 10.7, 17.8, 28.2]
-        };
-        locationQueryEl.value = 'Bali, Indonesia';
-        if (!locationSlugEl.value) locationSlugEl.value = 'bali';
-        weatherJsonEl.value = JSON.stringify(sample, null, 2);
-        saveLocal();
-        setStatus('Sample loaded. Click “Search Places”, pick one, then “Import to DB”.');
-      });
-
-      document.getElementById('btnImport').addEventListener('click', async () => {
-        try {
-          saveLocal();
-          const q = String(locationQueryEl.value || '').trim();
-          if (!q) throw new Error('Enter a location search first');
-          const slug = String(locationSlugEl.value || '').trim() || slugify(q);
-
-          const raw = String(weatherJsonEl.value || '').trim();
-          if (!raw) throw new Error('Paste the weather JSON first');
-          const obj = JSON.parse(raw);
-
-          // Our server endpoint accepts your JSON + our helper fields.
-          const bodyIn = { ...obj, location_query: q, location_slug: slug };
-
-          setStatus('Importing to DB…');
-          const res = await fetch('/weather/import', { method: 'POST', headers: headers(), body: JSON.stringify(bodyIn) });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-
-          setStatus('Imported.
-' + JSON.stringify(body, null, 2));
-        } catch (e) {
-          setStatus('Error: ' + (e?.message || String(e)));
-        }
-      });
-
-      document.getElementById('btnGenerate').addEventListener('click', async () => {
-        try {
-          saveLocal();
-          const slug = String(locationSlugEl.value || '').trim();
-          if (!slug) throw new Error('Enter a location slug (or pick a place after search)');
-          const year = Number(yearEl.value || 2026);
-
-          setStatus('Generating PNG…');
-          const res = await fetch('/weather/generate', { method: 'POST', headers: headers(), body: JSON.stringify({ location_slug: slug, year }) });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-
-          let msg = 'Generated.
-' + JSON.stringify(body, null, 2);
-          if (body.view_url) msg += `
-
-Open PNG: ${body.view_url}`;
-          setStatus(msg);
-        } catch (e) {
-          setStatus('Error: ' + (e?.message || String(e)));
-        }
-      });
-
-      async function autoGenerate(forceRefresh) {
-        try {
-          saveLocal();
-          const q = String(locationQueryEl.value || '').trim();
-          if (!q) throw new Error('Enter a location search first');
-          const slug = String(locationSlugEl.value || '').trim() || slugify(q);
-          const year = Number(yearEl.value || 2026);
-
-          setStatus(forceRefresh ? 'Auto generating (refresh)…' : 'Auto generating…');
+          const btn = document.getElementById('btnSubmit');
+          btn.disabled = true;
+          setStatus(forceRefresh ? 'Submitting (refresh)…' : 'Submitting…');
           const res = await fetch('/weather/auto', {
             method: 'POST',
             headers: headers(),
-            body: JSON.stringify({ location_query: q, location_slug: slug, year, force_refresh: !!forceRefresh })
+            body: JSON.stringify({ location_query: q, force_refresh: !!forceRefresh })
           });
           const body = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+          if (!res.ok) throw new Error(body.detail || (res.status === 401 ? 'Auth required (set AUTH_DISABLED=true)' : `HTTP ${res.status}`));
 
-          if (body.location_slug) locationSlugEl.value = body.location_slug;
-          saveLocal();
-
-          let msg = 'Auto complete.\n' + JSON.stringify(body, null, 2);
+          let msg = 'Done.\n' + JSON.stringify(body, null, 2);
           const viewUrl = body?.generated?.view_url;
           if (viewUrl) msg += `\n\nOpen PNG: ${viewUrl}`;
           setStatus(msg);
+          await refreshLocations();
+          btn.disabled = false;
         } catch (e) {
           setStatus('Error: ' + (e?.message || String(e)));
+          try { document.getElementById('btnSubmit').disabled = false; } catch {}
         }
       }
 
-      document.getElementById('btnAuto').addEventListener('click', () => autoGenerate(false));
-      document.getElementById('btnAutoRefresh').addEventListener('click', () => autoGenerate(true));
+      document.getElementById('btnSubmit').addEventListener('click', () => submitCity(false));
+      locationQueryEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitCity(false); });
+
+      refreshLocations();
     </script>
   </body>
 </html>"""

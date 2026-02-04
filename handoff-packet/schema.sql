@@ -97,6 +97,9 @@ CREATE TABLE IF NOT EXISTS ops.llm_runs (
 CREATE TABLE IF NOT EXISTS ops.llm_usage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   run_id UUID NOT NULL REFERENCES ops.llm_runs(id) ON DELETE CASCADE,
+  prompt_key TEXT NOT NULL DEFAULT '',
+  app_key TEXT NOT NULL DEFAULT '',
+  workflow TEXT NOT NULL DEFAULT '',
   provider TEXT NOT NULL,
   model TEXT NOT NULL DEFAULT '',
   prompt_tokens INTEGER NOT NULL DEFAULT 0,
@@ -108,6 +111,8 @@ CREATE TABLE IF NOT EXISTS ops.llm_usage (
 
 CREATE INDEX IF NOT EXISTS llm_usage_run_id_idx ON ops.llm_usage(run_id);
 CREATE INDEX IF NOT EXISTS llm_usage_created_at_idx ON ops.llm_usage(created_at DESC);
+CREATE INDEX IF NOT EXISTS llm_usage_prompt_key_idx ON ops.llm_usage(prompt_key, created_at DESC);
+CREATE INDEX IF NOT EXISTS llm_usage_app_workflow_prompt_key_idx ON ops.llm_usage(app_key, workflow, prompt_key, created_at DESC);
 
 -- Auth (cookie sessions).
 CREATE TABLE IF NOT EXISTS ops.users (

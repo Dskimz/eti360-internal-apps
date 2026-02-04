@@ -64,6 +64,12 @@ Where:
 
 ## Prompt management + audit
 
-- `/prompts/ui` lists prompts (DB source of truth), grouped by `app_key` + `workflow`, and links to details pages.
+- `/prompts/ui` lists the prompts used by the system (DB source of truth), grouped by `app_key` + `workflow`, and includes per-prompt token/cost tracking.
 - `/prompts/edit?prompt_key=...` edits a prompt. Every save creates a row in `ops.prompt_revisions` with date/time/user/note and a before/after snapshot.
 - `/prompts/log/ui` is the audit log UI.
+
+## LLM usage tracking (per prompt)
+
+- Every run creates one `ops.llm_runs` row.
+- Each provider/prompt used in that run creates an `ops.llm_usage` row, attributed by `prompt_key`.
+- `/usage/ui` shows the log; `/prompts/ui` shows cumulative usage by prompt.

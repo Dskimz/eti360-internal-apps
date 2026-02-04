@@ -51,9 +51,10 @@ Optional / for weather helpers:
 - Auth: `GET /login`, `POST /login`, `GET /logout` (cookie sessions)
 - Admin users: `GET /admin/users/ui` (UI), `GET /admin/users`, `POST /admin/users` (requires admin access)
 - Prompts: `GET /prompts/ui`, `GET /prompts/edit?prompt_key=...`, `GET /prompts/log/ui`, `GET /prompts`, `GET /prompts/item/{prompt_key}`, `POST /prompts/item/{prompt_key}`, `POST /prompts/seed`, `GET /prompts/required`
-  - Prompts are grouped by `app_key` + `workflow` for UI organization.
+  - Prompts UI is read-only by default and grouped by `app_key` + `workflow`. It also shows cumulative token/cost stats per prompt key.
 - `POST /admin/schema/init` (one-time DB schema init; requires `X-API-Key`)
 - Weather UI: `GET /weather/ui`
 - Weather automation: `POST /weather/auto_batch`
 - Locations: `GET /weather/locations`
 - Token/cost tracker: `GET /weather/usage`
+- API usage log: `GET /usage/ui`, `GET /usage/log` (usage rows are attributed by `prompt_key`)

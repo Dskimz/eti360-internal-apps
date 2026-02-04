@@ -57,6 +57,18 @@ Prompts are grouped by:
 - `app_key` (e.g. `weather`, `directory`, `flights`)
 - `workflow` (e.g. `weather`, `sunlight`)
 
+## Usage log
+
+- `GET /usage/ui` (UI token/cost log)
+- `GET /usage/log` (JSON)
+
+Each usage row includes:
+
+- `run_id`, `workflow`, `kind`, `created_at`
+- `prompt_key` (which prompt produced the usage row)
+- `provider`, `model`
+- `prompt_tokens` (in), `completion_tokens` (out), `total_tokens`, `cost_usd`
+
 ## DB schema browser (admin)
 
 - `GET /db/ui` (UI)

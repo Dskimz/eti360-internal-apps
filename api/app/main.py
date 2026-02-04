@@ -34,6 +34,23 @@ AUTH_SCHEMA = os.environ.get("AUTH_SCHEMA", "ops").strip() or "ops"
 SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "eti360_session").strip() or "eti360_session"
 
 
+@app.on_event("startup")
+def _startup_reconcile() -> None:
+    """
+    Best-effort reconciliation so required prompts/usage tables exist without manual UI actions.
+    """
+    try:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _ensure_usage_tables(cur)
+                _ensure_prompts_tables(cur)
+            conn.commit()
+        _reconcile_required_prompts(edited_by={"id": "startup", "username": "startup", "role": "admin"}, change_note="Startup reconcile")
+    except Exception as e:
+        # Don't block the service from starting; surface via logs.
+        print(f"[startup] reconcile skipped: {e}")
+
+
 def _auth_disabled() -> bool:
     mode = os.environ.get("AUTH_MODE", "").strip().lower()
     if mode in {"0", "false", "no", "off", "disabled"}:
@@ -145,6 +162,9 @@ def _ensure_usage_tables(cur: psycopg.Cursor) -> None:
             CREATE TABLE IF NOT EXISTS "__SCHEMA__".llm_usage (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
               run_id UUID NOT NULL REFERENCES "__SCHEMA__".llm_runs(id) ON DELETE CASCADE,
+              prompt_key TEXT NOT NULL DEFAULT '',
+              app_key TEXT NOT NULL DEFAULT '',
+              workflow TEXT NOT NULL DEFAULT '',
               provider TEXT NOT NULL,
               model TEXT NOT NULL DEFAULT '',
               prompt_tokens INTEGER NOT NULL DEFAULT 0,
@@ -156,8 +176,14 @@ def _ensure_usage_tables(cur: psycopg.Cursor) -> None:
             """
         ).strip()
     )
+    # For older deployments where llm_usage existed without these columns.
+    cur.execute(_usage_schema('ALTER TABLE "__SCHEMA__".llm_usage ADD COLUMN IF NOT EXISTS prompt_key TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_usage_schema('ALTER TABLE "__SCHEMA__".llm_usage ADD COLUMN IF NOT EXISTS app_key TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_usage_schema('ALTER TABLE "__SCHEMA__".llm_usage ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(_usage_schema('CREATE INDEX IF NOT EXISTS llm_usage_run_id_idx ON "__SCHEMA__".llm_usage(run_id);'))
     cur.execute(_usage_schema('CREATE INDEX IF NOT EXISTS llm_usage_created_at_idx ON "__SCHEMA__".llm_usage(created_at DESC);'))
+    cur.execute(_usage_schema('CREATE INDEX IF NOT EXISTS llm_usage_prompt_key_idx ON "__SCHEMA__".llm_usage(prompt_key, created_at DESC);'))
+    cur.execute(_usage_schema('CREATE INDEX IF NOT EXISTS llm_usage_app_workflow_prompt_key_idx ON "__SCHEMA__".llm_usage(app_key, workflow, prompt_key, created_at DESC);'))
 
     # Best-effort migration from legacy weather.* usage tables.
     if _require_safe_ident("USAGE_SCHEMA", USAGE_SCHEMA) != WEATHER_SCHEMA:
@@ -591,6 +617,177 @@ def _maybe_openai_title_subtitle(
         return "", "", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, ""
 
 
+def _reconcile_required_prompts(*, edited_by: dict[str, Any] | None, change_note: str) -> dict[str, list[str]]:
+    """
+    Ensure required prompts exist and have required defaults (app_key/workflow) populated.
+
+    - Does NOT overwrite prompt_text for existing prompts.
+    - May migrate deprecated OpenAI models to the current default.
+    """
+    created: list[str] = []
+    updated: list[str] = []
+
+    actor = edited_by or {}
+    username = str(actor.get("username") or "")
+    role = str(actor.get("role") or "")
+    user_id_uuid = None
+    try:
+        if str(actor.get("id") or "").strip() and str(actor.get("id")) not in {"disabled", "api_key"}:
+            user_id_uuid = uuid.UUID(str(actor.get("id")))
+    except Exception:
+        user_id_uuid = None
+
+    reqs = _required_prompts()
+
+    deprecated_openai_models = {
+        "gpt-4o-mini",
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "o4-mini",
+    }
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_prompts_tables(cur)
+            for r in reqs:
+                key = _require_prompt_key(str(r.get("prompt_key") or ""))
+                desired_app_key = str(r.get("app_key") or "").strip()
+                desired_workflow = str(r.get("workflow") or "").strip()
+                desired_provider = str(r.get("provider") or "").strip()
+                desired_model = str(r.get("model") or "").strip()
+
+                cur.execute(
+                    _prompts_schema(
+                        """
+                        SELECT id, app_key, workflow, provider, model
+                        FROM "__SCHEMA__".prompts
+                        WHERE prompt_key=%s
+                        LIMIT 1;
+                        """
+                    ),
+                    (key,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    cur.execute(
+                        _prompts_schema(
+                            """
+                            INSERT INTO "__SCHEMA__".prompts
+                              (prompt_key, app_key, workflow, name, natural_name, description, provider, model, prompt_text)
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                            RETURNING id;
+                            """
+                        ),
+                        (
+                            key,
+                            desired_app_key,
+                            desired_workflow,
+                            str(r.get("name") or ""),
+                            str(r.get("natural_name") or ""),
+                            str(r.get("description") or ""),
+                            desired_provider,
+                            desired_model,
+                            str(r.get("prompt_text") or ""),
+                        ),
+                    )
+                    (pid,) = cur.fetchone()  # type: ignore[misc]
+                    cur.execute(
+                        _prompts_schema(
+                            """
+                            INSERT INTO "__SCHEMA__".prompt_revisions
+                              (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
+                               before_text, after_text,
+                               before_app_key, after_app_key, before_workflow, after_workflow,
+                               before_provider, after_provider, before_model, after_model)
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                            """
+                        ),
+                        (
+                            pid,
+                            key,
+                            user_id_uuid,
+                            username,
+                            role,
+                            change_note,
+                            "",
+                            str(r.get("prompt_text") or ""),
+                            "",
+                            desired_app_key,
+                            "",
+                            desired_workflow,
+                            "",
+                            desired_provider,
+                            "",
+                            desired_model,
+                        ),
+                    )
+                    created.append(key)
+                    continue
+
+                (pid, before_app_key, before_workflow, before_provider, before_model) = row
+                before_app_key_s = str(before_app_key or "").strip()
+                before_workflow_s = str(before_workflow or "").strip()
+                before_provider_s = str(before_provider or "").strip()
+                before_model_s = str(before_model or "").strip()
+
+                new_app_key = before_app_key_s or desired_app_key
+                new_workflow = before_workflow_s or desired_workflow
+                new_model = before_model_s
+
+                if before_provider_s.lower() == "openai":
+                    if not new_model or new_model in deprecated_openai_models:
+                        new_model = os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini"
+
+                if new_app_key != before_app_key_s or new_workflow != before_workflow_s or new_model != before_model_s:
+                    cur.execute(
+                        _prompts_schema(
+                            """
+                            UPDATE "__SCHEMA__".prompts
+                            SET app_key=%s, workflow=%s, model=%s, updated_at=NOW()
+                            WHERE id=%s;
+                            """
+                        ),
+                        (new_app_key, new_workflow, new_model, pid),
+                    )
+                    cur.execute(
+                        _prompts_schema(
+                            """
+                            INSERT INTO "__SCHEMA__".prompt_revisions
+                              (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
+                               before_text, after_text,
+                               before_app_key, after_app_key, before_workflow, after_workflow,
+                               before_provider, after_provider, before_model, after_model)
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                            """
+                        ),
+                        (
+                            pid,
+                            key,
+                            user_id_uuid,
+                            username,
+                            role,
+                            change_note,
+                            "",
+                            "",
+                            before_app_key_s,
+                            new_app_key,
+                            before_workflow_s,
+                            new_workflow,
+                            before_provider_s,
+                            before_provider_s,
+                            before_model_s,
+                            new_model,
+                        ),
+                    )
+                    updated.append(key)
+
+        conn.commit()
+
+    return {"created": created, "updated": updated}
+
+
 _UI_CSS = """
 :root {
   color-scheme: light;
@@ -999,6 +1196,9 @@ def _record_llm_usage(
     run_id: str,
     workflow: str,
     kind: str,
+    prompt_key: str,
+    app_key: str,
+    prompt_workflow: str,
     provider: str,
     model: str,
     prompt_tokens: int,
@@ -1009,6 +1209,7 @@ def _record_llm_usage(
     fail_count: int,
 ) -> dict[str, Any]:
     run_uuid = uuid.UUID(str(run_id))
+    prompt_key_s = _require_prompt_key(prompt_key) if (prompt_key or "").strip() else ""
     cost_usd = float(
         estimate_cost_usd(provider=provider, model=model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
     )
@@ -1035,15 +1236,29 @@ def _record_llm_usage(
             cur.execute(
                 _usage_schema(
                     """
-                    INSERT INTO "__SCHEMA__".llm_usage (run_id, provider, model, prompt_tokens, completion_tokens, total_tokens, cost_usd)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s);
+                    INSERT INTO "__SCHEMA__".llm_usage (run_id, prompt_key, app_key, workflow, provider, model, prompt_tokens, completion_tokens, total_tokens, cost_usd)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
                     """
                 ),
-                (run_uuid, provider, model, int(prompt_tokens), int(completion_tokens), int(total_tokens), cost_usd),
+                (
+                    run_uuid,
+                    prompt_key_s,
+                    (app_key or "").strip(),
+                    (prompt_workflow or "").strip(),
+                    provider,
+                    model,
+                    int(prompt_tokens),
+                    int(completion_tokens),
+                    int(total_tokens),
+                    cost_usd,
+                ),
             )
         conn.commit()
 
     return {
+        "prompt_key": prompt_key_s,
+        "app_key": (app_key or "").strip(),
+        "workflow": (prompt_workflow or "").strip(),
         "provider": provider,
         "model": model,
         "prompt_tokens": int(prompt_tokens),
@@ -1151,6 +1366,9 @@ def usage_log(
                       r.locations_count,
                       r.ok_count,
                       r.fail_count,
+                      u.prompt_key,
+                      u.app_key,
+                      u.workflow,
                       u.provider,
                       u.model,
                       u.prompt_tokens,
@@ -1179,6 +1397,9 @@ def usage_log(
             "locations_count": int(locations_count),
             "ok_count": int(ok_count),
             "fail_count": int(fail_count),
+            "prompt_key": str(prompt_key or ""),
+            "app_key": str(app_key or ""),
+            "prompt_workflow": str(pworkflow or ""),
             "provider": str(provider),
             "model": str(model),
             "prompt_tokens": int(prompt_tokens),
@@ -1194,6 +1415,9 @@ def usage_log(
             locations_count,
             ok_count,
             fail_count,
+            prompt_key,
+            app_key,
+            pworkflow,
             provider,
             model,
             prompt_tokens,
@@ -1239,6 +1463,7 @@ def usage_ui(request: Request) -> str:
               <tr>
                 <th>Date (UTC)</th>
                 <th>Workflow</th>
+                <th>Prompt</th>
                 <th>Provider</th>
                 <th>Model</th>
                 <th class="right">In</th>
@@ -1285,6 +1510,7 @@ def usage_ui(request: Request) -> str:
             tr.innerHTML = `
               <td><code>${date}</code></td>
               <td>${safe(r.workflow || r.kind)}</td>
+              <td><code>${safe(r.prompt_key || '')}</code></td>
               <td>${safe(r.provider)}</td>
               <td><code>${safe(r.model)}</code></td>
               <td class="right"><code>${Number(r.prompt_tokens || 0)}</code></td>
@@ -1296,7 +1522,7 @@ def usage_ui(request: Request) -> str:
             rowsEl.appendChild(tr);
           }
           if (items.length === 0) {
-            rowsEl.innerHTML = '<tr><td colspan="9" class="muted">No usage yet.</td></tr>';
+            rowsEl.innerHTML = '<tr><td colspan="10" class="muted">No usage yet.</td></tr>';
           }
         } catch (e) {
           summaryEl.textContent = 'Error: ' + String(e?.message || e);
@@ -2146,164 +2372,8 @@ def prompts_seed(
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
     actor = _require_access(request=request, x_api_key=x_api_key, role="editor") or {}
-    reqs = _required_prompts()
-
-    created: list[str] = []
-    updated: list[str] = []
-    skipped: list[str] = []
-
-    username = str(actor.get("username") or "")
-    role = str(actor.get("role") or "")
-    user_id_uuid = None
-    try:
-        if str(actor.get("id") or "").strip() and str(actor.get("id")) not in {"disabled", "api_key"}:
-            user_id_uuid = uuid.UUID(str(actor.get("id")))
-    except Exception:
-        user_id_uuid = None
-
-    with _connect() as conn:
-        with conn.cursor() as cur:
-            _ensure_prompts_tables(cur)
-            for r in reqs:
-                key = _require_prompt_key(r["prompt_key"])
-                cur.execute(
-                    _prompts_schema(
-                        """
-                        SELECT id, provider, model, app_key, workflow
-                        FROM "__SCHEMA__".prompts
-                        WHERE prompt_key=%s
-                        LIMIT 1;
-                        """
-                    ),
-                    (key,),
-                )
-                existing = cur.fetchone()
-                if existing:
-                    (pid, existing_provider, existing_model, existing_app_key, existing_workflow) = existing
-                    existing_provider = str(existing_provider or "").strip().lower()
-                    existing_model = str(existing_model or "").strip()
-                    existing_app_key = str(existing_app_key or "").strip()
-                    existing_workflow = str(existing_workflow or "").strip()
-
-                    # Model migrations: keep user-edited prompt text, but update deprecated OpenAI models
-                    # to the new default so existing prompt rows continue working after deprecations.
-                    desired_model = str(r.get("model") or "").strip()
-                    desired_app_key = str(r.get("app_key") or "").strip()
-                    desired_workflow = str(r.get("workflow") or "").strip()
-                    deprecated_openai_models = {
-                        "gpt-4o-mini",
-                        "gpt-4o",
-                        "gpt-4.1",
-                        "gpt-4.1-mini",
-                        "gpt-4.1-nano",
-                        "o4-mini",
-                    }
-                    needs_model = existing_provider == "openai" and desired_model and (not existing_model or existing_model in deprecated_openai_models)
-                    needs_group = (desired_app_key and not existing_app_key) or (desired_workflow and not existing_workflow)
-
-                    if needs_model or needs_group:
-                        new_model = desired_model if needs_model else existing_model
-                        new_app_key = desired_app_key if desired_app_key else existing_app_key
-                        new_workflow = desired_workflow if desired_workflow else existing_workflow
-                        cur.execute(
-                            _prompts_schema(
-                                """
-                                UPDATE "__SCHEMA__".prompts
-                                SET app_key=%s, workflow=%s, model=%s, updated_at=NOW()
-                                WHERE id=%s;
-                                """
-                            ),
-                            (new_app_key, new_workflow, new_model, pid),
-                        )
-                        cur.execute(
-                            _prompts_schema(
-                                """
-                                INSERT INTO "__SCHEMA__".prompt_revisions
-                                  (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
-                                   before_text, after_text,
-                                   before_app_key, after_app_key, before_workflow, after_workflow,
-                                   before_provider, after_provider, before_model, after_model)
-                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
-                                """
-                            ),
-                            (
-                                pid,
-                                key,
-                                user_id_uuid,
-                                username,
-                                role,
-                                "Seed: migrate defaults",
-                                "",
-                                "",
-                                existing_app_key,
-                                new_app_key,
-                                existing_workflow,
-                                new_workflow,
-                                str(existing_provider or ""),
-                                str(existing_provider or ""),
-                                existing_model,
-                                new_model,
-                            ),
-                        )
-                        updated.append(key)
-                    else:
-                        skipped.append(key)
-                    continue
-                cur.execute(
-                    _prompts_schema(
-                        """
-                        INSERT INTO "__SCHEMA__".prompts (prompt_key, app_key, workflow, name, natural_name, description, provider, model, prompt_text)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                        RETURNING id;
-                        """
-                    ),
-                    (
-                        key,
-                        str(r.get("app_key") or ""),
-                        str(r.get("workflow") or ""),
-                        str(r.get("name") or ""),
-                        str(r.get("natural_name") or ""),
-                        str(r.get("description") or ""),
-                        str(r.get("provider") or ""),
-                        str(r.get("model") or ""),
-                        str(r.get("prompt_text") or ""),
-                    ),
-                )
-                (pid,) = cur.fetchone()  # type: ignore[misc]
-                cur.execute(
-                    _prompts_schema(
-                        """
-                        INSERT INTO "__SCHEMA__".prompt_revisions
-                          (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
-                           before_text, after_text,
-                           before_app_key, after_app_key, before_workflow, after_workflow,
-                           before_provider, after_provider, before_model, after_model)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
-                        """
-                    ),
-                    (
-                        pid,
-                        key,
-                        user_id_uuid,
-                        username,
-                        role,
-                        "Seed default prompt",
-                        "",
-                        str(r.get("prompt_text") or ""),
-                        "",
-                        str(r.get("app_key") or ""),
-                        "",
-                        str(r.get("workflow") or ""),
-                        "",
-                        str(r.get("provider") or ""),
-                        "",
-                        str(r.get("model") or ""),
-                    ),
-                )
-                created.append(key)
-        conn.commit()
-
-    return {"ok": True, "created": created, "updated": updated, "skipped": skipped}
+    out = _reconcile_required_prompts(edited_by=actor, change_note="Seed: reconcile required prompts")
+    return {"ok": True, "created": out.get("created", []), "updated": out.get("updated", [])}
 
 
 @app.get("/prompts/item/{prompt_key}")
@@ -2546,25 +2616,71 @@ def prompts_ui(
 ) -> str:
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
 
-    can_edit = _role_ge(str(user.get("role") or ""), required="editor")
-
     with _connect() as conn:
         with conn.cursor() as cur:
             _ensure_prompts_tables(cur)
+            _ensure_usage_tables(cur)
+
+            required = _required_prompts()
+            required_map = {str(r.get("prompt_key") or ""): r for r in required}
+            required_keys = [k for k in required_map.keys() if k]
+
             cur.execute(
                 _prompts_schema(
                     """
                     SELECT prompt_key, app_key, workflow, natural_name, provider, model, is_active, updated_at
                     FROM "__SCHEMA__".prompts
+                    WHERE prompt_key = ANY(%s)
                     ORDER BY app_key ASC, workflow ASC, prompt_key ASC;
+                    """
+                ),
+                (required_keys,),
+            )
+            rows_required = cur.fetchall()
+
+            # Legacy/unrequired prompts (for an advanced toggle).
+            cur.execute(
+                _prompts_schema(
+                    """
+                    SELECT prompt_key, app_key, workflow, natural_name, provider, model, is_active, updated_at
+                    FROM "__SCHEMA__".prompts
+                    WHERE prompt_key <> ALL(%s)
+                    ORDER BY app_key ASC, workflow ASC, prompt_key ASC;
+                    """
+                ),
+                (required_keys,),
+            )
+            rows_other = cur.fetchall()
+
+            cur.execute(
+                _usage_schema(
+                    """
+                    SELECT prompt_key,
+                           COALESCE(SUM(prompt_tokens),0) AS prompt_tokens,
+                           COALESCE(SUM(completion_tokens),0) AS completion_tokens,
+                           COALESCE(SUM(total_tokens),0) AS total_tokens,
+                           COALESCE(SUM(cost_usd),0) AS cost_usd,
+                           MAX(created_at) AS last_used
+                    FROM "__SCHEMA__".llm_usage
+                    WHERE prompt_key <> ''
+                    GROUP BY prompt_key;
                     """
                 )
             )
-            rows = cur.fetchall()
+            stats_rows = cur.fetchall()
 
-    existing = {str(r[0]) for r in rows}
-    required = _required_prompts()
-    missing_required = [r for r in required if str(r.get("prompt_key") or "") not in existing]
+    stats: dict[str, dict[str, Any]] = {}
+    for (pk, pt, ct, tt, cost, last_used) in stats_rows:
+        stats[str(pk)] = {
+            "prompt_tokens": int(pt or 0),
+            "completion_tokens": int(ct or 0),
+            "total_tokens": int(tt or 0),
+            "cost_usd": float(cost or 0.0),
+            "last_used": last_used.isoformat() if last_used else "",
+        }
+
+    existing_required = {str(r[0]) for r in rows_required}
+    missing_required_keys = [k for k in required_keys if k not in existing_required]
 
     def _esc(s: Any) -> str:
         return (
@@ -2576,21 +2692,20 @@ def prompts_ui(
             .replace("'", "&#39;")
         )
 
-    groups: dict[tuple[str, str], list[tuple[Any, ...]]] = {}
-    for row in rows:
-        (k, app_key, workflow, natural_name, provider, model, is_active, updated_at) = row
-        ak = (str(app_key or "").strip() or "ungrouped").lower()
-        wf = (str(workflow or "").strip() or "default").lower()
-        groups.setdefault((ak, wf), []).append(row)
+    def _build_group_html(rows: list[tuple[Any, ...]]) -> str:
+        groups: dict[tuple[str, str], list[tuple[Any, ...]]] = {}
+        for row in rows:
+            (k, app_key, workflow, natural_name, provider, model, is_active, updated_at) = row
+            ak = (str(app_key or "").strip() or "ungrouped").lower()
+            wf = (str(workflow or "").strip() or "default").lower()
+            groups.setdefault((ak, wf), []).append(row)
 
-    group_html = ""
-    if not rows:
-        group_html = '<div class="muted">No prompts yet. Click “Seed defaults” to create the expected prompts.</div>'
-    else:
+        out = ""
         for (ak, wf) in sorted(groups.keys(), key=lambda x: (x[0], x[1])):
             table_rows = ""
             for (k, _app_key, _workflow, natural_name, provider, model, is_active, updated_at) in groups[(ak, wf)]:
                 key = str(k)
+                st = stats.get(key, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost_usd": 0.0, "last_used": ""})
                 table_rows += (
                     "<tr>"
                     f"<td><code>{_esc(key)}</code></td>"
@@ -2599,10 +2714,15 @@ def prompts_ui(
                     f"<td class=\"muted\"><code>{_esc(model or '')}</code></td>"
                     f"<td>{'YES' if bool(is_active) else 'NO'}</td>"
                     f"<td class=\"muted\"><code>{_esc(updated_at.isoformat() if updated_at else '')}</code></td>"
+                    f"<td class=\"muted\"><code>{_esc(st.get('last_used') or '')}</code></td>"
+                    f"<td class=\"right\"><code>{int(st.get('prompt_tokens') or 0)}</code></td>"
+                    f"<td class=\"right\"><code>{int(st.get('completion_tokens') or 0)}</code></td>"
+                    f"<td class=\"right\"><code>{int(st.get('total_tokens') or 0)}</code></td>"
+                    f"<td class=\"right\"><code>${float(st.get('cost_usd') or 0.0):.6f}</code></td>"
                     f"<td><a class=\"btn\" href=\"/prompts/edit?prompt_key={_esc(key)}\">Details</a> <a class=\"btn\" href=\"/prompts/log/ui?prompt_key={_esc(key)}\">Log</a></td>"
                     "</tr>"
                 )
-            group_html += f"""
+            out += f"""
               <div class="divider"></div>
               <div style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
                 <h3 style="margin:0;">{_esc(ak)}</h3>
@@ -2618,6 +2738,11 @@ def prompts_ui(
                       <th>Model</th>
                       <th>Active</th>
                       <th>Updated</th>
+                      <th>Last used (UTC)</th>
+                      <th class="right">In</th>
+                      <th class="right">Out</th>
+                      <th class="right">Total</th>
+                      <th class="right">Cost</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2627,14 +2752,18 @@ def prompts_ui(
                 </table>
               </div>
             """.strip()
+        return out
+
+    required_html = _build_group_html(rows_required)
+    other_html = _build_group_html(rows_other)
 
     missing_html = ""
-    if missing_required:
-        items = "".join(f"<li><code>{_esc(r['prompt_key'])}</code> <span class=\"muted\">— {_esc(r.get('natural_name') or r.get('name') or '')}</span></li>" for r in missing_required)
+    if missing_required_keys:
+        items = "".join(f"<li><code>{_esc(k)}</code></li>" for k in missing_required_keys)
         missing_html = f"""
         <div class="card">
-          <h2>Missing required prompts</h2>
-          <div class="muted">These prompts are referenced by the codebase and should exist in the DB.</div>
+          <h2>Required prompts missing</h2>
+          <div class="muted">These should be auto-created on startup. If this persists, the startup reconcile may have failed.</div>
           <ul style="margin: 10px 0 0 18px; padding: 0;">{items}</ul>
         </div>
         """.strip()
@@ -2642,51 +2771,45 @@ def prompts_ui(
     body_html = f"""
       <div class="card">
         <h1>Prompts</h1>
-        <p class="muted">Central place to review and edit prompts. Every save writes an audit log (UTC timestamp + user + note).</p>
+        <p class="muted">Read-only inventory of prompts used by the system, plus per-prompt token/cost tracking. Prompt edits are handled via the API and logged.</p>
         <div class="btnrow">
-          <button id="btnSeed" class="btn" type="button" {'disabled' if not can_edit else ''}>Seed defaults</button>
+          <a class="btn" href="/usage/ui">View usage log</a>
           <a class="btn" href="/prompts/log/ui">View change log</a>
         </div>
-        <div id="seedStatus" class="statusbox mono" style="display:none;"></div>
       </div>
 
       {missing_html}
 
       <div class="card">
-        <h2>Prompt inventory</h2>
-        <div class="muted">Grouped by <code>app_key</code> and <code>workflow</code>.</div>
+        <h2>Used prompts</h2>
+        <div class="muted">Grouped by <code>app_key</code> and <code>workflow</code>. Token totals are cumulative across all runs.</div>
         <div class="section">
-          {group_html}
+          {required_html or '<div class="muted">No required prompts found.</div>'}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="btnrow" style="justify-content:space-between;">
+          <h2 style="margin:0;">All prompts (advanced)</h2>
+          <button id="btnToggleAll" class="btn" type="button">Show</button>
+        </div>
+        <div id="allPrompts" style="display:none;">
+          <div class="muted">Includes legacy/unused prompts stored in the DB.</div>
+          <div class="section">
+            {other_html or '<div class="muted">No other prompts.</div>'}
+          </div>
         </div>
       </div>
     """.strip()
 
     script = f"""
     <script>
-      const btn = document.getElementById('btnSeed');
-      const status = document.getElementById('seedStatus');
-      function show(msg) {{ status.style.display = 'block'; status.textContent = msg; }}
-
-      btn && btn.addEventListener('click', async () => {{
-        btn.disabled = true;
-        show('Seeding…');
-        try {{
-          const res = await fetch('/prompts/seed', {{ method: 'POST', headers: {{ 'Content-Type': 'application/json' }} }});
-          const body = await res.json().catch(() => ({{}}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-          const created = (body.created || []);
-          const updated = (body.updated || []);
-          const skipped = (body.skipped || []);
-          let msg = '';
-          if (created.length) msg += 'Created: ' + created.join(', ') + '\\n';
-          if (updated.length) msg += 'Updated: ' + updated.join(', ') + '\\n';
-          if (skipped.length) msg += 'Skipped: ' + skipped.join(', ');
-          show(msg.trim() || 'Done.');
-          setTimeout(() => window.location.reload(), 700);
-        }} catch (e) {{
-          show('Error: ' + String(e.message || e));
-          btn.disabled = false;
-        }}
+      const btnToggle = document.getElementById('btnToggleAll');
+      const all = document.getElementById('allPrompts');
+      btnToggle && btnToggle.addEventListener('click', () => {{
+        const open = all.style.display !== 'none';
+        all.style.display = open ? 'none' : 'block';
+        btnToggle.textContent = open ? 'Show' : 'Hide';
       }});
     </script>
     """.strip()
@@ -2702,7 +2825,8 @@ def prompts_edit_ui(
 ) -> str:
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
     key = _require_prompt_key(prompt_key)
-    can_edit = _role_ge(str(user.get("role") or ""), required="editor")
+    allow_ui_editing = os.environ.get("PROMPTS_UI_EDITING", "").strip().lower() in {"1", "true", "yes", "on", "enabled"}
+    can_edit = allow_ui_editing and _role_ge(str(user.get("role") or ""), required="editor")
 
     prompt = None
     try:
@@ -2728,6 +2852,7 @@ def prompts_edit_ui(
       <div class="card">
         <h1>Prompt details</h1>
         <p class="muted">Key: <code>{_esc(p.get('prompt_key') or '')}</code></p>
+        <p class="muted">This page is read-only by default. To enable editing, set <code>PROMPTS_UI_EDITING=enabled</code> and use an editor/admin account.</p>
         <div class="btnrow">
           <a class="btn" href="/prompts/ui">Back to prompts</a>
           <a class="btn" href="/prompts/log/ui?prompt_key={_esc(p.get('prompt_key') or '')}">View log</a>
@@ -3603,9 +3728,13 @@ def _auto_generate_one(
     *,
     location_query: str,
     force_refresh: bool,
-) -> tuple[dict[str, Any], dict[str, int], str, dict[str, int], str]:
+) -> tuple[dict[str, Any], dict[str, int], str, dict[str, int], str, dict[str, int], str]:
     """
-    Returns (result, perplexity_token_totals, perplexity_model, openai_token_totals, openai_model).
+    Returns:
+      (result,
+       perplexity_token_totals, perplexity_model,
+       openai_weather_title_tokens, openai_weather_model,
+       openai_daylight_title_tokens, openai_daylight_model)
     """
     location_query = (location_query or "").strip()
     if not location_query:
@@ -3723,10 +3852,8 @@ def _auto_generate_one(
     year = datetime.now(timezone.utc).year
 
     # OpenAI chart titles/subtitles (optional; if OPENAI_API_KEY/prompt missing, this is a no-op).
-    openai_prompt = 0
-    openai_completion = 0
-    openai_total = 0
-    openai_model_used = ""
+    openai_weather_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    openai_weather_model_used = ""
 
     weather_title = ""
     weather_subtitle = ""
@@ -3776,15 +3903,19 @@ def _auto_generate_one(
                             )
                             weather_title = wt
                             weather_subtitle = wst
-                            openai_prompt += int(tok.get("prompt_tokens") or 0)
-                            openai_completion += int(tok.get("completion_tokens") or 0)
-                            openai_total += int(tok.get("total_tokens") or 0)
-                            openai_model_used = model or openai_model_used
+                            openai_weather_tokens = {
+                                "prompt_tokens": int(tok.get("prompt_tokens") or 0),
+                                "completion_tokens": int(tok.get("completion_tokens") or 0),
+                                "total_tokens": int(tok.get("total_tokens") or 0),
+                            }
+                            openai_weather_model_used = model or openai_weather_model_used
     except Exception:
         pass
 
     daylight_title = ""
     daylight_subtitle = ""
+    openai_daylight_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    openai_daylight_model_used = ""
     try:
         with _connect() as conn:
             with conn.cursor() as cur:
@@ -3820,10 +3951,12 @@ def _auto_generate_one(
                     )
                     daylight_title = dt
                     daylight_subtitle = dst
-                    openai_prompt += int(tok.get("prompt_tokens") or 0)
-                    openai_completion += int(tok.get("completion_tokens") or 0)
-                    openai_total += int(tok.get("total_tokens") or 0)
-                    openai_model_used = model or openai_model_used
+                    openai_daylight_tokens = {
+                        "prompt_tokens": int(tok.get("prompt_tokens") or 0),
+                        "completion_tokens": int(tok.get("completion_tokens") or 0),
+                        "total_tokens": int(tok.get("total_tokens") or 0),
+                    }
+                    openai_daylight_model_used = model or openai_daylight_model_used
     except Exception:
         pass
 
@@ -3843,8 +3976,15 @@ def _auto_generate_one(
         "year": year,
         "generated": {"weather": generated_weather, "daylight": generated_daylight},
     }
-    openai_tokens = {"prompt_tokens": openai_prompt, "completion_tokens": openai_completion, "total_tokens": openai_total}
-    return result, perplexity_tokens, perplexity_model, openai_tokens, openai_model_used
+    return (
+        result,
+        perplexity_tokens,
+        perplexity_model,
+        openai_weather_tokens,
+        openai_weather_model_used,
+        openai_daylight_tokens,
+        openai_daylight_model_used,
+    )
 
 
 @app.post("/weather/auto")
@@ -3876,23 +4016,31 @@ def auto_weather_batch(
     perplexity_completion = 0
     perplexity_total = 0
     perplexity_model = ""
-    openai_prompt = 0
-    openai_completion = 0
-    openai_total = 0
-    openai_model = ""
+    openai_weather_prompt = 0
+    openai_weather_completion = 0
+    openai_weather_total = 0
+    openai_weather_model = ""
+    openai_daylight_prompt = 0
+    openai_daylight_completion = 0
+    openai_daylight_total = 0
+    openai_daylight_model = ""
 
     for q in locations:
         try:
-            res, tok, model, otok, omodel = _auto_generate_one(location_query=q, force_refresh=body.force_refresh)
+            res, tok, model, wtok, wmodel, dtok, dmodel = _auto_generate_one(location_query=q, force_refresh=body.force_refresh)
             results.append(res)
             perplexity_prompt += int(tok.get("prompt_tokens") or 0)
             perplexity_completion += int(tok.get("completion_tokens") or 0)
             perplexity_total += int(tok.get("total_tokens") or 0)
             perplexity_model = model or perplexity_model
-            openai_prompt += int(otok.get("prompt_tokens") or 0)
-            openai_completion += int(otok.get("completion_tokens") or 0)
-            openai_total += int(otok.get("total_tokens") or 0)
-            openai_model = omodel or openai_model
+            openai_weather_prompt += int(wtok.get("prompt_tokens") or 0)
+            openai_weather_completion += int(wtok.get("completion_tokens") or 0)
+            openai_weather_total += int(wtok.get("total_tokens") or 0)
+            openai_weather_model = wmodel or openai_weather_model
+            openai_daylight_prompt += int(dtok.get("prompt_tokens") or 0)
+            openai_daylight_completion += int(dtok.get("completion_tokens") or 0)
+            openai_daylight_total += int(dtok.get("total_tokens") or 0)
+            openai_daylight_model = dmodel or openai_daylight_model
         except Exception as e:
             results.append({"ok": False, "location_query": q, "error": str(getattr(e, "detail", e))})
 
@@ -3906,6 +4054,9 @@ def auto_weather_batch(
             run_id=run_id,
             workflow=workflow,
             kind="auto_batch",
+            prompt_key="weather_normals_perplexity_v1",
+            app_key="weather",
+            prompt_workflow="weather",
             provider="perplexity",
             model=perplexity_model or os.environ.get("PERPLEXITY_MODEL", "").strip() or "unused",
             prompt_tokens=perplexity_prompt,
@@ -3923,10 +4074,32 @@ def auto_weather_batch(
             workflow=workflow,
             kind="auto_batch",
             provider="openai",
-            model=openai_model or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini",
-            prompt_tokens=openai_prompt,
-            completion_tokens=openai_completion,
-            total_tokens=openai_total,
+            prompt_key="weather_titles_openai_v1",
+            app_key="weather",
+            prompt_workflow="weather",
+            model=openai_weather_model or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini",
+            prompt_tokens=openai_weather_prompt,
+            completion_tokens=openai_weather_completion,
+            total_tokens=openai_weather_total,
+            locations_count=len(locations),
+            ok_count=ok_count,
+            fail_count=fail_count,
+        )
+    )
+
+    usage_rows.append(
+        _record_llm_usage(
+            run_id=run_id,
+            workflow=workflow,
+            kind="auto_batch",
+            provider="openai",
+            prompt_key="daylight_titles_openai_v1",
+            app_key="weather",
+            prompt_workflow="sunlight",
+            model=openai_daylight_model or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini",
+            prompt_tokens=openai_daylight_prompt,
+            completion_tokens=openai_daylight_completion,
+            total_tokens=openai_daylight_total,
             locations_count=len(locations),
             ok_count=ok_count,
             fail_count=fail_count,

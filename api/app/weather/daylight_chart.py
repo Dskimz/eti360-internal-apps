@@ -37,6 +37,80 @@ class DaylightInputs:
     timezone_id: str
 
 
+def compute_daylight_summary(*, inputs: DaylightInputs, year: int) -> dict[str, object]:
+    """
+    Compute a compact summary of daylight duration across the year.
+
+    This is intended for LLM prompting / UI display, not for scientific precision.
+    """
+    tz = ZoneInfo(inputs.timezone_id)
+    observer = Observer(latitude=inputs.lat, longitude=inputs.lng)
+
+    start = date(year, 1, 1)
+    end = date(year + 1, 1, 1)
+    days = (end - start).days
+
+    durations_min: list[float] = []
+    dates: list[date] = []
+    polar_day = 0
+    polar_night = 0
+
+    for i in range(days):
+        d = start + timedelta(days=i)
+        dates.append(d)
+        try:
+            sr_dt = sunrise(observer, date=d, tzinfo=tz)
+            ss_dt = sunset(observer, date=d, tzinfo=tz)
+            sr_m = _minutes_since_midnight(sr_dt)
+            ss_m = _minutes_since_midnight(ss_dt)
+            dur = ss_m - sr_m
+            if dur < 0:
+                dur += 24 * 60.0
+            durations_min.append(float(dur))
+        except ValueError as e:
+            msg = str(e).lower()
+            if "never rises" in msg or "always below the horizon" in msg:
+                polar_night += 1
+                durations_min.append(0.0)
+                continue
+            if "never sets" in msg or "always above the horizon" in msg:
+                polar_day += 1
+                durations_min.append(24 * 60.0)
+                continue
+            durations_min.append(float("nan"))
+
+    finite = [(i, m) for i, m in enumerate(durations_min) if m == m]  # NaN check
+    if not finite:
+        return {
+            "display_name": inputs.display_name,
+            "timezone_id": inputs.timezone_id,
+            "lat": inputs.lat,
+            "lng": inputs.lng,
+            "year": year,
+            "note": "No finite daylight durations computed",
+        }
+
+    max_i, max_m = max(finite, key=lambda t: t[1])
+    min_i, min_m = min(finite, key=lambda t: t[1])
+
+    max_h = round(max_m / 60.0, 2)
+    min_h = round(min_m / 60.0, 2)
+    return {
+        "display_name": inputs.display_name,
+        "timezone_id": inputs.timezone_id,
+        "lat": inputs.lat,
+        "lng": inputs.lng,
+        "year": year,
+        "daylight_max_hours": max_h,
+        "daylight_min_hours": min_h,
+        "daylight_range_hours": round(max_h - min_h, 2),
+        "daylight_max_date": dates[max_i].isoformat(),
+        "daylight_min_date": dates[min_i].isoformat(),
+        "polar_day_count": polar_day,
+        "polar_night_count": polar_night,
+    }
+
+
 def _month_midpoints(year: int) -> list[tuple[int, str]]:
     out: list[tuple[int, str]] = []
     year_start = date(year, 1, 1)
@@ -380,4 +454,3 @@ def render_daylight_chart(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=160, bbox_inches="tight")
-

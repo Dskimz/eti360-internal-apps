@@ -20,8 +20,9 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.weather.perplexity import fetch_monthly_weather_normals
-from app.weather.daylight_chart import DaylightInputs, render_daylight_chart
+from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
+from app.weather.openai_chat import OpenAIResult, chat_json
 from app.weather.s3 import get_s3_config, presign_get, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
@@ -400,6 +401,7 @@ def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
               prompt_key TEXT NOT NULL UNIQUE,
               name TEXT NOT NULL DEFAULT '',
+              natural_name TEXT NOT NULL DEFAULT '',
               description TEXT NOT NULL DEFAULT '',
               provider TEXT NOT NULL DEFAULT '',
               model TEXT NOT NULL DEFAULT '',
@@ -411,6 +413,7 @@ def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
             """
         ).strip()
     )
+    cur.execute(_prompts_schema('ALTER TABLE "__SCHEMA__".prompts ADD COLUMN IF NOT EXISTS natural_name TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompts_updated_at_idx ON "__SCHEMA__".prompts(updated_at DESC);'))
 
     cur.execute(
@@ -437,6 +440,101 @@ def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
     )
     cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompt_revisions_key_idx ON "__SCHEMA__".prompt_revisions(prompt_key, edited_at DESC);'))
     cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompt_revisions_edited_at_idx ON "__SCHEMA__".prompt_revisions(edited_at DESC);'))
+
+
+def _get_prompt_record(*, prompt_key: str) -> dict[str, str] | None:
+    key = _require_prompt_key(prompt_key)
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_prompts_tables(cur)
+            cur.execute(
+                _prompts_schema(
+                    """
+                    SELECT prompt_key, provider, model, prompt_text
+                    FROM "__SCHEMA__".prompts
+                    WHERE prompt_key=%s AND is_active=TRUE
+                    LIMIT 1;
+                    """
+                ),
+                (key,),
+            )
+            row = cur.fetchone()
+    if not row:
+        return None
+    k, provider, model, text = row
+    return {
+        "prompt_key": str(k),
+        "provider": str(provider or "").strip(),
+        "model": str(model or "").strip(),
+        "prompt_text": str(text or ""),
+    }
+
+
+def _format_prompt_template(template: str, **kwargs: str) -> str:
+    out = str(template or "")
+    for k, v in kwargs.items():
+        out = out.replace("{" + k + "}", str(v))
+    return out
+
+
+def _weather_summary(*, monthly: list[MonthlyWeather]) -> dict[str, Any]:
+    highs = [float(m.high_c) for m in monthly]
+    lows = [float(m.low_c) for m in monthly]
+    precip = [float(m.precip_cm) for m in monthly]
+    if len(highs) != 12 or len(lows) != 12 or len(precip) != 12:
+        return {"note": "Expected 12 months"}
+
+    hi_i = max(range(12), key=lambda i: highs[i])
+    lo_i = min(range(12), key=lambda i: lows[i])
+    wet_i = max(range(12), key=lambda i: precip[i])
+    dry_i = min(range(12), key=lambda i: precip[i])
+
+    return {
+        "warmest_month": {"month": monthly[hi_i].month, "high_c": round(highs[hi_i], 1), "low_c": round(lows[hi_i], 1), "precip_cm": round(precip[hi_i], 2)},
+        "coldest_month": {"month": monthly[lo_i].month, "high_c": round(highs[lo_i], 1), "low_c": round(lows[lo_i], 1), "precip_cm": round(precip[lo_i], 2)},
+        "wettest_month": {"month": monthly[wet_i].month, "precip_cm": round(precip[wet_i], 2)},
+        "driest_month": {"month": monthly[dry_i].month, "precip_cm": round(precip[dry_i], 2)},
+        "annual_high_range_c": round(max(highs) - min(highs), 1),
+        "annual_low_range_c": round(max(lows) - min(lows), 1),
+        "annual_precip_total_cm": round(sum(precip), 2),
+    }
+
+
+def _maybe_openai_title_subtitle(
+    *,
+    prompt_key: str,
+    display_name: str,
+    summary: dict[str, Any],
+) -> tuple[str, str, dict[str, int], str]:
+    """
+    Returns (title, subtitle, token_totals, model_used). Empty strings if OpenAI is not configured.
+    """
+    try:
+        rec = _get_prompt_record(prompt_key=prompt_key)
+        if not rec:
+            return "", "", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, ""
+        if rec.get("provider", "").lower() != "openai":
+            return "", "", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, ""
+
+        model = rec.get("model") or (os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini")
+        summary_json = json.dumps(summary, ensure_ascii=False)
+        prompt = _format_prompt_template(rec.get("prompt_text") or "", display_name=display_name, summary_json=summary_json)
+        r: OpenAIResult = chat_json(
+            model=model,
+            system="You are a careful data extraction assistant. Output JSON only.",
+            user=prompt,
+            temperature=0.2,
+        )
+        title = str((r.payload or {}).get("title") or "").strip()
+        subtitle = str((r.payload or {}).get("subtitle") or "").strip()
+        return (
+            title,
+            subtitle,
+            {"prompt_tokens": int(r.prompt_tokens), "completion_tokens": int(r.completion_tokens), "total_tokens": int(r.total_tokens)},
+            str(r.model or model),
+        )
+    except Exception:
+        return "", "", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, ""
 
 
 _UI_CSS = """
@@ -663,7 +761,9 @@ def _extract_model_float_list(obj: Any, key: str) -> list[float]:
     return out
 
 
-def _generate_weather_png_for_slug(*, location_slug: str, year: int) -> dict[str, Any]:
+def _generate_weather_png_for_slug(
+    *, location_slug: str, year: int, title_override: str | None = None, subtitle_override: str | None = None
+) -> dict[str, Any]:
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
     with _connect() as conn:
@@ -702,11 +802,14 @@ def _generate_weather_png_for_slug(*, location_slug: str, year: int) -> dict[str
 
     tmpdir = Path(tempfile.gettempdir())
     out_path = tmpdir / f"eti360-weather-{location_slug}-{year}.png"
+    title_used = (title_override or "").strip() or str(title)
+    subtitle_used = (subtitle_override or "").strip() or str(subtitle)
+
     render_weather_chart(
         project_root=Path("."),
         monthly=monthly,
-        title=str(title),
-        subtitle=str(subtitle),
+        title=str(title_used),
+        subtitle=str(subtitle_used),
         source_left=_source_left(str(src_label or "Source"), str(src_url or "")),
         output_path=out_path,
     )
@@ -730,7 +833,15 @@ def _generate_weather_png_for_slug(*, location_slug: str, year: int) -> dict[str
         conn.commit()
 
     view_url = presign_get(region=cfg.region, bucket=cfg.bucket, key=key, expires_in=3600)
-    return {"ok": True, "asset_id": str(asset_id), "s3_bucket": cfg.bucket, "s3_key": key, "view_url": view_url}
+    return {
+        "ok": True,
+        "asset_id": str(asset_id),
+        "s3_bucket": cfg.bucket,
+        "s3_key": key,
+        "view_url": view_url,
+        "title": str(title_used),
+        "subtitle": str(subtitle_used),
+    }
 
 
 def _require_timezone_id(*, lat: float, lng: float) -> str:
@@ -749,7 +860,9 @@ def _require_timezone_id(*, lat: float, lng: float) -> str:
     return tzid
 
 
-def _generate_daylight_png_for_slug(*, location_slug: str, year: int) -> dict[str, Any]:
+def _generate_daylight_png_for_slug(
+    *, location_slug: str, year: int, title_override: str | None = None, subtitle_override: str | None = None
+) -> dict[str, Any]:
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
     with _connect() as conn:
@@ -776,8 +889,10 @@ def _generate_daylight_png_for_slug(*, location_slug: str, year: int) -> dict[st
     title_city = str(city or "").strip() or location_slug
     title_country = str(country or "").strip()
     display_name = f"{title_city}{', ' + title_country if title_country else ''}"
-    title = f"{year} Sun Graph for {display_name}"
-    subtitle = f"Rise/set times and twilight bands (nautical/civil) • {tzid}"
+    default_title = f"{year} Sun Graph for {display_name}"
+    default_subtitle = f"Rise/set times and twilight bands (nautical/civil) • {tzid}"
+    title = (title_override or "").strip() or default_title
+    subtitle = (subtitle_override or "").strip() or default_subtitle
     source_left = "Source: astral.readthedocs.io"
 
     tmpdir = Path(tempfile.gettempdir())
@@ -810,7 +925,15 @@ def _generate_daylight_png_for_slug(*, location_slug: str, year: int) -> dict[st
         conn.commit()
 
     view_url = presign_get(region=cfg.region, bucket=cfg.bucket, key=key, expires_in=3600)
-    return {"ok": True, "asset_id": str(asset_id), "s3_bucket": cfg.bucket, "s3_key": key, "view_url": view_url}
+    return {
+        "ok": True,
+        "asset_id": str(asset_id),
+        "s3_bucket": cfg.bucket,
+        "s3_key": key,
+        "view_url": view_url,
+        "title": str(title),
+        "subtitle": str(subtitle),
+    }
 
 
 def _create_run_id() -> str:
@@ -1685,6 +1808,7 @@ def admin_users_ui(
 class PromptUpsertIn(BaseModel):
     prompt_key: str = Field(..., min_length=1, max_length=64)
     name: str = ""
+    natural_name: str = ""
     description: str = ""
     provider: str = ""
     model: str = ""
@@ -1704,7 +1828,7 @@ def prompts_list(
             cur.execute(
                 _prompts_schema(
                     """
-                    SELECT prompt_key, name, description, provider, model, is_active, updated_at
+                    SELECT prompt_key, name, natural_name, description, provider, model, is_active, updated_at
                     FROM "__SCHEMA__".prompts
                     ORDER BY prompt_key ASC;
                     """
@@ -1716,13 +1840,14 @@ def prompts_list(
         {
             "prompt_key": str(k),
             "name": str(n or ""),
+            "natural_name": str(nn or ""),
             "description": str(d or ""),
             "provider": str(p or ""),
             "model": str(m or ""),
             "is_active": bool(a),
             "updated_at": ua.isoformat() if ua else None,
         }
-        for (k, n, d, p, m, a, ua) in rows
+        for (k, n, nn, d, p, m, a, ua) in rows
     ]
     return {"ok": True, "schema": _require_safe_ident("PROMPTS_SCHEMA", PROMPTS_SCHEMA), "prompts": prompts}
 
@@ -1764,6 +1889,7 @@ def _required_prompts() -> list[dict[str, str]]:
         {
             "prompt_key": "weather_normals_perplexity_v1",
             "name": "Weather normals (Perplexity)",
+            "natural_name": "Perplexity: monthly climate normals JSON",
             "description": "Fetch monthly climate normals (high/low °C, precip cm) as strict JSON.",
             "provider": "perplexity",
             "model": os.environ.get("PERPLEXITY_MODEL", "").strip() or "sonar-pro",
@@ -1774,12 +1900,73 @@ def _required_prompts() -> list[dict[str, str]]:
             ),
         },
         {
-            "prompt_key": "chart_titles_openai_v1",
-            "name": "Chart titles (OpenAI)",
-            "description": "Generate human-friendly chart title/subtitle for PNGs (not yet wired).",
+            "prompt_key": "weather_titles_openai_v1",
+            "name": "Weather chart title/subtitle (OpenAI)",
+            "natural_name": "OpenAI: weather PNG title + subtitle",
+            "description": "Create a concise title and subtitle for the weather chart PNG.",
             "provider": "openai",
             "model": os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
-            "prompt_text": "Placeholder (not yet wired). Provide a short title and subtitle based on location + data.",
+            "prompt_text": """
+Return ONLY a single JSON object (no markdown) with keys: {"title": "...", "subtitle": "..."}.
+
+Title rules:
+- must include the city name
+- max 12 words
+- sentence case, no trailing period
+- describe the primary climate pattern (not chart mechanics)
+
+Subtitle rules:
+- max 14 words
+- one clause only
+- plain, non-technical language
+- neutral and factual
+- MUST support the title but reference a different observable aspect than the title
+- Failure test: if subtitle is a paraphrase of the title, rewrite it
+
+Input:
+- location: {display_name}
+- summary: {summary_json}
+""".strip(),
+        },
+        {
+            "prompt_key": "daylight_titles_openai_v1",
+            "name": "Daylight chart title/subtitle (OpenAI)",
+            "natural_name": "OpenAI: sunlight PNG title + subtitle",
+            "description": "Write a title and subtitle for an annual daylight chart based on computed daylight summary.",
+            "provider": "openai",
+            "model": os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
+            "prompt_text": """
+Return ONLY a single JSON object (no markdown) with keys: {"title": "string", "subtitle": "string"}.
+
+Task: Write a title and subtitle for an annual daylight chart.
+Location: {display_name}
+
+Analysis guidance:
+- intent: Identify the dominant annual daylight story shown by the data.
+- insight hierarchy:
+  1) Magnitude of daylight variation across the year
+  2) Presence of extreme summer or winter day lengths
+  3) Rate and symmetry of seasonal transitions
+- selection rule: Choose one primary daylight insight. Do not combine multiple stories.
+
+Title rules:
+- must include city name
+- max 12 words
+- sentence case, no trailing period
+- intent: state the primary annual daylight pattern visible in the data, not chart mechanics
+
+Subtitle rules:
+- max 14 words
+- one clause only
+- no mechanics
+- allowed support dimensions: seasonal range, duration of extremes, timing of peak/min daylight, rate of change
+- dimension rule: Subtitle must reference a different observable aspect than the title while supporting the same insight
+- failure test: If subtitle paraphrases title or could be removed without loss of clarity, rewrite it
+
+Avoid terms (do not use these words): sunrise, sunset, rise/set, chart, graph, twilight
+
+Summary (computed): {summary_json}
+""".strip(),
         },
     ]
 
@@ -1826,12 +2013,20 @@ def prompts_seed(
                 cur.execute(
                     _prompts_schema(
                         """
-                        INSERT INTO "__SCHEMA__".prompts (prompt_key, name, description, provider, model, prompt_text)
-                        VALUES (%s,%s,%s,%s,%s,%s)
+                        INSERT INTO "__SCHEMA__".prompts (prompt_key, name, natural_name, description, provider, model, prompt_text)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s)
                         RETURNING id;
                         """
                     ),
-                    (key, r["name"], r["description"], r["provider"], r["model"], r["prompt_text"]),
+                    (
+                        key,
+                        str(r.get("name") or ""),
+                        str(r.get("natural_name") or ""),
+                        str(r.get("description") or ""),
+                        str(r.get("provider") or ""),
+                        str(r.get("model") or ""),
+                        str(r.get("prompt_text") or ""),
+                    ),
                 )
                 (pid,) = cur.fetchone()  # type: ignore[misc]
                 cur.execute(
@@ -1843,7 +2038,20 @@ def prompts_seed(
                         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
                         """
                     ),
-                    (pid, key, user_id_uuid, username, role, "Seed default prompt", "", r["prompt_text"], "", r["provider"], "", r["model"]),
+                    (
+                        pid,
+                        key,
+                        user_id_uuid,
+                        username,
+                        role,
+                        "Seed default prompt",
+                        "",
+                        str(r.get("prompt_text") or ""),
+                        "",
+                        str(r.get("provider") or ""),
+                        "",
+                        str(r.get("model") or ""),
+                    ),
                 )
                 created.append(key)
         conn.commit()
@@ -1865,7 +2073,7 @@ def prompts_get(
             cur.execute(
                 _prompts_schema(
                     """
-                    SELECT id, prompt_key, name, description, provider, model, prompt_text, is_active, created_at, updated_at
+                    SELECT id, prompt_key, name, natural_name, description, provider, model, prompt_text, is_active, created_at, updated_at
                     FROM "__SCHEMA__".prompts
                     WHERE prompt_key=%s
                     LIMIT 1;
@@ -1877,13 +2085,14 @@ def prompts_get(
     if not row:
         raise HTTPException(status_code=404, detail="Prompt not found")
 
-    (pid, k, name, desc, provider, model, text, is_active, created_at, updated_at) = row
+    (pid, k, name, natural_name, desc, provider, model, text, is_active, created_at, updated_at) = row
     return {
         "ok": True,
         "prompt": {
             "id": str(pid),
             "prompt_key": str(k),
             "name": str(name or ""),
+            "natural_name": str(natural_name or ""),
             "description": str(desc or ""),
             "provider": str(provider or ""),
             "model": str(model or ""),
@@ -1949,12 +2158,13 @@ def prompts_upsert(
                     _prompts_schema(
                         """
                         UPDATE "__SCHEMA__".prompts
-                        SET name=%s, description=%s, provider=%s, model=%s, prompt_text=%s, updated_at=now()
+                        SET name=%s, natural_name=%s, description=%s, provider=%s, model=%s, prompt_text=%s, updated_at=now()
                         WHERE id=%s;
                         """
                     ),
                     (
                         (body.name or "").strip(),
+                        (body.natural_name or "").strip(),
                         (body.description or "").strip(),
                         (body.provider or "").strip(),
                         (body.model or "").strip(),
@@ -1966,14 +2176,15 @@ def prompts_upsert(
                 cur.execute(
                     _prompts_schema(
                         """
-                        INSERT INTO "__SCHEMA__".prompts (prompt_key, name, description, provider, model, prompt_text)
-                        VALUES (%s,%s,%s,%s,%s,%s)
+                        INSERT INTO "__SCHEMA__".prompts (prompt_key, name, natural_name, description, provider, model, prompt_text)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s)
                         RETURNING id;
                         """
                     ),
                     (
                         key,
                         (body.name or "").strip(),
+                        (body.natural_name or "").strip(),
                         (body.description or "").strip(),
                         (body.provider or "").strip(),
                         (body.model or "").strip(),
@@ -2070,200 +2281,249 @@ def prompts_log(
 @app.get("/prompts/ui", response_class=HTMLResponse)
 def prompts_ui(
     request: Request,
-    prompt_key: str = Query(default="", min_length=0),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> str:
-    user = _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
 
-    key = (prompt_key or "").strip().lower()
-    if key:
-        key = _require_prompt_key(key)
+    can_edit = _role_ge(str(user.get("role") or ""), required="editor")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_prompts_tables(cur)
+            cur.execute(
+                _prompts_schema(
+                    """
+                    SELECT prompt_key, natural_name, provider, model, is_active, updated_at
+                    FROM "__SCHEMA__".prompts
+                    ORDER BY prompt_key ASC;
+                    """
+                )
+            )
+            rows = cur.fetchall()
+
+    existing = {str(r[0]) for r in rows}
+    required = _required_prompts()
+    missing_required = [r for r in required if str(r.get("prompt_key") or "") not in existing]
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    table_rows = ""
+    for (k, natural_name, provider, model, is_active, updated_at) in rows:
+        key = str(k)
+        table_rows += (
+            "<tr>"
+            f"<td><code>{_esc(key)}</code></td>"
+            f"<td>{_esc(natural_name or '')}</td>"
+            f"<td class=\"muted\">{_esc(provider or '')}</td>"
+            f"<td class=\"muted\"><code>{_esc(model or '')}</code></td>"
+            f"<td>{'YES' if bool(is_active) else 'NO'}</td>"
+            f"<td class=\"muted\"><code>{_esc(updated_at.isoformat() if updated_at else '')}</code></td>"
+            f"<td><a class=\"btn\" href=\"/prompts/edit?prompt_key={_esc(key)}\">Details</a> <a class=\"btn\" href=\"/prompts/log/ui?prompt_key={_esc(key)}\">Log</a></td>"
+            "</tr>"
+        )
+    if not table_rows:
+        table_rows = '<tr><td colspan="7" class="muted">No prompts yet. Click “Seed defaults” to create the expected prompts.</td></tr>'
+
+    missing_html = ""
+    if missing_required:
+        items = "".join(f"<li><code>{_esc(r['prompt_key'])}</code> <span class=\"muted\">— {_esc(r.get('natural_name') or r.get('name') or '')}</span></li>" for r in missing_required)
+        missing_html = f"""
+        <div class="card">
+          <h2>Missing required prompts</h2>
+          <div class="muted">These prompts are referenced by the codebase and should exist in the DB.</div>
+          <ul style="margin: 10px 0 0 18px; padding: 0;">{items}</ul>
+        </div>
+        """.strip()
 
     body_html = f"""
       <div class="card">
         <h1>Prompts</h1>
-        <p class="muted">Review and edit prompts used by workflows. Every save writes an audit log (date/time/user/note).</p>
+        <p class="muted">Central place to review and edit prompts. Every save writes an audit log (UTC timestamp + user + note).</p>
+        <div class="btnrow">
+          <button id="btnSeed" class="btn" type="button" {'disabled' if not can_edit else ''}>Seed defaults</button>
+          <a class="btn" href="/prompts/log/ui">View change log</a>
+        </div>
+        <div id="seedStatus" class="statusbox mono" style="display:none;"></div>
       </div>
 
-      <div class="section grid-sidebar">
-        <div class="card">
-          <h2>Prompt list</h2>
-          <div class="muted">Prompts stored in the database.</div>
-          <div class="divider"></div>
-          <div id="promptList" class="muted">Loading…</div>
-          <div class="divider"></div>
-          <div class="muted">
-            <a href="/prompts/log/ui">Prompt log</a>
-            · <button id="btnSeed" class="btn" type="button">Seed defaults</button>
-          </div>
-        </div>
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
-            <h2>Edit</h2>
-            <span id="rolePill" class="pill">Viewer</span>
-          </div>
-          <div class="divider"></div>
-          <div id="editor" class="muted">Select a prompt.</div>
+      {missing_html}
+
+      <div class="card">
+        <h2>Prompt inventory</h2>
+        <div class="muted">This table is the source of truth for prompts used by workflows.</div>
+        <div class="section tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Natural name</th>
+                <th>Provider</th>
+                <th>Model</th>
+                <th>Active</th>
+                <th>Updated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {table_rows}
+            </tbody>
+          </table>
         </div>
       </div>
     """.strip()
 
     script = f"""
     <script>
-      const promptListEl = document.getElementById('promptList');
-      const editorEl = document.getElementById('editor');
-      const rolePill = document.getElementById('rolePill');
-      const btnSeed = document.getElementById('btnSeed');
-      const selectedKey = {json.dumps(key)};
+      const btn = document.getElementById('btnSeed');
+      const status = document.getElementById('seedStatus');
+      function show(msg) {{ status.style.display = 'block'; status.textContent = msg; }}
 
-      function esc(s) {{
-        return String(s || '')
-          .replaceAll('&','&amp;')
-          .replaceAll('<','&lt;')
-          .replaceAll('>','&gt;')
-          .replaceAll('"','&quot;')
-          .replaceAll(\"'\",'&#39;');
-      }}
-
-      function canEdit(role) {{
-        role = String(role || '').toLowerCase();
-        return role === 'admin' || role === 'editor' || role === 'account_manager';
-      }}
-
-      const role = {json.dumps((user or {}).get('role') if isinstance(user, dict) else '')};
-      rolePill.textContent = role ? role : 'viewer';
-
-      btnSeed.addEventListener('click', async () => {{
-        btnSeed.disabled = true;
-        btnSeed.textContent = 'Seeding…';
+      btn && btn.addEventListener('click', async () => {{
+        btn.disabled = true;
+        show('Seeding…');
         try {{
           const res = await fetch('/prompts/seed', {{ method: 'POST', headers: {{ 'Content-Type': 'application/json' }} }});
           const body = await res.json().catch(() => ({{}}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-          btnSeed.textContent = 'Seeded';
-          setTimeout(() => window.location.reload(), 500);
+          show('Created: ' + (body.created || []).join(', ') + (body.skipped?.length ? '\\nSkipped: ' + body.skipped.join(', ') : ''));
+          setTimeout(() => window.location.reload(), 700);
         }} catch (e) {{
-          btnSeed.textContent = 'Seed defaults';
-          alert('Error: ' + String(e.message || e));
-        }} finally {{
-          btnSeed.disabled = false;
+          show('Error: ' + String(e.message || e));
+          btn.disabled = false;
         }}
       }});
-
-      async function loadList() {{
-        try {{
-          const res = await fetch('/prompts', {{ headers: {{ 'Content-Type': 'application/json' }} }});
-          const body = await res.json().catch(() => ({{}}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-          const prompts = body.prompts || [];
-          const ul = document.createElement('ul');
-          ul.style.margin = '10px 0 0 18px';
-          ul.style.padding = '0';
-          if (!prompts.length) {{
-            const li = document.createElement('li');
-            li.className = 'muted';
-            li.textContent = 'No prompts yet. Click “Seed defaults”.';
-            ul.appendChild(li);
-          }}
-          for (const p of prompts) {{
-            const k = String(p.prompt_key || '');
-            const li = document.createElement('li');
-            li.style.margin = '6px 0';
-            const active = (k === selectedKey);
-            li.innerHTML = `<a href="/prompts/ui?prompt_key=${{encodeURIComponent(k)}}">${{esc(k)}}</a>` +
-              (p.name ? ` <span class="muted">— ${{esc(p.name)}}</span>` : '') +
-              (active ? ' <span class="pill">selected</span>' : '');
-            ul.appendChild(li);
-          }}
-          promptListEl.innerHTML = '';
-          promptListEl.appendChild(ul);
-        }} catch (e) {{
-          promptListEl.innerHTML = '<div class="muted">Error: ' + esc(e.message || e) + '</div>';
-        }}
-      }}
-
-      async function loadPrompt(key) {{
-        if (!key) return;
-        try {{
-          const res = await fetch('/prompts/item/' + encodeURIComponent(key), {{ headers: {{ 'Content-Type': 'application/json' }} }});
-          const body = await res.json().catch(() => ({{}}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-          const p = body.prompt || {{}};
-
-          const editable = canEdit(role);
-
-          editorEl.innerHTML = `
-            <div class="muted">Key: <code>${{esc(p.prompt_key)}}</code></div>
-            <div style="height:10px;"></div>
-            <label>Name</label>
-            <input id="name" type="text" value="${{esc(p.name)}}" ${{editable ? '' : 'disabled'}} />
-            <div style="height:10px;"></div>
-            <label>Description</label>
-            <input id="desc" type="text" value="${{esc(p.description)}}" ${{editable ? '' : 'disabled'}} />
-            <div style="height:10px;"></div>
-            <label>Provider</label>
-            <input id="provider" type="text" value="${{esc(p.provider)}}" placeholder="perplexity / openai" ${{editable ? '' : 'disabled'}} />
-            <div style="height:10px;"></div>
-            <label>Model</label>
-            <input id="model" type="text" value="${{esc(p.model)}}" placeholder="sonar-pro / gpt-4o-mini" ${{editable ? '' : 'disabled'}} />
-            <div style="height:10px;"></div>
-            <label>Prompt text</label>
-            <textarea id="text" class="mono" ${{editable ? '' : 'disabled'}}>${{esc(p.prompt_text)}}</textarea>
-            <div style="height:10px;"></div>
-            <label>Change note</label>
-            <input id="note" type="text" value="" placeholder="What changed and why?" ${{editable ? '' : 'disabled'}} />
-            <div class="btnrow">
-              <button id="btnSave" class="btn primary" type="button" ${{editable ? '' : 'disabled'}}>Save</button>
-              <a class="btn" href="/prompts/log/ui?prompt_key=${{encodeURIComponent(p.prompt_key || '')}}">View log</a>
-            </div>
-            <div id="status" class="statusbox mono" style="display:none;"></div>
-          `;
-
-          if (!editable) {{
-            editorEl.querySelector('.pill').textContent = 'Read-only';
-          }}
-
-          const btn = document.getElementById('btnSave');
-          if (btn) {{
-            btn.addEventListener('click', async () => {{
-              const payload = {{
-                prompt_key: String(p.prompt_key || ''),
-                name: String(document.getElementById('name').value || ''),
-                description: String(document.getElementById('desc').value || ''),
-                provider: String(document.getElementById('provider').value || ''),
-                model: String(document.getElementById('model').value || ''),
-                prompt_text: String(document.getElementById('text').value || ''),
-                change_note: String(document.getElementById('note').value || '').trim() || 'Update prompt'
-              }};
-              const status = document.getElementById('status');
-              status.style.display = 'block';
-              status.textContent = 'Saving…';
-              try {{
-                const res2 = await fetch('/prompts/item/' + encodeURIComponent(payload.prompt_key), {{
-                  method: 'POST',
-                  headers: {{ 'Content-Type': 'application/json' }},
-                  body: JSON.stringify(payload)
-                }});
-                const body2 = await res2.json().catch(() => ({{}}));
-                if (!res2.ok) throw new Error(body2.detail || `HTTP ${{res2.status}}`);
-                status.textContent = 'Saved. ' + (body2.note || '');
-                setTimeout(() => window.location.reload(), 600);
-              }} catch (e2) {{
-                status.textContent = 'Error: ' + String(e2.message || e2);
-              }}
-            }});
-          }}
-        }} catch (e) {{
-          editorEl.innerHTML = '<div class="muted">Error: ' + esc(e.message || e) + '</div>';
-        }}
-      }}
-
-      loadList();
-      if (selectedKey) loadPrompt(selectedKey);
     </script>
     """.strip()
 
     return _ui_shell(title="ETI360 Prompts", active="apps", body_html=body_html, max_width_px=1400, user=user, extra_script=script)
+
+
+@app.get("/prompts/edit", response_class=HTMLResponse)
+def prompts_edit_ui(
+    request: Request,
+    prompt_key: str = Query(..., min_length=1),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    key = _require_prompt_key(prompt_key)
+    can_edit = _role_ge(str(user.get("role") or ""), required="editor")
+
+    prompt = None
+    try:
+        prompt = prompts_get(prompt_key=key, request=request, x_api_key=x_api_key).get("prompt")
+    except Exception:
+        prompt = None
+    if not isinstance(prompt, dict):
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    p = prompt
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    body_html = f"""
+      <div class="card">
+        <h1>Prompt details</h1>
+        <p class="muted">Key: <code>{_esc(p.get('prompt_key') or '')}</code></p>
+        <div class="btnrow">
+          <a class="btn" href="/prompts/ui">Back to prompts</a>
+          <a class="btn" href="/prompts/log/ui?prompt_key={_esc(p.get('prompt_key') or '')}">View log</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <form id="form">
+          <label>Natural language name (human)</label>
+          <input id="natural_name" type="text" value="{_esc(p.get('natural_name') or '')}" {'disabled' if not can_edit else ''} />
+          <div style="height:12px;"></div>
+
+          <label>Name (system)</label>
+          <input id="name" type="text" value="{_esc(p.get('name') or '')}" {'disabled' if not can_edit else ''} />
+          <div style="height:12px;"></div>
+
+          <label>Description</label>
+          <input id="description" type="text" value="{_esc(p.get('description') or '')}" {'disabled' if not can_edit else ''} />
+          <div style="height:12px;"></div>
+
+          <label>Provider</label>
+          <input id="provider" type="text" value="{_esc(p.get('provider') or '')}" placeholder="perplexity / openai" {'disabled' if not can_edit else ''} />
+          <div style="height:12px;"></div>
+
+          <label>Model</label>
+          <input id="model" type="text" value="{_esc(p.get('model') or '')}" placeholder="sonar-pro / gpt-4o-mini" {'disabled' if not can_edit else ''} />
+          <div style="height:12px;"></div>
+
+          <label>Prompt text</label>
+          <textarea id="prompt_text" class="mono" {'disabled' if not can_edit else ''}>{_esc(p.get('prompt_text') or '')}</textarea>
+          <div style="height:12px;"></div>
+
+          <label>Change note</label>
+          <input id="change_note" type="text" placeholder="What changed and why?" {'disabled' if not can_edit else ''} />
+
+          <div class="btnrow">
+            <button id="btnSave" class="btn primary" type="button" {'disabled' if not can_edit else ''}>Save</button>
+          </div>
+
+          <div id="status" class="statusbox mono" style="display:none;"></div>
+        </form>
+      </div>
+    """.strip()
+
+    script = f"""
+    <script>
+      const canEdit = {json.dumps(bool(can_edit))};
+      const status = document.getElementById('status');
+      const btnSave = document.getElementById('btnSave');
+      function show(msg) {{ status.style.display = 'block'; status.textContent = msg; }}
+
+      btnSave && btnSave.addEventListener('click', async () => {{
+        if (!canEdit) return;
+        btnSave.disabled = true;
+        show('Saving…');
+        const payload = {{
+          prompt_key: {json.dumps(key)},
+          natural_name: String(document.getElementById('natural_name').value || ''),
+          name: String(document.getElementById('name').value || ''),
+          description: String(document.getElementById('description').value || ''),
+          provider: String(document.getElementById('provider').value || ''),
+          model: String(document.getElementById('model').value || ''),
+          prompt_text: String(document.getElementById('prompt_text').value || ''),
+          change_note: String(document.getElementById('change_note').value || '').trim() || 'Update prompt'
+        }};
+        try {{
+          const res = await fetch('/prompts/item/' + encodeURIComponent(payload.prompt_key), {{
+            method: 'POST',
+            headers: {{ 'Content-Type': 'application/json' }},
+            body: JSON.stringify(payload)
+          }});
+          const body = await res.json().catch(() => ({{}}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
+          show('Saved.');
+          setTimeout(() => window.location.href = '/prompts/ui', 600);
+        }} catch (e) {{
+          show('Error: ' + String(e.message || e));
+          btnSave.disabled = false;
+        }}
+      }});
+    </script>
+    """.strip()
+
+    return _ui_shell(title="ETI360 Prompt Details", active="apps", body_html=body_html, max_width_px=1100, user=user, extra_script=script)
 
 
 @app.get("/prompts/log/ui", response_class=HTMLResponse)
@@ -3045,9 +3305,9 @@ def _auto_generate_one(
     *,
     location_query: str,
     force_refresh: bool,
-) -> tuple[dict[str, Any], dict[str, int], str]:
+) -> tuple[dict[str, Any], dict[str, int], str, dict[str, int], str]:
     """
-    Returns (result, perplexity_token_totals, perplexity_model).
+    Returns (result, perplexity_token_totals, perplexity_model, openai_token_totals, openai_model).
     """
     location_query = (location_query or "").strip()
     if not location_query:
@@ -3163,8 +3423,118 @@ def _auto_generate_one(
         imported = True
 
     year = datetime.now(timezone.utc).year
-    generated_weather = _generate_weather_png_for_slug(location_slug=effective_slug, year=year)
-    generated_daylight = _generate_daylight_png_for_slug(location_slug=effective_slug, year=year)
+
+    # OpenAI chart titles/subtitles (optional; if OPENAI_API_KEY/prompt missing, this is a no-op).
+    openai_prompt = 0
+    openai_completion = 0
+    openai_total = 0
+    openai_model_used = ""
+
+    weather_title = ""
+    weather_subtitle = ""
+    try:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(_schema('SELECT id, city, country, lat, lng, timezone_id FROM "__SCHEMA__".locations WHERE location_slug=%s;'), (effective_slug,))
+                loc_row = cur.fetchone()
+                if loc_row:
+                    _loc_id, city, country, lat, lng, _tzid = loc_row
+                    display_name = str(city or "").strip() or effective_slug
+                    ctry = str(country or "").strip()
+                    if display_name and ctry:
+                        display_name = f"{display_name}, {ctry}"
+
+                    cur.execute(
+                        _schema(
+                            """
+                            SELECT d.id, d.title, d.subtitle, s.label, s.url
+                            FROM "__SCHEMA__".weather_datasets d
+                            LEFT JOIN "__SCHEMA__".weather_sources s ON s.id = d.source_id
+                            WHERE d.location_id=%s
+                            ORDER BY d.updated_at DESC
+                            LIMIT 1;
+                            """
+                        ),
+                        (_loc_id,),
+                    )
+                    ds = cur.fetchone()
+                    if ds:
+                        dataset_id, _t, _st, _sl, _su = ds
+                        cur.execute(
+                            _schema(
+                                'SELECT month, high_c, low_c, precip_cm FROM "__SCHEMA__".weather_monthly_normals WHERE dataset_id=%s ORDER BY month ASC;'
+                            ),
+                            (dataset_id,),
+                        )
+                        rows = cur.fetchall()
+                        if len(rows) == 12:
+                            monthly = [
+                                MonthlyWeather(month=MONTHS[int(m) - 1], high_c=float(h), low_c=float(l), precip_cm=float(p))
+                                for (m, h, l, p) in rows
+                            ]
+                            ws = _weather_summary(monthly=monthly)
+                            wt, wst, tok, model = _maybe_openai_title_subtitle(
+                                prompt_key="weather_titles_openai_v1", display_name=display_name, summary=ws
+                            )
+                            weather_title = wt
+                            weather_subtitle = wst
+                            openai_prompt += int(tok.get("prompt_tokens") or 0)
+                            openai_completion += int(tok.get("completion_tokens") or 0)
+                            openai_total += int(tok.get("total_tokens") or 0)
+                            openai_model_used = model or openai_model_used
+    except Exception:
+        pass
+
+    daylight_title = ""
+    daylight_subtitle = ""
+    try:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    _schema('SELECT id, city, country, lat, lng, timezone_id FROM "__SCHEMA__".locations WHERE location_slug=%s;'),
+                    (effective_slug,),
+                )
+                loc_row = cur.fetchone()
+                if loc_row:
+                    loc_id, city, country, lat, lng, tzid = loc_row
+                    lat_f = float(lat)
+                    lng_f = float(lng)
+                    tzid_s = str(tzid or "").strip()
+                    if not tzid_s:
+                        tzid_s = _require_timezone_id(lat=lat_f, lng=lng_f)
+                        cur.execute(
+                            _schema('UPDATE "__SCHEMA__".locations SET timezone_id=%s, updated_at=now() WHERE id=%s;'),
+                            (tzid_s, loc_id),
+                        )
+                        conn.commit()
+
+                    display_name = str(city or "").strip() or effective_slug
+                    ctry = str(country or "").strip()
+                    if display_name and ctry:
+                        display_name = f"{display_name}, {ctry}"
+
+                    ds = compute_daylight_summary(
+                        inputs=DaylightInputs(display_name=display_name, lat=lat_f, lng=lng_f, timezone_id=tzid_s),
+                        year=year,
+                    )
+                    dt, dst, tok, model = _maybe_openai_title_subtitle(
+                        prompt_key="daylight_titles_openai_v1", display_name=display_name, summary=ds
+                    )
+                    daylight_title = dt
+                    daylight_subtitle = dst
+                    openai_prompt += int(tok.get("prompt_tokens") or 0)
+                    openai_completion += int(tok.get("completion_tokens") or 0)
+                    openai_total += int(tok.get("total_tokens") or 0)
+                    openai_model_used = model or openai_model_used
+    except Exception:
+        pass
+
+    generated_weather = _generate_weather_png_for_slug(
+        location_slug=effective_slug, year=year, title_override=weather_title, subtitle_override=weather_subtitle
+    )
+    generated_daylight = _generate_daylight_png_for_slug(
+        location_slug=effective_slug, year=year, title_override=daylight_title, subtitle_override=daylight_subtitle
+    )
 
     result = {
         "ok": True,
@@ -3175,7 +3545,8 @@ def _auto_generate_one(
         "year": year,
         "generated": {"weather": generated_weather, "daylight": generated_daylight},
     }
-    return result, perplexity_tokens, perplexity_model
+    openai_tokens = {"prompt_tokens": openai_prompt, "completion_tokens": openai_completion, "total_tokens": openai_total}
+    return result, perplexity_tokens, perplexity_model, openai_tokens, openai_model_used
 
 
 @app.post("/weather/auto")
@@ -3207,15 +3578,23 @@ def auto_weather_batch(
     perplexity_completion = 0
     perplexity_total = 0
     perplexity_model = ""
+    openai_prompt = 0
+    openai_completion = 0
+    openai_total = 0
+    openai_model = ""
 
     for q in locations:
         try:
-            res, tok, model = _auto_generate_one(location_query=q, force_refresh=body.force_refresh)
+            res, tok, model, otok, omodel = _auto_generate_one(location_query=q, force_refresh=body.force_refresh)
             results.append(res)
             perplexity_prompt += int(tok.get("prompt_tokens") or 0)
             perplexity_completion += int(tok.get("completion_tokens") or 0)
             perplexity_total += int(tok.get("total_tokens") or 0)
             perplexity_model = model or perplexity_model
+            openai_prompt += int(otok.get("prompt_tokens") or 0)
+            openai_completion += int(otok.get("completion_tokens") or 0)
+            openai_total += int(otok.get("total_tokens") or 0)
+            openai_model = omodel or openai_model
         except Exception as e:
             results.append({"ok": False, "location_query": q, "error": str(getattr(e, "detail", e))})
 
@@ -3247,10 +3626,10 @@ def auto_weather_batch(
             workflow=workflow,
             kind="auto_batch",
             provider="openai",
-            model=os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
-            prompt_tokens=0,
-            completion_tokens=0,
-            total_tokens=0,
+            model=openai_model or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
+            prompt_tokens=openai_prompt,
+            completion_tokens=openai_completion,
+            total_tokens=openai_total,
             locations_count=len(locations),
             ok_count=ok_count,
             fail_count=fail_count,

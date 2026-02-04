@@ -7,15 +7,15 @@ import tempfile
 import uuid
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
-from hashlib import pbkdf2_hmac
+from hashlib import pbkdf2_hmac, sha256
 from pathlib import Path
 from secrets import token_bytes
 from typing import Any
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urlparse, quote
 from urllib.request import urlopen
 
 import psycopg
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -44,6 +44,7 @@ def _startup_reconcile() -> None:
             with conn.cursor() as cur:
                 _ensure_usage_tables(cur)
                 _ensure_prompts_tables(cur)
+                _ensure_documents_tables(cur)
             conn.commit()
         _reconcile_required_prompts(edited_by={"id": "startup", "username": "startup", "role": "admin"}, change_note="Startup reconcile")
     except Exception as e:
@@ -414,6 +415,75 @@ def _require_prompt_key(key: str) -> str:
     if not key or not _PROMPT_KEY_RE.match(key):
         raise HTTPException(status_code=400, detail="Invalid prompt key (use a-z, 0-9, _, -, max 64 chars)")
     return key
+
+
+_DOCS_FOLDER_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9/_\\-\\.]{0,255}$")
+
+
+def _require_docs_folder(folder: str) -> str:
+    folder = (folder or "").strip().strip("/")
+    if not folder:
+        return ""
+    if not _DOCS_FOLDER_RE.match(folder):
+        raise HTTPException(status_code=400, detail="Invalid folder (use letters/numbers, /, -, _, .)")
+    return folder
+
+
+def _docs_max_upload_bytes() -> int:
+    raw = os.environ.get("DOCS_MAX_UPLOAD_BYTES", "").strip()
+    try:
+        v = int(raw) if raw else 10 * 1024 * 1024
+    except Exception:
+        v = 10 * 1024 * 1024
+    return max(64 * 1024, min(v, 50 * 1024 * 1024))
+
+
+def _require_docs_status(status: str) -> str:
+    s = (status or "").strip().lower()
+    if not s:
+        return "future"
+    if s not in {"future", "in_progress", "finished"}:
+        raise HTTPException(status_code=400, detail="Invalid status (future, in_progress, finished)")
+    return s
+
+
+def _ensure_documents_tables(cur: psycopg.Cursor) -> None:
+    """
+    Store uploaded documents in Postgres (bytea) + metadata in ops schema.
+    """
+    cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+    cur.execute(_auth_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
+    cur.execute(
+        _auth_schema(
+            """
+            CREATE TABLE IF NOT EXISTS "__SCHEMA__".documents (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              folder TEXT NOT NULL DEFAULT '',
+              filename TEXT NOT NULL,
+              content_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+              bytes BIGINT NOT NULL DEFAULT 0,
+              sha256 TEXT NOT NULL DEFAULT '',
+              status TEXT NOT NULL DEFAULT 'future',
+              notes TEXT NOT NULL DEFAULT '',
+              uploaded_by_user_id UUID,
+              uploaded_by_username TEXT NOT NULL DEFAULT '',
+              created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+              content BYTEA NOT NULL
+            );
+            """
+        ).strip()
+    )
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS folder TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT \'future\';'))
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS uploaded_by_user_id UUID;'))
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS uploaded_by_username TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();'))
+    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();'))
+    cur.execute(_auth_schema('CREATE UNIQUE INDEX IF NOT EXISTS documents_folder_filename_uniq_idx ON "__SCHEMA__".documents(folder, filename);'))
+    cur.execute(_auth_schema('CREATE INDEX IF NOT EXISTS documents_updated_at_idx ON "__SCHEMA__".documents(updated_at DESC);'))
+    cur.execute(_auth_schema('CREATE INDEX IF NOT EXISTS documents_status_idx ON "__SCHEMA__".documents(status, updated_at DESC);'))
 
 
 def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
@@ -1700,6 +1770,11 @@ def apps_home(request: Request) -> str:
                 <td>Prompts</td>
                 <td class="muted">Review/edit prompts and audit prompt changes.</td>
                 <td><a href="/prompts/ui">Open</a></td>
+              </tr>
+              <tr>
+                <td>Documents</td>
+                <td class="muted">Upload/download project notes (stored in Postgres).</td>
+                <td><a href="/documents/ui">Open</a></td>
               </tr>
             </tbody>
           </table>
@@ -3042,6 +3117,438 @@ def prompts_log_ui(
     """.strip()
 
     return _ui_shell(title="ETI360 Prompt Log", active="apps", body_html=body_html, max_width_px=1400, user=user, extra_script=script)
+
+
+@app.get("/documents/list")
+def documents_list(
+    request: Request,
+    limit: int = Query(default=200, ge=1, le=2000),
+    folder: str = Query(default=""),
+    status: str = Query(default=""),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    folder_s = _require_docs_folder(folder)
+    status_s = (status or "").strip().lower()
+    if status_s:
+        status_s = _require_docs_status(status_s)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_documents_tables(cur)
+            if folder_s and status_s:
+                cur.execute(
+                    _auth_schema(
+                        """
+                        SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
+                        FROM "__SCHEMA__".documents
+                        WHERE folder=%s AND status=%s
+                        ORDER BY updated_at DESC
+                        LIMIT %s;
+                        """
+                    ),
+                    (folder_s, status_s, limit),
+                )
+            elif folder_s:
+                cur.execute(
+                    _auth_schema(
+                        """
+                        SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
+                        FROM "__SCHEMA__".documents
+                        WHERE folder=%s
+                        ORDER BY updated_at DESC
+                        LIMIT %s;
+                        """
+                    ),
+                    (folder_s, limit),
+                )
+            elif status_s:
+                cur.execute(
+                    _auth_schema(
+                        """
+                        SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
+                        FROM "__SCHEMA__".documents
+                        WHERE status=%s
+                        ORDER BY updated_at DESC
+                        LIMIT %s;
+                        """
+                    ),
+                    (status_s, limit),
+                )
+            else:
+                cur.execute(
+                    _auth_schema(
+                        """
+                        SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
+                        FROM "__SCHEMA__".documents
+                        ORDER BY updated_at DESC
+                        LIMIT %s;
+                        """
+                    ),
+                    (limit,),
+                )
+            rows = cur.fetchall()
+
+    docs = [
+        {
+            "id": str(i),
+            "folder": str(f or ""),
+            "filename": str(fn or ""),
+            "content_type": str(ct or ""),
+            "bytes": int(b or 0),
+            "sha256": str(h or ""),
+            "status": str(st or ""),
+            "notes": str(n or ""),
+            "uploaded_by": str(u or ""),
+            "created_at": ca.isoformat() if ca else None,
+            "updated_at": ua.isoformat() if ua else None,
+        }
+        for (i, f, fn, ct, b, h, st, n, u, ca, ua) in rows
+    ]
+    return {"ok": True, "docs": docs}
+
+
+@app.get("/documents/download/{doc_id}")
+def documents_download(
+    doc_id: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> Response:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    try:
+        did = uuid.UUID(doc_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid doc_id")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_documents_tables(cur)
+            cur.execute(
+                _auth_schema(
+                    """
+                    SELECT filename, content_type, content
+                    FROM "__SCHEMA__".documents
+                    WHERE id=%s
+                    LIMIT 1;
+                    """
+                ),
+                (did,),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    filename, content_type, content = row
+    fn = str(filename or "document.md")
+    ct = str(content_type or "application/octet-stream")
+    body = bytes(content or b"")
+    safe_fn = quote(fn)
+    return Response(
+        content=body,
+        media_type=ct,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_fn}"},
+    )
+
+
+@app.post("/documents/upload")
+async def documents_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    folder: str = Form(default=""),
+    status: str = Form(default="future"),
+    notes: str = Form(default=""),
+    overwrite: str = Form(default="true"),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    actor = _require_access(request=request, x_api_key=x_api_key, role="editor") or {}
+    folder_s = _require_docs_folder(folder)
+    status_s = _require_docs_status(status)
+    notes_s = (notes or "").strip()
+    overwrite_b = (overwrite or "").strip().lower() not in {"0", "false", "no", "off"}
+
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="file is required")
+    filename = str(file.filename).strip()
+    if len(filename) > 255:
+        raise HTTPException(status_code=400, detail="filename too long")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="empty file")
+    if len(data) > _docs_max_upload_bytes():
+        raise HTTPException(status_code=413, detail="file too large")
+
+    digest = sha256(data).hexdigest()
+    content_type = (file.content_type or "").strip() or "application/octet-stream"
+
+    username = str(actor.get("username") or "")
+    user_id_uuid = None
+    try:
+        if str(actor.get("id") or "").strip() and str(actor.get("id")) not in {"disabled", "api_key", "startup"}:
+            user_id_uuid = uuid.UUID(str(actor.get("id")))
+    except Exception:
+        user_id_uuid = None
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_documents_tables(cur)
+            cur.execute(
+                _auth_schema(
+                    """
+                    SELECT id
+                    FROM "__SCHEMA__".documents
+                    WHERE folder=%s AND filename=%s
+                    LIMIT 1;
+                    """
+                ),
+                (folder_s, filename),
+            )
+            existing = cur.fetchone()
+            if existing and not overwrite_b:
+                raise HTTPException(status_code=409, detail="Document already exists (set overwrite=true)")
+
+            if existing:
+                (doc_id,) = existing
+                cur.execute(
+                    _auth_schema(
+                        """
+                        UPDATE "__SCHEMA__".documents
+                        SET content_type=%s, bytes=%s, sha256=%s, status=%s, notes=%s, uploaded_by_user_id=%s, uploaded_by_username=%s, updated_at=now(), content=%s
+                        WHERE id=%s;
+                        """
+                    ),
+                    (content_type, len(data), digest, status_s, notes_s, user_id_uuid, username, data, doc_id),
+                )
+            else:
+                cur.execute(
+                    _auth_schema(
+                        """
+                        INSERT INTO "__SCHEMA__".documents
+                          (folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_user_id, uploaded_by_username, content)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        RETURNING id;
+                        """
+                    ),
+                    (folder_s, filename, content_type, len(data), digest, status_s, notes_s, user_id_uuid, username, data),
+                )
+                (doc_id,) = cur.fetchone()  # type: ignore[misc]
+        conn.commit()
+
+    return {"ok": True, "id": str(doc_id), "folder": folder_s, "filename": filename, "bytes": len(data), "sha256": digest}
+
+
+@app.post("/documents/delete/{doc_id}")
+def documents_delete(
+    doc_id: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
+    try:
+        did = uuid.UUID(doc_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid doc_id")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_documents_tables(cur)
+            cur.execute(_auth_schema('DELETE FROM "__SCHEMA__".documents WHERE id=%s;'), (did,))
+        conn.commit()
+    return {"ok": True, "deleted": doc_id}
+
+
+@app.get("/documents/ui", response_class=HTMLResponse)
+def documents_ui(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    can_write = _role_ge(str(user.get("role") or ""), required="editor")
+
+    body_html = """
+      <div class="card">
+        <h1>Documents</h1>
+        <p class="muted">Upload and download project notes (stored in Postgres). Organize by folder and status.</p>
+      </div>
+
+      <div class="section grid-2">
+        <div class="card">
+          <h2>Upload</h2>
+          <form id="upForm">
+            <label>Folder (optional)</label>
+            <input name="folder" type="text" placeholder="ideas/2026" />
+            <div style="height:12px;"></div>
+
+            <label>Status</label>
+            <select name="status">
+              <option value="future">Future</option>
+              <option value="in_progress">In progress</option>
+              <option value="finished">Finished</option>
+            </select>
+            <div style="height:12px;"></div>
+
+            <label>Notes (optional)</label>
+            <input name="notes" type="text" placeholder="Short description" />
+            <div style="height:12px;"></div>
+
+            <label>File</label>
+            <input name="file" type="file" />
+            <div style="height:12px;"></div>
+
+            <label style="display:flex; align-items:center; gap:10px;">
+              <input name="overwrite" type="checkbox" checked />
+              Overwrite if filename exists in folder
+            </label>
+
+            <div class="btnrow">
+              <button class="btn primary" type="submit">Upload</button>
+              <a class="btn" href="/apps">Back</a>
+            </div>
+            <div id="upStatus" class="statusbox mono" style="display:none;"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Browse</h2>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <div style="flex:1; min-width:200px;">
+              <label>Folder (optional)</label>
+              <input id="filterFolder" type="text" placeholder="ideas/2026" />
+            </div>
+            <div style="min-width:160px;">
+              <label>Status</label>
+              <select id="filterStatus">
+                <option value="">All</option>
+                <option value="future">Future</option>
+                <option value="in_progress">In progress</option>
+                <option value="finished">Finished</option>
+              </select>
+            </div>
+            <button id="btnRefresh" class="btn" type="button">Refresh</button>
+          </div>
+          <div class="divider"></div>
+          <div class="tablewrap" style="max-height: 70vh;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Folder</th>
+                  <th>File</th>
+                  <th>Status</th>
+                  <th class="right">Size</th>
+                  <th>Updated (UTC)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+          <div id="listStatus" class="muted" style="margin-top:10px;"></div>
+        </div>
+      </div>
+    """.strip()
+
+    script = """
+    <script>
+      const canWrite = __CAN_WRITE__;
+      const upForm = document.getElementById('upForm');
+      const upStatus = document.getElementById('upStatus');
+      const rowsEl = document.getElementById('rows');
+      const listStatus = document.getElementById('listStatus');
+      const btnRefresh = document.getElementById('btnRefresh');
+
+      function showUp(msg) {{ upStatus.style.display = 'block'; upStatus.textContent = msg; }}
+      function fmtBytes(n) {{
+        n = Number(n || 0);
+        if (n < 1024) return n + ' B';
+        if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+        return (n/(1024*1024)).toFixed(1) + ' MB';
+      }}
+      function safe(s) {{ return String(s || ''); }}
+
+      async function loadList() {{
+        const folder = document.getElementById('filterFolder').value || '';
+        const status = document.getElementById('filterStatus').value || '';
+        const qs = new URLSearchParams();
+        if (folder.trim()) qs.set('folder', folder.trim());
+        if (status.trim()) qs.set('status', status.trim());
+        qs.set('limit', '500');
+        try {{
+          const res = await fetch('/documents/list?' + qs.toString());
+          const body = await res.json().catch(() => ({{}}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
+          const docs = body.docs || [];
+          rowsEl.innerHTML = '';
+          for (const d of docs) {{
+            const tr = document.createElement('tr');
+            const updated = safe(d.updated_at).replace('T',' ').replace('Z','');
+            tr.innerHTML = `
+              <td><code>${safe(d.folder)}</code></td>
+              <td><code>${safe(d.filename)}</code></td>
+              <td><code>${safe(d.status)}</code></td>
+              <td class="right"><code>${fmtBytes(d.bytes)}</code></td>
+              <td><code>${updated}</code></td>
+              <td style="white-space:nowrap;">
+                <a class="btn" href="/documents/download/${safe(d.id)}">Download</a>
+                ${canWrite ? `<button class="btn" data-del="${safe(d.id)}">Delete</button>` : ``}
+              </td>
+            `;
+            rowsEl.appendChild(tr);
+          }}
+          if (docs.length === 0) {{
+            rowsEl.innerHTML = '<tr><td colspan="6" class="muted">No documents yet.</td></tr>';
+          }}
+          listStatus.textContent = `Rows: ${docs.length}`;
+        }} catch (e) {{
+          rowsEl.innerHTML = '';
+          listStatus.textContent = 'Error: ' + String(e?.message || e);
+        }}
+      }}
+
+      btnRefresh && btnRefresh.addEventListener('click', loadList);
+      rowsEl && rowsEl.addEventListener('click', async (ev) => {{
+        const btn = ev.target && ev.target.closest ? ev.target.closest('button[data-del]') : null;
+        if (!btn) return;
+        if (!canWrite) return;
+        const id = btn.getAttribute('data-del');
+        if (!id) return;
+        if (!confirm('Delete this document?')) return;
+        try {{
+          const res = await fetch('/documents/delete/' + encodeURIComponent(id), {{ method: 'POST' }});
+          const body = await res.json().catch(() => ({{}}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
+          await loadList();
+        }} catch (e) {{
+          alert('Error: ' + String(e?.message || e));
+        }}
+      }});
+
+      upForm && upForm.addEventListener('submit', async (ev) => {{
+        ev.preventDefault();
+        if (!canWrite) {{
+          showUp('Upload disabled (requires editor role).');
+          return;
+        }}
+        const fd = new FormData(upForm);
+        fd.set('overwrite', upForm.querySelector('input[name="overwrite"]').checked ? 'true' : 'false');
+        showUp('Uploading…');
+        try {{
+          const res = await fetch('/documents/upload', {{ method: 'POST', body: fd }});
+          const body = await res.json().catch(() => ({{}}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
+          showUp('Uploaded: ' + safe(body.filename) + ' (' + fmtBytes(body.bytes) + ')');
+          upForm.querySelector('input[name="file"]').value = '';
+          await loadList();
+        }} catch (e) {{
+          showUp('Error: ' + String(e?.message || e));
+        }}
+      }});
+
+      loadList();
+    </script>
+    """.strip()
+    script = script.replace("__CAN_WRITE__", json.dumps(bool(can_write)))
+
+    return _ui_shell(title="ETI360 Documents", active="apps", body_html=body_html, max_width_px=1400, user=user, extra_script=script)
 
 
 @app.get("/db/schemas")

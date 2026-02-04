@@ -69,6 +69,14 @@ Each usage row includes:
 - `provider`, `model`
 - `prompt_tokens` (in), `completion_tokens` (out), `total_tokens`, `cost_usd`
 
+## Documents
+
+- `GET /documents/ui` (UI upload + browse)
+- `GET /documents/list` (JSON list)
+- `POST /documents/upload` (multipart upload; stored in Postgres)
+- `GET /documents/download/{doc_id}` (download)
+- `POST /documents/delete/{doc_id}` (delete)
+
 ## DB schema browser (admin)
 
 - `GET /db/ui` (UI)

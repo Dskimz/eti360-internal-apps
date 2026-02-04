@@ -73,3 +73,8 @@ Where:
 - Every run creates one `ops.llm_runs` row.
 - Each provider/prompt used in that run creates an `ops.llm_usage` row, attributed by `prompt_key`.
 - `/usage/ui` shows the log; `/prompts/ui` shows cumulative usage by prompt.
+
+## Documents (internal markdown + files)
+
+- `/documents/ui` lets editors upload files and everyone download them.
+- Files are stored in Postgres (`ops.documents`) with a simple folder + status classification.

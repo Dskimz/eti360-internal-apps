@@ -58,3 +58,4 @@ Optional / for weather helpers:
 - Locations: `GET /weather/locations`
 - Token/cost tracker: `GET /weather/usage`
 - API usage log: `GET /usage/ui`, `GET /usage/log` (usage rows are attributed by `prompt_key`)
+- Documents: `GET /documents/ui`, `GET /documents/list`, `POST /documents/upload`, `GET /documents/download/{doc_id}`, `POST /documents/delete/{doc_id}`

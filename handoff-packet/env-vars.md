@@ -62,3 +62,7 @@ Example for `gpt-5-mini`:
 
 - `OPENAI_GPT_5_MINI_PROMPT_COST_PER_1M_USD`
 - `OPENAI_GPT_5_MINI_COMPLETION_COST_PER_1M_USD`
+
+## Documents (optional)
+
+- `DOCS_MAX_UPLOAD_BYTES` (optional; default: `10485760`) — max upload size for `/documents/upload` (stored in Postgres)

@@ -25,6 +25,12 @@ Two patterns:
 2) API generates weather + daylight PNGs, uploads to S3, writes asset rows
 3) UI refreshes `/weather/locations` and shows links
 
+## 3b) Upload a document
+
+- Open `/documents/ui`
+- Choose folder + status (optional) and upload a markdown/file
+- Use Download links to retrieve stored files
+
 ## 4) Debug a failed run
 
 Check:

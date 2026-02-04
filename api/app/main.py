@@ -23,7 +23,7 @@ from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
 from app.weather.openai_chat import OpenAIResult, chat_text
-from app.weather.s3 import get_s3_config, presign_get, put_png
+from app.weather.s3 import get_s3_config, presign_get, put_bytes, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
 app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
@@ -444,6 +444,23 @@ def _docs_max_upload_bytes() -> int:
     return max(64 * 1024, min(v, 50 * 1024 * 1024))
 
 
+def _docs_s3_prefix() -> str:
+    """
+    Prefix within S3_PREFIX for document storage.
+
+    Example: if S3_PREFIX is blank and DOCS_S3_PREFIX=documents/, keys are:
+      documents/<folder>/<doc_id>/<filename>
+    """
+    raw = os.environ.get("DOCS_S3_PREFIX", "documents/").strip()
+    if not raw:
+        raw = "documents/"
+    if not raw.endswith("/"):
+        raw += "/"
+    if raw.startswith("/"):
+        raw = raw.lstrip("/")
+    return raw
+
+
 def _require_docs_status(status: str) -> str:
     s = (status or "").strip().lower()
     if not s:
@@ -451,6 +468,37 @@ def _require_docs_status(status: str) -> str:
     if s not in {"future", "in_progress", "finished"}:
         raise HTTPException(status_code=400, detail="Invalid status (future, in_progress, finished)")
     return s
+
+
+def _require_docs_app_key(app_key: str) -> str:
+    app_key = (app_key or "").strip()
+    if not app_key:
+        raise HTTPException(status_code=400, detail="app_key is required")
+    return _slugify(app_key)
+
+
+def _normalize_group_key(group_key: str) -> str:
+    group_key = (group_key or "").strip().strip("/")
+    if not group_key:
+        return ""
+    parts = [p for p in group_key.split("/") if p.strip()]
+    return "/".join(_slugify(p) for p in parts)
+
+
+def _safe_s3_filename(filename: str) -> str:
+    # Avoid path traversal and keep keys readable.
+    filename = (filename or "").strip().replace("\\", "/")
+    filename = filename.split("/")[-1]
+    filename = re.sub(r"\s+", " ", filename).strip()
+    filename = filename.replace(" ", "_")
+    filename = re.sub(r"[^A-Za-z0-9._-]", "", filename)
+    return filename or "document"
+
+
+def _docs_folder_for(*, app_key: str, group_key: str) -> str:
+    ak = _require_docs_app_key(app_key)
+    gk = _normalize_group_key(group_key)
+    return f"{ak}/{gk}" if gk else ak
 
 
 def _ensure_documents_tables(cur: psycopg.Cursor) -> None:
@@ -481,15 +529,21 @@ def _ensure_documents_tables(cur: psycopg.Cursor) -> None:
         ).strip()
     )
     cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS folder TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS app_key TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS group_key TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT \'future\';'))
     cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS uploaded_by_user_id UUID;'))
     cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS uploaded_by_username TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();'))
     cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS storage TEXT NOT NULL DEFAULT \'db\';'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS s3_bucket TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS s3_key TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(_docs_schema('CREATE UNIQUE INDEX IF NOT EXISTS documents_folder_filename_uniq_idx ON "__SCHEMA__".documents(folder, filename);'))
     cur.execute(_docs_schema('CREATE INDEX IF NOT EXISTS documents_updated_at_idx ON "__SCHEMA__".documents(updated_at DESC);'))
     cur.execute(_docs_schema('CREATE INDEX IF NOT EXISTS documents_status_idx ON "__SCHEMA__".documents(status, updated_at DESC);'))
+    cur.execute(_docs_schema('CREATE INDEX IF NOT EXISTS documents_app_group_idx ON "__SCHEMA__".documents(app_key, group_key, updated_at DESC);'))
 
 
 def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
@@ -3128,7 +3182,7 @@ def prompts_log_ui(
 @app.get("/documents/list")
 def documents_list(
     request: Request,
-    limit: int = Query(default=200, ge=1, le=2000),
+    limit: int = Query(default=500, ge=1, le=10000),
     folder: str = Query(default=""),
     status: str = Query(default=""),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
@@ -3146,7 +3200,7 @@ def documents_list(
                 cur.execute(
                     _docs_schema(
                         """
-                        SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
+                        SELECT id, folder, filename, app_key, group_key, content_type, bytes, sha256, status, notes, storage, s3_bucket, s3_key, uploaded_by_username, created_at, updated_at
                         FROM "__SCHEMA__".documents
                         WHERE folder=%s AND status=%s
                         ORDER BY updated_at DESC
@@ -3159,7 +3213,7 @@ def documents_list(
                 cur.execute(
                     _docs_schema(
                         """
-                        SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
+                        SELECT id, folder, filename, app_key, group_key, content_type, bytes, sha256, status, notes, storage, s3_bucket, s3_key, uploaded_by_username, created_at, updated_at
                         FROM "__SCHEMA__".documents
                         WHERE folder=%s
                         ORDER BY updated_at DESC
@@ -3172,7 +3226,7 @@ def documents_list(
                 cur.execute(
                     _docs_schema(
                         """
-                        SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
+                        SELECT id, folder, filename, app_key, group_key, content_type, bytes, sha256, status, notes, storage, s3_bucket, s3_key, uploaded_by_username, created_at, updated_at
                         FROM "__SCHEMA__".documents
                         WHERE status=%s
                         ORDER BY updated_at DESC
@@ -3185,7 +3239,7 @@ def documents_list(
                 cur.execute(
                     _docs_schema(
                         """
-                        SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
+                        SELECT id, folder, filename, app_key, group_key, content_type, bytes, sha256, status, notes, storage, s3_bucket, s3_key, uploaded_by_username, created_at, updated_at
                         FROM "__SCHEMA__".documents
                         ORDER BY updated_at DESC
                         LIMIT %s;
@@ -3200,16 +3254,21 @@ def documents_list(
             "id": str(i),
             "folder": str(f or ""),
             "filename": str(fn or ""),
+            "app_key": str(ak or ""),
+            "group_key": str(gk or ""),
             "content_type": str(ct or ""),
             "bytes": int(b or 0),
             "sha256": str(h or ""),
             "status": str(st or ""),
             "notes": str(n or ""),
+            "storage": str(sto or ""),
+            "s3_bucket": str(sb or ""),
+            "s3_key": str(sk or ""),
             "uploaded_by": str(u or ""),
             "created_at": ca.isoformat() if ca else None,
             "updated_at": ua.isoformat() if ua else None,
         }
-        for (i, f, fn, ct, b, h, st, n, u, ca, ua) in rows
+        for (i, f, fn, ak, gk, ct, b, h, st, n, sto, sb, sk, u, ca, ua) in rows
     ]
     return {"ok": True, "docs": docs}
 
@@ -3232,7 +3291,7 @@ def documents_download(
             cur.execute(
                 _docs_schema(
                     """
-                    SELECT filename, content_type, content
+                    SELECT filename, content_type, content, s3_bucket, s3_key, storage
                     FROM "__SCHEMA__".documents
                     WHERE id=%s
                     LIMIT 1;
@@ -3244,30 +3303,40 @@ def documents_download(
     if not row:
         raise HTTPException(status_code=404, detail="Not found")
 
-    filename, content_type, content = row
+    filename, content_type, content, s3_bucket, s3_key, storage = row
     fn = str(filename or "document.md")
     ct = str(content_type or "application/octet-stream")
+    bucket = str(s3_bucket or "").strip()
+    key = str(s3_key or "").strip()
+    storage_s = str(storage or "").strip().lower()
+
+    if storage_s == "s3" or (bucket and key):
+        cfg = get_s3_config()
+        view_url = presign_get(region=cfg.region, bucket=bucket or cfg.bucket, key=key, expires_in=3600)
+        return RedirectResponse(url=view_url, status_code=302)
+
     body = bytes(content or b"")
+    if not body:
+        raise HTTPException(status_code=404, detail="Document content missing")
     safe_fn = quote(fn)
-    return Response(
-        content=body,
-        media_type=ct,
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_fn}"},
-    )
+    return Response(content=body, media_type=ct, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_fn}"})
 
 
 @app.post("/documents/upload")
 async def documents_upload(
     request: Request,
     file: UploadFile = File(...),
-    folder: str = Form(default=""),
+    app_key: str = Form(default="planning"),
+    group_key: str = Form(default=""),
     status: str = Form(default="future"),
     notes: str = Form(default=""),
     overwrite: str = Form(default="true"),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> Response:
     actor = _require_access(request=request, x_api_key=x_api_key, role="editor") or {}
-    folder_s = _require_docs_folder(folder)
+    app_key_s = _require_docs_app_key(app_key)
+    group_key_s = _normalize_group_key(group_key)
+    folder_s = _docs_folder_for(app_key=app_key_s, group_key=group_key_s)
     status_s = _require_docs_status(status)
     notes_s = (notes or "").strip()
     overwrite_b = (overwrite or "").strip().lower() not in {"0", "false", "no", "off"}
@@ -3286,6 +3355,7 @@ async def documents_upload(
 
     digest = sha256(data).hexdigest()
     content_type = (file.content_type or "").strip() or "application/octet-stream"
+    safe_key_name = _safe_s3_filename(filename)
 
     username = str(actor.get("username") or "")
     user_id_uuid = None
@@ -3294,6 +3364,11 @@ async def documents_upload(
             user_id_uuid = uuid.UUID(str(actor.get("id")))
     except Exception:
         user_id_uuid = None
+
+    try:
+        s3_cfg = get_s3_config()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"S3 not configured for documents: {e}")
 
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -3315,29 +3390,69 @@ async def documents_upload(
 
             if existing:
                 (doc_id,) = existing
+            else:
+                doc_id = uuid.uuid4()
+
+            s3_key = f"{s3_cfg.prefix}{_docs_s3_prefix()}{folder_s}/{doc_id}/{safe_key_name}"
+            put_bytes(region=s3_cfg.region, bucket=s3_cfg.bucket, key=s3_key, body=data, content_type=content_type)
+
+            if existing:
                 cur.execute(
                     _docs_schema(
                         """
                         UPDATE "__SCHEMA__".documents
-                        SET content_type=%s, bytes=%s, sha256=%s, status=%s, notes=%s, uploaded_by_user_id=%s, uploaded_by_username=%s, updated_at=now(), content=%s
+                        SET folder=%s, app_key=%s, group_key=%s, content_type=%s, bytes=%s, sha256=%s, status=%s, notes=%s,
+                            storage='s3', s3_bucket=%s, s3_key=%s,
+                            uploaded_by_user_id=%s, uploaded_by_username=%s, updated_at=now(),
+                            content=%s
                         WHERE id=%s;
                         """
                     ),
-                    (content_type, len(data), digest, status_s, notes_s, user_id_uuid, username, data, doc_id),
+                    (
+                        folder_s,
+                        app_key_s,
+                        group_key_s,
+                        content_type,
+                        len(data),
+                        digest,
+                        status_s,
+                        notes_s,
+                        s3_cfg.bucket,
+                        s3_key,
+                        user_id_uuid,
+                        username,
+                        b"",
+                        doc_id,
+                    ),
                 )
             else:
                 cur.execute(
                     _docs_schema(
                         """
                         INSERT INTO "__SCHEMA__".documents
-                          (folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_user_id, uploaded_by_username, content)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                        RETURNING id;
+                          (id, folder, app_key, group_key, filename, content_type, bytes, sha256, status, notes, storage, s3_bucket, s3_key,
+                           uploaded_by_user_id, uploaded_by_username, content)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'s3',%s,%s,%s,%s,%s);
                         """
                     ),
-                    (folder_s, filename, content_type, len(data), digest, status_s, notes_s, user_id_uuid, username, data),
+                    (
+                        doc_id,
+                        folder_s,
+                        app_key_s,
+                        group_key_s,
+                        filename,
+                        content_type,
+                        len(data),
+                        digest,
+                        status_s,
+                        notes_s,
+                        s3_cfg.bucket,
+                        s3_key,
+                        user_id_uuid,
+                        username,
+                        b"",
+                    ),
                 )
-                (doc_id,) = cur.fetchone()  # type: ignore[misc]
         conn.commit()
 
     # If the browser submitted the HTML form directly (no JS), redirect back to the UI.
@@ -3345,7 +3460,21 @@ async def documents_upload(
     if "text/html" in accept:
         return RedirectResponse(url="/documents/ui", status_code=303)
 
-    return JSONResponse({"ok": True, "id": str(doc_id), "folder": folder_s, "filename": filename, "bytes": len(data), "sha256": digest})
+    return JSONResponse(
+        {
+            "ok": True,
+            "id": str(doc_id),
+            "folder": folder_s,
+            "app_key": app_key_s,
+            "group_key": group_key_s,
+            "filename": filename,
+            "bytes": len(data),
+            "sha256": digest,
+            "storage": "s3",
+            "s3_bucket": s3_cfg.bucket,
+            "s3_key": s3_key,
+        }
+    )
 
 
 @app.post("/documents/delete/{doc_id}")
@@ -3402,6 +3531,31 @@ def documents_ui(
             return f"{n/1024:.1f} KB"
         return f"{n/(1024*1024):.1f} MB"
 
+    def _pretty_segment(s: str) -> str:
+        s = (s or "").strip()
+        if not s:
+            return ""
+        s = s.replace("_", " ").replace("-", " ")
+        s = re.sub(r"\s+", " ", s).strip()
+        return s.title()
+
+    def _pretty_path(folder: str, filename: str) -> str:
+        folder = (folder or "").strip().strip("/")
+        filename = (filename or "").strip()
+        if not folder:
+            return _pretty_segment(filename)
+        parts = [p for p in folder.split("/") if p.strip()]
+        pretty_folder = " / ".join(_pretty_segment(p) for p in parts)
+        return f"{pretty_folder} / {_pretty_segment(filename)}"
+
+    def _pretty_status(s: str) -> str:
+        s = (s or "").strip().lower()
+        if s == "in_progress":
+            return "In progress"
+        if s == "finished":
+            return "Finished"
+        return "Future"
+
     with _connect() as conn:
         with conn.cursor() as cur:
             _ensure_documents_tables(cur)
@@ -3413,7 +3567,7 @@ def documents_ui(
                         FROM "__SCHEMA__".documents
                         WHERE status=%s
                         ORDER BY updated_at DESC
-                        LIMIT 500;
+                        LIMIT 5000;
                         """
                     ),
                     (status_s,),
@@ -3425,7 +3579,7 @@ def documents_ui(
                         SELECT id, folder, filename, status, bytes, updated_at
                         FROM "__SCHEMA__".documents
                         ORDER BY updated_at DESC
-                        LIMIT 500;
+                        LIMIT 5000;
                         """
                     )
                 )
@@ -3433,7 +3587,7 @@ def documents_ui(
 
     rows_html = ""
     for (doc_id, f, fn, st, b, ua) in rows:
-        path = f"{(f or '').strip('/')}/{fn}" if (f or "").strip("/") else str(fn or "")
+        pretty_name = _pretty_path(str(f or ""), str(fn or ""))
         updated = ua.isoformat() if ua else ""
         delete_html = ""
         if can_write:
@@ -3444,10 +3598,10 @@ def documents_ui(
             """.strip()
         rows_html += (
             "<tr>"
-            f"<td><code>{_esc(path)}</code></td>"
-            f"<td><code>{_esc(st or '')}</code></td>"
+            f"<td><code>{_esc(pretty_name)}</code></td>"
+            f"<td><code>{_esc(_pretty_status(str(st or '')))}</code></td>"
             f"<td class=\"right\"><code>{_esc(_fmt_bytes(int(b or 0)))}</code></td>"
-            f"<td><code>{_esc(updated).replace('T',' ').replace('Z','')}</code></td>"
+            f"<td><time class=\"dt\" datetime=\"{_esc(updated)}\"><code>{_esc(updated).replace('T',' ').replace('Z','')}</code></time></td>"
             "<td style=\"white-space:nowrap;\">"
             f"<a class=\"btn\" href=\"/documents/download/{_esc(doc_id)}\">Download</a> "
             f"{delete_html}"
@@ -3464,20 +3618,28 @@ def documents_ui(
         upload_disabled = "disabled"
 
     body_html = f"""
-      <div class="card">
-        <h1>Documents</h1>
-        <p class="muted">Upload and download project notes (stored in Postgres). Organize by folder and status.</p>
-      </div>
+	      <div class="card">
+	        <h1>Documents</h1>
+	        <p class="muted">Upload and download project notes (stored in S3; metadata in Postgres). Organize by app/group and status.</p>
+	      </div>
 
       <div class="section grid-2">
         <div class="card">
           <h2>Upload</h2>
-          {upload_note}
-          <form method="post" action="/documents/upload" enctype="multipart/form-data">
-            <label>Status</label>
-            <select name="status" {upload_disabled}>
-              <option value="future">Future</option>
-              <option value="in_progress">In progress</option>
+	          {upload_note}
+	          <form method="post" action="/documents/upload" enctype="multipart/form-data">
+	            <label>App</label>
+	            <input name="app_key" type="text" placeholder="planning" value="planning" {upload_disabled} />
+	            <div style="height:12px;"></div>
+
+	            <label>Group (optional)</label>
+	            <input name="group_key" type="text" placeholder="2026 or SchoolName" {upload_disabled} />
+	            <div style="height:12px;"></div>
+
+	            <label>Status</label>
+	            <select name="status" {upload_disabled}>
+	              <option value="future">Future</option>
+	              <option value="in_progress">In progress</option>
               <option value="finished">Finished</option>
             </select>
             <div style="height:12px;"></div>
@@ -3492,7 +3654,7 @@ def documents_ui(
 
             <label style="display:flex; align-items:center; gap:10px;">
               <input name="overwrite" type="checkbox" checked {upload_disabled} />
-              Overwrite if filename exists in folder
+              Overwrite if filename exists in this app/group
             </label>
 
             <div class="btnrow">
@@ -3525,7 +3687,7 @@ def documents_ui(
                   <th>File</th>
                   <th>Status</th>
                   <th class="right">Size</th>
-                  <th>Updated (UTC)</th>
+                  <th>Updated (Local)</th>
                   <th></th>
                 </tr>
               </thead>
@@ -3539,7 +3701,23 @@ def documents_ui(
       </div>
     """.strip()
 
-    return _ui_shell(title="ETI360 Documents", active="apps", body_html=body_html, max_width_px=1400, user=user)
+    script = """
+    <script>
+      (function () {
+        const els = document.querySelectorAll('time.dt[datetime]');
+        for (const el of els) {
+          const iso = el.getAttribute('datetime') || '';
+          if (!iso) continue;
+          const d = new Date(iso);
+          if (!isFinite(d.getTime())) continue;
+          el.setAttribute('title', iso);
+          el.innerHTML = '<code>' + d.toLocaleString() + '</code>';
+        }
+      })();
+    </script>
+    """.strip()
+
+    return _ui_shell(title="ETI360 Documents", active="apps", body_html=body_html, max_width_px=1400, user=user, extra_script=script)
 
 
 @app.get("/db/schemas")

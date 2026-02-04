@@ -3259,7 +3259,7 @@ async def documents_upload(
     notes: str = Form(default=""),
     overwrite: str = Form(default="true"),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> dict[str, Any]:
+) -> Response:
     actor = _require_access(request=request, x_api_key=x_api_key, role="editor") or {}
     folder_s = _require_docs_folder(folder)
     status_s = _require_docs_status(status)
@@ -3334,7 +3334,14 @@ async def documents_upload(
                 (doc_id,) = cur.fetchone()  # type: ignore[misc]
         conn.commit()
 
-    return {"ok": True, "id": str(doc_id), "folder": folder_s, "filename": filename, "bytes": len(data), "sha256": digest}
+    # If the browser submitted the HTML form directly (no JS), redirect back to the UI.
+    accept = (request.headers.get("accept") or "").lower()
+    if "text/html" in accept:
+        qs = urlencode({"folder": folder_s} if folder_s else {})
+        target = f"/documents/ui?{qs}" if qs else "/documents/ui"
+        return RedirectResponse(url=target, status_code=303)
+
+    return JSONResponse({"ok": True, "id": str(doc_id), "folder": folder_s, "filename": filename, "bytes": len(data), "sha256": digest})
 
 
 @app.post("/documents/delete/{doc_id}")
@@ -3374,7 +3381,7 @@ def documents_ui(
       <div class="section grid-2">
         <div class="card">
           <h2>Upload</h2>
-          <form id="upForm">
+          <form id="upForm" method="post" action="/documents/upload" enctype="multipart/form-data">
             <label>Folder (optional)</label>
             <input name="folder" type="text" placeholder="ideas/2026" />
             <div style="height:12px;"></div>

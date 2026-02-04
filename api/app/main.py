@@ -16,7 +16,7 @@ from urllib.request import urlopen
 
 import psycopg
 from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, Response, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from app.weather.perplexity import fetch_monthly_weather_normals

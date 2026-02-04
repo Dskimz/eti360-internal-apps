@@ -36,10 +36,11 @@ Optional / for weather helpers:
 - `PERPLEXITY_API_KEY` (for auto-fetching monthly normals)
 - `PERPLEXITY_MODEL` (default: `sonar-pro`)
 - `PERPLEXITY_PROMPT_COST_PER_1M_USD`, `PERPLEXITY_COMPLETION_COST_PER_1M_USD` (optional; enables cost estimates)
+- `OPENAI_API_KEY` (for chart title/subtitle generation)
 - `OPENAI_PROMPT_COST_PER_1M_USD`, `OPENAI_COMPLETION_COST_PER_1M_USD` (optional; enables cost estimates)
   - Model-specific override supported: `OPENAI_<MODEL>_PROMPT_COST_PER_1M_USD` and `OPENAI_<MODEL>_COMPLETION_COST_PER_1M_USD`
-  - Example for `gpt-4o-mini`: `OPENAI_GPT_4O_MINI_PROMPT_COST_PER_1M_USD` and `OPENAI_GPT_4O_MINI_COMPLETION_COST_PER_1M_USD`
-- `OPENAI_MODEL` (optional; displayed in tracker; this app currently doesn't call OpenAI)
+  - Example for `gpt-5-mini`: `OPENAI_GPT_5_MINI_PROMPT_COST_PER_1M_USD` and `OPENAI_GPT_5_MINI_COMPLETION_COST_PER_1M_USD`
+- `OPENAI_MODEL` (optional; default: `gpt-5-mini`) model used for OpenAI title/subtitle prompts
 - `USAGE_SCHEMA` (optional; default: `ops`) shared schema for LLM run/usage logging across all apps
 
 ## Endpoints
@@ -50,6 +51,7 @@ Optional / for weather helpers:
 - Auth: `GET /login`, `POST /login`, `GET /logout` (cookie sessions)
 - Admin users: `GET /admin/users/ui` (UI), `GET /admin/users`, `POST /admin/users` (requires admin access)
 - Prompts: `GET /prompts/ui`, `GET /prompts/edit?prompt_key=...`, `GET /prompts/log/ui`, `GET /prompts`, `GET /prompts/item/{prompt_key}`, `POST /prompts/item/{prompt_key}`, `POST /prompts/seed`, `GET /prompts/required`
+  - Prompts are grouped by `app_key` + `workflow` for UI organization.
 - `POST /admin/schema/init` (one-time DB schema init; requires `X-API-Key`)
 - Weather UI: `GET /weather/ui`
 - Weather automation: `POST /weather/auto_batch`

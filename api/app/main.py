@@ -400,6 +400,8 @@ def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
             CREATE TABLE IF NOT EXISTS "__SCHEMA__".prompts (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
               prompt_key TEXT NOT NULL UNIQUE,
+              app_key TEXT NOT NULL DEFAULT '',
+              workflow TEXT NOT NULL DEFAULT '',
               name TEXT NOT NULL DEFAULT '',
               natural_name TEXT NOT NULL DEFAULT '',
               description TEXT NOT NULL DEFAULT '',
@@ -414,7 +416,10 @@ def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
         ).strip()
     )
     cur.execute(_prompts_schema('ALTER TABLE "__SCHEMA__".prompts ADD COLUMN IF NOT EXISTS natural_name TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_prompts_schema('ALTER TABLE "__SCHEMA__".prompts ADD COLUMN IF NOT EXISTS app_key TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_prompts_schema('ALTER TABLE "__SCHEMA__".prompts ADD COLUMN IF NOT EXISTS workflow TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompts_updated_at_idx ON "__SCHEMA__".prompts(updated_at DESC);'))
+    cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompts_app_workflow_idx ON "__SCHEMA__".prompts(app_key, workflow, prompt_key);'))
 
     cur.execute(
         _prompts_schema(
@@ -430,6 +435,10 @@ def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
               change_note TEXT NOT NULL DEFAULT '',
               before_text TEXT NOT NULL DEFAULT '',
               after_text TEXT NOT NULL DEFAULT '',
+              before_app_key TEXT NOT NULL DEFAULT '',
+              after_app_key TEXT NOT NULL DEFAULT '',
+              before_workflow TEXT NOT NULL DEFAULT '',
+              after_workflow TEXT NOT NULL DEFAULT '',
               before_provider TEXT NOT NULL DEFAULT '',
               after_provider TEXT NOT NULL DEFAULT '',
               before_model TEXT NOT NULL DEFAULT '',
@@ -438,6 +447,10 @@ def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
             """
         ).strip()
     )
+    cur.execute(_prompts_schema('ALTER TABLE "__SCHEMA__".prompt_revisions ADD COLUMN IF NOT EXISTS before_app_key TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_prompts_schema('ALTER TABLE "__SCHEMA__".prompt_revisions ADD COLUMN IF NOT EXISTS after_app_key TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_prompts_schema('ALTER TABLE "__SCHEMA__".prompt_revisions ADD COLUMN IF NOT EXISTS before_workflow TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_prompts_schema('ALTER TABLE "__SCHEMA__".prompt_revisions ADD COLUMN IF NOT EXISTS after_workflow TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompt_revisions_key_idx ON "__SCHEMA__".prompt_revisions(prompt_key, edited_at DESC);'))
     cur.execute(_prompts_schema('CREATE INDEX IF NOT EXISTS prompt_revisions_edited_at_idx ON "__SCHEMA__".prompt_revisions(edited_at DESC);'))
 
@@ -1848,6 +1861,8 @@ def admin_users_ui(
 
 class PromptUpsertIn(BaseModel):
     prompt_key: str = Field(..., min_length=1, max_length=64)
+    app_key: str = ""
+    workflow: str = ""
     name: str = ""
     natural_name: str = ""
     description: str = ""
@@ -1869,9 +1884,9 @@ def prompts_list(
             cur.execute(
                 _prompts_schema(
                     """
-                    SELECT prompt_key, name, natural_name, description, provider, model, is_active, updated_at
+                    SELECT prompt_key, app_key, workflow, name, natural_name, description, provider, model, is_active, updated_at
                     FROM "__SCHEMA__".prompts
-                    ORDER BY prompt_key ASC;
+                    ORDER BY app_key ASC, workflow ASC, prompt_key ASC;
                     """
                 )
             )
@@ -1880,6 +1895,8 @@ def prompts_list(
     prompts = [
         {
             "prompt_key": str(k),
+            "app_key": str(ak or ""),
+            "workflow": str(wf or ""),
             "name": str(n or ""),
             "natural_name": str(nn or ""),
             "description": str(d or ""),
@@ -1888,7 +1905,7 @@ def prompts_list(
             "is_active": bool(a),
             "updated_at": ua.isoformat() if ua else None,
         }
-        for (k, n, nn, d, p, m, a, ua) in rows
+        for (k, ak, wf, n, nn, d, p, m, a, ua) in rows
     ]
     return {"ok": True, "schema": _require_safe_ident("PROMPTS_SCHEMA", PROMPTS_SCHEMA), "prompts": prompts}
 
@@ -1929,6 +1946,8 @@ def _required_prompts() -> list[dict[str, str]]:
     return [
         {
             "prompt_key": "weather_normals_perplexity_v1",
+            "app_key": "weather",
+            "workflow": "weather",
             "name": "Weather normals (Perplexity)",
             "natural_name": "Perplexity: monthly climate normals JSON",
             "description": "Fetch monthly climate normals (high/low °C, precip cm) as strict JSON.",
@@ -1942,6 +1961,8 @@ def _required_prompts() -> list[dict[str, str]]:
         },
         {
             "prompt_key": "weather_titles_openai_v1",
+            "app_key": "weather",
+            "workflow": "weather",
             "name": "Weather chart title/subtitle (OpenAI)",
             "natural_name": "OpenAI: weather PNG title + subtitle",
             "description": "Create a concise title and subtitle for the weather chart PNG.",
@@ -2048,6 +2069,8 @@ Nothing else.
         },
         {
             "prompt_key": "daylight_titles_openai_v1",
+            "app_key": "weather",
+            "workflow": "sunlight",
             "name": "Daylight chart title/subtitle (OpenAI)",
             "natural_name": "OpenAI: sunlight PNG title + subtitle",
             "description": "Write a title and subtitle for an annual daylight chart based on computed daylight summary.",
@@ -2146,7 +2169,7 @@ def prompts_seed(
                 cur.execute(
                     _prompts_schema(
                         """
-                        SELECT id, provider, model
+                        SELECT id, provider, model, app_key, workflow
                         FROM "__SCHEMA__".prompts
                         WHERE prompt_key=%s
                         LIMIT 1;
@@ -2156,13 +2179,17 @@ def prompts_seed(
                 )
                 existing = cur.fetchone()
                 if existing:
-                    (pid, existing_provider, existing_model) = existing
+                    (pid, existing_provider, existing_model, existing_app_key, existing_workflow) = existing
                     existing_provider = str(existing_provider or "").strip().lower()
                     existing_model = str(existing_model or "").strip()
+                    existing_app_key = str(existing_app_key or "").strip()
+                    existing_workflow = str(existing_workflow or "").strip()
 
                     # Model migrations: keep user-edited prompt text, but update deprecated OpenAI models
                     # to the new default so existing prompt rows continue working after deprecations.
                     desired_model = str(r.get("model") or "").strip()
+                    desired_app_key = str(r.get("app_key") or "").strip()
+                    desired_workflow = str(r.get("workflow") or "").strip()
                     deprecated_openai_models = {
                         "gpt-4o-mini",
                         "gpt-4o",
@@ -2171,24 +2198,32 @@ def prompts_seed(
                         "gpt-4.1-nano",
                         "o4-mini",
                     }
-                    if existing_provider == "openai" and desired_model and (not existing_model or existing_model in deprecated_openai_models):
+                    needs_model = existing_provider == "openai" and desired_model and (not existing_model or existing_model in deprecated_openai_models)
+                    needs_group = (desired_app_key and not existing_app_key) or (desired_workflow and not existing_workflow)
+
+                    if needs_model or needs_group:
+                        new_model = desired_model if needs_model else existing_model
+                        new_app_key = desired_app_key if desired_app_key else existing_app_key
+                        new_workflow = desired_workflow if desired_workflow else existing_workflow
                         cur.execute(
                             _prompts_schema(
                                 """
                                 UPDATE "__SCHEMA__".prompts
-                                SET model=%s, updated_at=NOW()
+                                SET app_key=%s, workflow=%s, model=%s, updated_at=NOW()
                                 WHERE id=%s;
                                 """
                             ),
-                            (desired_model, pid),
+                            (new_app_key, new_workflow, new_model, pid),
                         )
                         cur.execute(
                             _prompts_schema(
                                 """
                                 INSERT INTO "__SCHEMA__".prompt_revisions
                                   (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
-                                   before_text, after_text, before_provider, after_provider, before_model, after_model)
-                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                                   before_text, after_text,
+                                   before_app_key, after_app_key, before_workflow, after_workflow,
+                                   before_provider, after_provider, before_model, after_model)
+                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
                                 """
                             ),
                             (
@@ -2197,13 +2232,17 @@ def prompts_seed(
                                 user_id_uuid,
                                 username,
                                 role,
-                                "Seed: migrate model default",
+                                "Seed: migrate defaults",
                                 "",
                                 "",
+                                existing_app_key,
+                                new_app_key,
+                                existing_workflow,
+                                new_workflow,
                                 str(existing_provider or ""),
                                 str(existing_provider or ""),
                                 existing_model,
-                                desired_model,
+                                new_model,
                             ),
                         )
                         updated.append(key)
@@ -2213,13 +2252,15 @@ def prompts_seed(
                 cur.execute(
                     _prompts_schema(
                         """
-                        INSERT INTO "__SCHEMA__".prompts (prompt_key, name, natural_name, description, provider, model, prompt_text)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s)
+                        INSERT INTO "__SCHEMA__".prompts (prompt_key, app_key, workflow, name, natural_name, description, provider, model, prompt_text)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         RETURNING id;
                         """
                     ),
                     (
                         key,
+                        str(r.get("app_key") or ""),
+                        str(r.get("workflow") or ""),
                         str(r.get("name") or ""),
                         str(r.get("natural_name") or ""),
                         str(r.get("description") or ""),
@@ -2234,8 +2275,10 @@ def prompts_seed(
                         """
                         INSERT INTO "__SCHEMA__".prompt_revisions
                           (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
-                           before_text, after_text, before_provider, after_provider, before_model, after_model)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                           before_text, after_text,
+                           before_app_key, after_app_key, before_workflow, after_workflow,
+                           before_provider, after_provider, before_model, after_model)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
                         """
                     ),
                     (
@@ -2247,6 +2290,10 @@ def prompts_seed(
                         "Seed default prompt",
                         "",
                         str(r.get("prompt_text") or ""),
+                        "",
+                        str(r.get("app_key") or ""),
+                        "",
+                        str(r.get("workflow") or ""),
                         "",
                         str(r.get("provider") or ""),
                         "",
@@ -2273,7 +2320,7 @@ def prompts_get(
             cur.execute(
                 _prompts_schema(
                     """
-                    SELECT id, prompt_key, name, natural_name, description, provider, model, prompt_text, is_active, created_at, updated_at
+                    SELECT id, prompt_key, app_key, workflow, name, natural_name, description, provider, model, prompt_text, is_active, created_at, updated_at
                     FROM "__SCHEMA__".prompts
                     WHERE prompt_key=%s
                     LIMIT 1;
@@ -2285,12 +2332,14 @@ def prompts_get(
     if not row:
         raise HTTPException(status_code=404, detail="Prompt not found")
 
-    (pid, k, name, natural_name, desc, provider, model, text, is_active, created_at, updated_at) = row
+    (pid, k, app_key, workflow, name, natural_name, desc, provider, model, text, is_active, created_at, updated_at) = row
     return {
         "ok": True,
         "prompt": {
             "id": str(pid),
             "prompt_key": str(k),
+            "app_key": str(app_key or ""),
+            "workflow": str(workflow or ""),
             "name": str(name or ""),
             "natural_name": str(natural_name or ""),
             "description": str(desc or ""),
@@ -2336,7 +2385,7 @@ def prompts_upsert(
             cur.execute(
                 _prompts_schema(
                     """
-                    SELECT id, provider, model, prompt_text
+                    SELECT id, app_key, workflow, provider, model, prompt_text
                     FROM "__SCHEMA__".prompts
                     WHERE prompt_key=%s
                     LIMIT 1;
@@ -2346,23 +2395,27 @@ def prompts_upsert(
             )
             existing = cur.fetchone()
 
+            before_app_key = ""
+            before_workflow = ""
             before_provider = ""
             before_model = ""
             before_text = ""
             prompt_id = None
 
             if existing:
-                prompt_id, before_provider, before_model, before_text = existing
+                prompt_id, before_app_key, before_workflow, before_provider, before_model, before_text = existing
 
                 cur.execute(
                     _prompts_schema(
                         """
                         UPDATE "__SCHEMA__".prompts
-                        SET name=%s, natural_name=%s, description=%s, provider=%s, model=%s, prompt_text=%s, updated_at=now()
+                        SET app_key=%s, workflow=%s, name=%s, natural_name=%s, description=%s, provider=%s, model=%s, prompt_text=%s, updated_at=now()
                         WHERE id=%s;
                         """
                     ),
                     (
+                        (body.app_key or "").strip(),
+                        (body.workflow or "").strip(),
                         (body.name or "").strip(),
                         (body.natural_name or "").strip(),
                         (body.description or "").strip(),
@@ -2376,13 +2429,15 @@ def prompts_upsert(
                 cur.execute(
                     _prompts_schema(
                         """
-                        INSERT INTO "__SCHEMA__".prompts (prompt_key, name, natural_name, description, provider, model, prompt_text)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s)
+                        INSERT INTO "__SCHEMA__".prompts (prompt_key, app_key, workflow, name, natural_name, description, provider, model, prompt_text)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         RETURNING id;
                         """
                     ),
                     (
                         key,
+                        (body.app_key or "").strip(),
+                        (body.workflow or "").strip(),
                         (body.name or "").strip(),
                         (body.natural_name or "").strip(),
                         (body.description or "").strip(),
@@ -2398,8 +2453,10 @@ def prompts_upsert(
                     """
                     INSERT INTO "__SCHEMA__".prompt_revisions
                       (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
-                       before_text, after_text, before_provider, after_provider, before_model, after_model)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                       before_text, after_text,
+                       before_app_key, after_app_key, before_workflow, after_workflow,
+                       before_provider, after_provider, before_model, after_model)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
                     """
                 ),
                 (
@@ -2411,6 +2468,10 @@ def prompts_upsert(
                     note,
                     str(before_text or ""),
                     str(body.prompt_text or ""),
+                    str(before_app_key or ""),
+                    str((body.app_key or "").strip()),
+                    str(before_workflow or ""),
+                    str((body.workflow or "").strip()),
                     str(before_provider or ""),
                     str((body.provider or "").strip()),
                     str(before_model or ""),
@@ -2493,9 +2554,9 @@ def prompts_ui(
             cur.execute(
                 _prompts_schema(
                     """
-                    SELECT prompt_key, natural_name, provider, model, is_active, updated_at
+                    SELECT prompt_key, app_key, workflow, natural_name, provider, model, is_active, updated_at
                     FROM "__SCHEMA__".prompts
-                    ORDER BY prompt_key ASC;
+                    ORDER BY app_key ASC, workflow ASC, prompt_key ASC;
                     """
                 )
             )
@@ -2515,22 +2576,57 @@ def prompts_ui(
             .replace("'", "&#39;")
         )
 
-    table_rows = ""
-    for (k, natural_name, provider, model, is_active, updated_at) in rows:
-        key = str(k)
-        table_rows += (
-            "<tr>"
-            f"<td><code>{_esc(key)}</code></td>"
-            f"<td>{_esc(natural_name or '')}</td>"
-            f"<td class=\"muted\">{_esc(provider or '')}</td>"
-            f"<td class=\"muted\"><code>{_esc(model or '')}</code></td>"
-            f"<td>{'YES' if bool(is_active) else 'NO'}</td>"
-            f"<td class=\"muted\"><code>{_esc(updated_at.isoformat() if updated_at else '')}</code></td>"
-            f"<td><a class=\"btn\" href=\"/prompts/edit?prompt_key={_esc(key)}\">Details</a> <a class=\"btn\" href=\"/prompts/log/ui?prompt_key={_esc(key)}\">Log</a></td>"
-            "</tr>"
-        )
-    if not table_rows:
-        table_rows = '<tr><td colspan="7" class="muted">No prompts yet. Click “Seed defaults” to create the expected prompts.</td></tr>'
+    groups: dict[tuple[str, str], list[tuple[Any, ...]]] = {}
+    for row in rows:
+        (k, app_key, workflow, natural_name, provider, model, is_active, updated_at) = row
+        ak = (str(app_key or "").strip() or "ungrouped").lower()
+        wf = (str(workflow or "").strip() or "default").lower()
+        groups.setdefault((ak, wf), []).append(row)
+
+    group_html = ""
+    if not rows:
+        group_html = '<div class="muted">No prompts yet. Click “Seed defaults” to create the expected prompts.</div>'
+    else:
+        for (ak, wf) in sorted(groups.keys(), key=lambda x: (x[0], x[1])):
+            table_rows = ""
+            for (k, _app_key, _workflow, natural_name, provider, model, is_active, updated_at) in groups[(ak, wf)]:
+                key = str(k)
+                table_rows += (
+                    "<tr>"
+                    f"<td><code>{_esc(key)}</code></td>"
+                    f"<td>{_esc(natural_name or '')}</td>"
+                    f"<td class=\"muted\">{_esc(provider or '')}</td>"
+                    f"<td class=\"muted\"><code>{_esc(model or '')}</code></td>"
+                    f"<td>{'YES' if bool(is_active) else 'NO'}</td>"
+                    f"<td class=\"muted\"><code>{_esc(updated_at.isoformat() if updated_at else '')}</code></td>"
+                    f"<td><a class=\"btn\" href=\"/prompts/edit?prompt_key={_esc(key)}\">Details</a> <a class=\"btn\" href=\"/prompts/log/ui?prompt_key={_esc(key)}\">Log</a></td>"
+                    "</tr>"
+                )
+            group_html += f"""
+              <div class="divider"></div>
+              <div style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
+                <h3 style="margin:0;">{_esc(ak)}</h3>
+                <div class="muted">workflow: <code>{_esc(wf)}</code></div>
+              </div>
+              <div class="tablewrap" style="margin-top:10px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Key</th>
+                      <th>Natural name</th>
+                      <th>Provider</th>
+                      <th>Model</th>
+                      <th>Active</th>
+                      <th>Updated</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {table_rows}
+                  </tbody>
+                </table>
+              </div>
+            """.strip()
 
     missing_html = ""
     if missing_required:
@@ -2558,24 +2654,9 @@ def prompts_ui(
 
       <div class="card">
         <h2>Prompt inventory</h2>
-        <div class="muted">This table is the source of truth for prompts used by workflows.</div>
-        <div class="section tablewrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Key</th>
-                <th>Natural name</th>
-                <th>Provider</th>
-                <th>Model</th>
-                <th>Active</th>
-                <th>Updated</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {table_rows}
-            </tbody>
-          </table>
+        <div class="muted">Grouped by <code>app_key</code> and <code>workflow</code>.</div>
+        <div class="section">
+          {group_html}
         </div>
       </div>
     """.strip()
@@ -2593,7 +2674,14 @@ def prompts_ui(
           const res = await fetch('/prompts/seed', {{ method: 'POST', headers: {{ 'Content-Type': 'application/json' }} }});
           const body = await res.json().catch(() => ({{}}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-          show('Created: ' + (body.created || []).join(', ') + (body.skipped?.length ? '\\nSkipped: ' + body.skipped.join(', ') : ''));
+          const created = (body.created || []);
+          const updated = (body.updated || []);
+          const skipped = (body.skipped || []);
+          let msg = '';
+          if (created.length) msg += 'Created: ' + created.join(', ') + '\\n';
+          if (updated.length) msg += 'Updated: ' + updated.join(', ') + '\\n';
+          if (skipped.length) msg += 'Skipped: ' + skipped.join(', ');
+          show(msg.trim() || 'Done.');
           setTimeout(() => window.location.reload(), 700);
         }} catch (e) {{
           show('Error: ' + String(e.message || e));
@@ -2648,6 +2736,14 @@ def prompts_edit_ui(
 
       <div class="card">
         <form id="form">
+          <label>App key</label>
+          <input id="app_key" type="text" value="{_esc(p.get('app_key') or '')}" placeholder="weather / directory / flights" {'disabled' if not can_edit else ''} />
+          <div style="height:12px;"></div>
+
+          <label>Workflow</label>
+          <input id="workflow" type="text" value="{_esc(p.get('workflow') or '')}" placeholder="weather / sunlight / prompts" {'disabled' if not can_edit else ''} />
+          <div style="height:12px;"></div>
+
           <label>Natural language name (human)</label>
           <input id="natural_name" type="text" value="{_esc(p.get('natural_name') or '')}" {'disabled' if not can_edit else ''} />
           <div style="height:12px;"></div>
@@ -2697,6 +2793,8 @@ def prompts_edit_ui(
         show('Saving…');
         const payload = {{
           prompt_key: {json.dumps(key)},
+          app_key: String(document.getElementById('app_key').value || '').trim(),
+          workflow: String(document.getElementById('workflow').value || '').trim(),
           natural_name: String(document.getElementById('natural_name').value || ''),
           name: String(document.getElementById('name').value || ''),
           description: String(document.getElementById('description').value || ''),

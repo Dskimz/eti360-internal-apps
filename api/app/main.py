@@ -3483,24 +3483,25 @@ def documents_ui(
           const res = await fetch('/documents/list?' + qs.toString());
           const body = await res.json().catch(() => ({{}}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-          const docs = body.docs || [];
-          rowsEl.innerHTML = '';
-          for (const d of docs) {{
-            const tr = document.createElement('tr');
-            const updated = safe(d.updated_at).replace('T',' ').replace('Z','');
-            tr.innerHTML = `
-              <td><code>${safe(d.folder)}</code></td>
-              <td><code>${safe(d.filename)}</code></td>
-              <td><code>${safe(d.status)}</code></td>
-              <td class="right"><code>${fmtBytes(d.bytes)}</code></td>
-              <td><code>${updated}</code></td>
-              <td style="white-space:nowrap;">
-                <a class="btn" href="/documents/download/${safe(d.id)}">Download</a>
-                ${canWrite ? `<button class="btn" data-del="${safe(d.id)}">Delete</button>` : ``}
-              </td>
-            `;
-            rowsEl.appendChild(tr);
-          }}
+	          const docs = body.docs || [];
+	          rowsEl.innerHTML = '';
+	          for (const d of docs) {{
+	            const tr = document.createElement('tr');
+	            const updated = safe(d.updated_at).replace('T',' ').replace('Z','');
+	            const delBtn = canWrite ? '<button class="btn" data-del="' + safe(d.id) + '">Delete</button>' : '';
+	            tr.innerHTML = `
+	              <td><code>${safe(d.folder)}</code></td>
+	              <td><code>${safe(d.filename)}</code></td>
+	              <td><code>${safe(d.status)}</code></td>
+	              <td class="right"><code>${fmtBytes(d.bytes)}</code></td>
+	              <td><code>${updated}</code></td>
+	              <td style="white-space:nowrap;">
+	                <a class="btn" href="/documents/download/${safe(d.id)}">Download</a>
+	                ${delBtn}
+	              </td>
+	            `;
+	            rowsEl.appendChild(tr);
+	          }}
           if (docs.length === 0) {{
             rowsEl.innerHTML = '<tr><td colspan="6" class="muted">No documents yet.</td></tr>';
           }}

@@ -48,4 +48,14 @@ Dan may have multiple Render workspaces (e.g., ETI360 vs TripRisk360). If servic
 - Add DB tables in schemas:
   - app-specific: `weather.*`, etc.
   - shared: `ops.*` for auth/usage/prompts
+- When a workflow uses LLMs, always ensure it logs:
+  - run timestamp (UTC) in `ops.llm_runs`
+  - per-provider/prompt tokens in/out/total + cost in `ops.llm_usage`
+  - attribution via `prompt_key` so `/prompts/ui` can compare prompt cost over time
 
+## Global header codemod (only when explicitly requested)
+
+Dan may provide a repository-wide header standard in `handoff-packet/Global Header.md`.
+
+- Treat this as a **codemod** task (header insertion only), not feature work.
+- Do it on an isolated branch and avoid behavior changes, refactors, or formatting.

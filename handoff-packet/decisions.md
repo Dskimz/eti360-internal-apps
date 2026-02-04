@@ -11,6 +11,8 @@
 - Prompt edits are audited (history tables exist by design).
   - `ops.prompts` stores the current prompt text + metadata (grouped by `app_key` + `workflow`)
   - `ops.prompt_revisions` stores an immutable audit trail (UTC timestamp + user + note + before/after)
+- Prompts UI defaults to read-only (inventory + usage stats). Editing is done via API, with UI editing optionally enabled when needed.
+- Internal markdown/doc uploads are stored in S3 (metadata in Postgres via `ops.documents`).
 
 ## Best practices to keep
 

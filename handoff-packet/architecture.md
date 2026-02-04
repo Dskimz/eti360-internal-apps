@@ -65,7 +65,10 @@ Where:
 ## Prompt management + audit
 
 - `/prompts/ui` lists the prompts used by the system (DB source of truth), grouped by `app_key` + `workflow`, and includes per-prompt token/cost tracking.
-- `/prompts/edit?prompt_key=...` edits a prompt. Every save creates a row in `ops.prompt_revisions` with date/time/user/note and a before/after snapshot.
+- Prompt UI is intentionally **read-only by default** to keep it simple (inventory + stats).
+- If prompt editing is needed:
+  - preferred: `POST /prompts/item/{prompt_key}` (always audit logged)
+  - optional: enable UI editing with `PROMPTS_UI_EDITING=enabled`
 - `/prompts/log/ui` is the audit log UI.
 
 ## LLM usage tracking (per prompt)
@@ -77,4 +80,4 @@ Where:
 ## Documents (internal markdown + files)
 
 - `/documents/ui` lets editors upload files and everyone download them.
-- Files are stored in Postgres (`ops.documents`) with a simple folder + status classification.
+- Files are stored in S3; metadata is stored in Postgres (`ops.documents`) with app/group + status classification.

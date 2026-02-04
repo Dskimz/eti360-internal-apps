@@ -29,7 +29,7 @@ Two patterns:
 
 - Open `/documents/ui`
 - Choose folder + status (optional) and upload a markdown/file
-- Use Download links to retrieve stored files
+- Use Download links to retrieve stored files (stored in S3; metadata in Postgres)
 
 ## 4) Debug a failed run
 

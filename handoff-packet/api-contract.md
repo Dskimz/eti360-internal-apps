@@ -11,7 +11,8 @@ This is the current contract used by the internal apps UI.
 Role model (most common):
 
 - `viewer`: read-only (locations list, usage log, prompt inventory)
-- `account_manager`: can edit prompts/users depending on policy
+- `editor`: can upload/delete documents and perform other “content” writes
+- `account_manager`: can manage workflows depending on policy
 - `admin`: can manage users and view DB schema
 
 ## Health
@@ -44,13 +45,18 @@ Role model (most common):
 
 ## Prompts + audit log
 
-- `GET /prompts/ui` (UI inventory table)
-- `GET /prompts/edit?prompt_key=...` (UI details/editor)
+- `GET /prompts/ui` (UI inventory table; read-only “used prompts” + per-prompt usage stats)
+- `GET /prompts/edit?prompt_key=...` (UI details; read-only by default)
 - `GET /prompts/log/ui` (UI audit log)
-- `POST /prompts/seed` (creates default prompts)
+- `POST /prompts/seed` (reconciles/creates required prompts; idempotent)
 - `GET /prompts` (JSON list)
 - `GET /prompts/item/{prompt_key}` (JSON)
 - `POST /prompts/item/{prompt_key}` (JSON upsert; logs a revision)
+
+Notes:
+
+- Prompt edits are intentionally not “day-to-day” via UI. If you need to change prompts, prefer `POST /prompts/item/{prompt_key}` (audit logged).
+- To allow editing via the UI, set `PROMPTS_UI_EDITING=enabled` (otherwise `/prompts/edit` is view-only).
 
 Prompts are grouped by:
 
@@ -73,7 +79,7 @@ Each usage row includes:
 
 - `GET /documents/ui` (UI upload + browse)
 - `GET /documents/list` (JSON list)
-- `POST /documents/upload` (multipart upload; stored in Postgres)
+- `POST /documents/upload` (multipart upload; stored in S3, metadata in Postgres)
 - `GET /documents/download/{doc_id}` (download)
 - `POST /documents/delete/{doc_id}` (delete)
 

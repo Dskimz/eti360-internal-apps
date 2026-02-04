@@ -146,13 +146,19 @@ CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON ops.sessions(expires_at DE
 -- Documents (stored in Postgres) for internal notes and planning.
 CREATE TABLE IF NOT EXISTS ops.documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- Optional legacy grouping (kept for backward compatibility; UI may display it as a prefix).
   folder TEXT NOT NULL DEFAULT '',
+  app_key TEXT NOT NULL DEFAULT '',
+  group_key TEXT NOT NULL DEFAULT '',
   filename TEXT NOT NULL,
   content_type TEXT NOT NULL DEFAULT 'application/octet-stream',
   bytes BIGINT NOT NULL DEFAULT 0,
   sha256 TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'future',
   notes TEXT NOT NULL DEFAULT '',
+  storage TEXT NOT NULL DEFAULT 'db',
+  s3_bucket TEXT NOT NULL DEFAULT '',
+  s3_key TEXT NOT NULL DEFAULT '',
   uploaded_by_user_id UUID,
   uploaded_by_username TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -163,6 +169,7 @@ CREATE TABLE IF NOT EXISTS ops.documents (
 CREATE UNIQUE INDEX IF NOT EXISTS documents_folder_filename_uniq_idx ON ops.documents(folder, filename);
 CREATE INDEX IF NOT EXISTS documents_updated_at_idx ON ops.documents(updated_at DESC);
 CREATE INDEX IF NOT EXISTS documents_status_idx ON ops.documents(status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS documents_app_group_idx ON ops.documents(app_key, group_key, updated_at DESC);
 
 -- Prompts + audited revisions.
 CREATE TABLE IF NOT EXISTS ops.prompts (

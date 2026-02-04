@@ -5,7 +5,7 @@ This folder is a self-contained handoff for an internal system that:
 - Stores canonical location + weather inputs in PostgreSQL
 - Generates ETI360-branded chart **assets** (PNGs)
 - Stores assets in AWS S3 and metadata in Postgres
-- Stores internal planning documents in Postgres (`/documents/ui`)
+- Stores internal planning documents in S3 (metadata in Postgres) (`/documents/ui`)
 - Runs entirely on Render (no Docker required)
 
 ## What runs where

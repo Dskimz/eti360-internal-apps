@@ -71,3 +71,4 @@ Example for `gpt-5-mini`:
 
 - `DOCS_MAX_UPLOAD_BYTES` (optional; default: `10485760`) — max upload size for `/documents/upload` (stored in Postgres)
 - `DOCS_SCHEMA` (optional; default: `ops`) — schema for `documents` table
+- `DOCS_S3_PREFIX` (optional; default: `documents/`) — key prefix under `S3_PREFIX` for document uploads

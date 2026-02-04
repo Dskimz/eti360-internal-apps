@@ -1,3 +1,7 @@
+# Purpose: Upload PNG assets to S3 and generate pre-signed view URLs.
+# Scope: internal-api shared (asset storage for internal apps).
+# Dependencies: boto3 (AWS S3).
+# Notes: Requires AWS_REGION, S3_BUCKET; S3_PREFIX is optional.
 from __future__ import annotations
 
 import os
@@ -41,6 +45,14 @@ def put_png(*, region: str, bucket: str, key: str, body: bytes) -> None:
         ContentType="image/png",
         CacheControl="public, max-age=31536000",
     )
+
+
+def put_bytes(*, region: str, bucket: str, key: str, body: bytes, content_type: str, cache_control: str = "") -> None:
+    client = s3_client(region=region)
+    kwargs = {"Bucket": bucket, "Key": key, "Body": body, "ContentType": content_type or "application/octet-stream"}
+    if cache_control:
+        kwargs["CacheControl"] = cache_control
+    client.put_object(**kwargs)
 
 
 def presign_get(*, region: str, bucket: str, key: str, expires_in: int = 3600) -> str:

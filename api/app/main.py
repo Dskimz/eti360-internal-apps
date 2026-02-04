@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
-from app.weather.openai_chat import OpenAIResult, chat_json
+from app.weather.openai_chat import OpenAIResult, chat_text
 from app.weather.s3 import get_s3_config, presign_get, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
@@ -516,17 +516,58 @@ def _maybe_openai_title_subtitle(
         if rec.get("provider", "").lower() != "openai":
             return "", "", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, ""
 
-        model = rec.get("model") or (os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini")
+        model = str(rec.get("model") or "").strip()
+        deprecated_openai_models = {
+            "gpt-4o-mini",
+            "gpt-4o",
+            "gpt-4.1",
+            "gpt-4.1-mini",
+            "gpt-4.1-nano",
+            "o4-mini",
+        }
+        if not model or model in deprecated_openai_models:
+            model = os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini"
         summary_json = json.dumps(summary, ensure_ascii=False)
         prompt = _format_prompt_template(rec.get("prompt_text") or "", display_name=display_name, summary_json=summary_json)
-        r: OpenAIResult = chat_json(
+        r: OpenAIResult = chat_text(
             model=model,
-            system="You are a careful data extraction assistant. Output JSON only.",
+            system="Follow the instructions exactly. Output only what is requested.",
             user=prompt,
             temperature=0.2,
         )
-        title = str((r.payload or {}).get("title") or "").strip()
-        subtitle = str((r.payload or {}).get("subtitle") or "").strip()
+
+        def _norm_line(s: str) -> str:
+            s = (s or "").strip()
+            if not s:
+                return ""
+            # Common variants like "title: ..." or "- title: ..."
+            s = re.sub(r"^[\\s\\-\\*]*title\\s*:\\s*", "", s, flags=re.IGNORECASE).strip()
+            s = re.sub(r"^[\\s\\-\\*]*subtitle\\s*:\\s*", "", s, flags=re.IGNORECASE).strip()
+            return s
+
+        # Prefer JSON if the model still returns it, but accept the two-line format.
+        title = ""
+        subtitle = ""
+        raw = (r.text or "").strip()
+        if raw:
+            try:
+                obj = json.loads(raw)
+                if isinstance(obj, dict):
+                    title = str(obj.get("title") or "").strip()
+                    subtitle = str(obj.get("subtitle") or "").strip()
+            except Exception:
+                pass
+
+            if not title or not subtitle:
+                lines = [_norm_line(x) for x in raw.splitlines()]
+                lines = [x for x in lines if x]
+                if lines:
+                    title = title or lines[0]
+                if len(lines) >= 2:
+                    subtitle = subtitle or lines[1]
+
+        title = title.strip()
+        subtitle = subtitle.strip()
         return (
             title,
             subtitle,
@@ -1905,27 +1946,104 @@ def _required_prompts() -> list[dict[str, str]]:
             "natural_name": "OpenAI: weather PNG title + subtitle",
             "description": "Create a concise title and subtitle for the weather chart PNG.",
             "provider": "openai",
-            "model": os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
+            "model": os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini",
             "prompt_text": """
-Return ONLY a single JSON object (no markdown) with keys: {"title": "...", "subtitle": "..."}.
+Prompt: weather chart title and subtitle generation
 
-Title rules:
-- must include the city name
-- max 12 words
-- sentence case, no trailing period
-- describe the primary climate pattern (not chart mechanics)
+You are writing a title and subtitle for a city weather chart.
 
-Subtitle rules:
-- max 14 words
-- one clause only
-- plain, non-technical language
-- neutral and factual
-- MUST support the title but reference a different observable aspect than the title
-- Failure test: if subtitle is a paraphrase of the title, rewrite it
+Write in a calm, precise, non-promotional tone.
+Do not use emojis.
+Do not mention ETI360.
+Return only the requested text.
 
-Input:
+Step 1 — Identify the climate story
+
+First, examine the full annual weather data and identify one dominant climate story for the city.
+
+You must consider both temperature and precipitation together.
+
+Possible dominant stories include (choose one only):
+
+- Strong wet or dry season
+- Snow-dominated cold season
+- Large annual temperature range
+- Minimal seasonal variation
+- Compound seasonal pattern (e.g. hot + wet summers, cold + wet winters)
+
+Do not default to rainfall unless it is clearly the dominant feature.
+
+Step 2 — Write the title
+
+Role of the title
+
+The title states the primary annual climate insight and clearly identifies the location.
+It explains what kind of climate this is and where it applies.
+
+Title rules
+
+- Must include the city or region name
+- Sentence case
+- No trailing period
+- Maximum 12 words
+- Plain, non-technical language
+- Express the climate story, not chart mechanics or variable lists
+
+Title must not
+
+- Describe the chart itself
+- Use evaluative or promotional language
+- Combine multiple climate stories
+
+Step 3 — Write the subtitle
+
+Role of the subtitle
+
+The subtitle supports the title by pointing to a concrete, observable pattern in the data.
+It grounds the title’s insight without restating it.
+
+Core requirement
+
+The subtitle must reference a different climate dimension than the title (e.g. timing, concentration, contrast, persistence) while supporting the same overall story.
+
+Subtitle rules
+
+- Maximum 14 words
+- One clause only
+- Plain, non-technical language
+- Neutral and factual
+- No evaluative or promotional terms
+
+What the subtitle should do
+
+- Explain how the title’s insight appears in the data
+- Reference observable structure such as: timing, concentration, range, persistence
+
+What the subtitle must not do
+
+- Restate the title in different words
+- Introduce a second climate story
+- Summarize the entire climate
+- Use technical climatology terminology
+- Imply impacts, suitability, or recommendations
+
+Failure test (must enforce)
+
+If the subtitle could be replaced with a paraphrase of the title, it must be rewritten.
+
+Input
+
 - location: {display_name}
 - summary: {summary_json}
+
+Output
+
+Return:
+
+title
+subtitle
+
+Nothing else.
 """.strip(),
         },
         {
@@ -1934,9 +2052,14 @@ Input:
             "natural_name": "OpenAI: sunlight PNG title + subtitle",
             "description": "Write a title and subtitle for an annual daylight chart based on computed daylight summary.",
             "provider": "openai",
-            "model": os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
+            "model": os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini",
             "prompt_text": """
-Return ONLY a single JSON object (no markdown) with keys: {"title": "string", "subtitle": "string"}.
+You are writing a title and subtitle for an annual daylight chart.
+
+Write in a calm, precise, non-promotional tone.
+Do not use emojis.
+Do not mention ETI360.
+Return only the requested text.
 
 Task: Write a title and subtitle for an annual daylight chart.
 Location: {display_name}
@@ -1953,19 +2076,32 @@ Title rules:
 - must include city name
 - max 12 words
 - sentence case, no trailing period
-- intent: state the primary annual daylight pattern visible in the data, not chart mechanics
+- intent: State the primary annual daylight pattern visible in the data, not chart mechanics.
 
 Subtitle rules:
 - max 14 words
 - one clause only
 - no mechanics
-- allowed support dimensions: seasonal range, duration of extremes, timing of peak/min daylight, rate of change
-- dimension rule: Subtitle must reference a different observable aspect than the title while supporting the same insight
-- failure test: If subtitle paraphrases title or could be removed without loss of clarity, rewrite it
+- allowed support dimensions:
+  - seasonal range
+  - duration of extremes
+  - timing of peak or minimum daylight
+  - rate of change through the year
+- dimension rule: Subtitle must reference a different observable aspect than the title while supporting the same insight.
+- failure test: If the subtitle paraphrases the title or could be removed without loss of clarity, rewrite it.
 
 Avoid terms (do not use these words): sunrise, sunset, rise/set, chart, graph, twilight
 
 Summary (computed): {summary_json}
+
+Output
+
+Return:
+
+title
+subtitle
+
+Nothing else.
 """.strip(),
         },
     ]
@@ -1990,6 +2126,7 @@ def prompts_seed(
     reqs = _required_prompts()
 
     created: list[str] = []
+    updated: list[str] = []
     skipped: list[str] = []
 
     username = str(actor.get("username") or "")
@@ -2006,9 +2143,72 @@ def prompts_seed(
             _ensure_prompts_tables(cur)
             for r in reqs:
                 key = _require_prompt_key(r["prompt_key"])
-                cur.execute(_prompts_schema('SELECT id FROM "__SCHEMA__".prompts WHERE prompt_key=%s LIMIT 1;'), (key,))
-                if cur.fetchone():
-                    skipped.append(key)
+                cur.execute(
+                    _prompts_schema(
+                        """
+                        SELECT id, provider, model
+                        FROM "__SCHEMA__".prompts
+                        WHERE prompt_key=%s
+                        LIMIT 1;
+                        """
+                    ),
+                    (key,),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    (pid, existing_provider, existing_model) = existing
+                    existing_provider = str(existing_provider or "").strip().lower()
+                    existing_model = str(existing_model or "").strip()
+
+                    # Model migrations: keep user-edited prompt text, but update deprecated OpenAI models
+                    # to the new default so existing prompt rows continue working after deprecations.
+                    desired_model = str(r.get("model") or "").strip()
+                    deprecated_openai_models = {
+                        "gpt-4o-mini",
+                        "gpt-4o",
+                        "gpt-4.1",
+                        "gpt-4.1-mini",
+                        "gpt-4.1-nano",
+                        "o4-mini",
+                    }
+                    if existing_provider == "openai" and desired_model and (not existing_model or existing_model in deprecated_openai_models):
+                        cur.execute(
+                            _prompts_schema(
+                                """
+                                UPDATE "__SCHEMA__".prompts
+                                SET model=%s, updated_at=NOW()
+                                WHERE id=%s;
+                                """
+                            ),
+                            (desired_model, pid),
+                        )
+                        cur.execute(
+                            _prompts_schema(
+                                """
+                                INSERT INTO "__SCHEMA__".prompt_revisions
+                                  (prompt_id, prompt_key, edited_by_user_id, edited_by_username, edited_by_role, change_note,
+                                   before_text, after_text, before_provider, after_provider, before_model, after_model)
+                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                                """
+                            ),
+                            (
+                                pid,
+                                key,
+                                user_id_uuid,
+                                username,
+                                role,
+                                "Seed: migrate model default",
+                                "",
+                                "",
+                                str(existing_provider or ""),
+                                str(existing_provider or ""),
+                                existing_model,
+                                desired_model,
+                            ),
+                        )
+                        updated.append(key)
+                    else:
+                        skipped.append(key)
                     continue
                 cur.execute(
                     _prompts_schema(
@@ -2056,7 +2256,7 @@ def prompts_seed(
                 created.append(key)
         conn.commit()
 
-    return {"ok": True, "created": created, "skipped": skipped}
+    return {"ok": True, "created": created, "updated": updated, "skipped": skipped}
 
 
 @app.get("/prompts/item/{prompt_key}")
@@ -2465,7 +2665,7 @@ def prompts_edit_ui(
           <div style="height:12px;"></div>
 
           <label>Model</label>
-          <input id="model" type="text" value="{_esc(p.get('model') or '')}" placeholder="sonar-pro / gpt-4o-mini" {'disabled' if not can_edit else ''} />
+          <input id="model" type="text" value="{_esc(p.get('model') or '')}" placeholder="sonar-pro / gpt-5-mini" {'disabled' if not can_edit else ''} />
           <div style="height:12px;"></div>
 
           <label>Prompt text</label>
@@ -3619,14 +3819,13 @@ def auto_weather_batch(
         )
     )
 
-    # Always record OpenAI as 0 for this app (placeholder for shared tracker).
     usage_rows.append(
         _record_llm_usage(
             run_id=run_id,
             workflow=workflow,
             kind="auto_batch",
             provider="openai",
-            model=openai_model or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini",
+            model=openai_model or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini",
             prompt_tokens=openai_prompt,
             completion_tokens=openai_completion,
             total_tokens=openai_total,

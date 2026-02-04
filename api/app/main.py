@@ -31,6 +31,7 @@ app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
 WEATHER_SCHEMA = "weather"
 USAGE_SCHEMA = os.environ.get("USAGE_SCHEMA", "ops").strip() or "ops"
 AUTH_SCHEMA = os.environ.get("AUTH_SCHEMA", "ops").strip() or "ops"
+DOCS_SCHEMA = os.environ.get("DOCS_SCHEMA", "ops").strip() or "ops"
 SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "eti360_session").strip() or "eti360_session"
 
 
@@ -87,6 +88,11 @@ def _schema(sql: str) -> str:
 
 def _usage_schema(sql: str) -> str:
     schema = _require_safe_ident("USAGE_SCHEMA", USAGE_SCHEMA)
+    return sql.replace("__SCHEMA__", schema)
+
+
+def _docs_schema(sql: str) -> str:
+    schema = _require_safe_ident("DOCS_SCHEMA", DOCS_SCHEMA)
     return sql.replace("__SCHEMA__", schema)
 
 
@@ -452,9 +458,9 @@ def _ensure_documents_tables(cur: psycopg.Cursor) -> None:
     Store uploaded documents in Postgres (bytea) + metadata in ops schema.
     """
     cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
-    cur.execute(_auth_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
+    cur.execute(_docs_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
     cur.execute(
-        _auth_schema(
+        _docs_schema(
             """
             CREATE TABLE IF NOT EXISTS "__SCHEMA__".documents (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -474,16 +480,16 @@ def _ensure_documents_tables(cur: psycopg.Cursor) -> None:
             """
         ).strip()
     )
-    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS folder TEXT NOT NULL DEFAULT \'\';'))
-    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT \'future\';'))
-    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT \'\';'))
-    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS uploaded_by_user_id UUID;'))
-    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS uploaded_by_username TEXT NOT NULL DEFAULT \'\';'))
-    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();'))
-    cur.execute(_auth_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();'))
-    cur.execute(_auth_schema('CREATE UNIQUE INDEX IF NOT EXISTS documents_folder_filename_uniq_idx ON "__SCHEMA__".documents(folder, filename);'))
-    cur.execute(_auth_schema('CREATE INDEX IF NOT EXISTS documents_updated_at_idx ON "__SCHEMA__".documents(updated_at DESC);'))
-    cur.execute(_auth_schema('CREATE INDEX IF NOT EXISTS documents_status_idx ON "__SCHEMA__".documents(status, updated_at DESC);'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS folder TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT \'future\';'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS uploaded_by_user_id UUID;'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS uploaded_by_username TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();'))
+    cur.execute(_docs_schema('ALTER TABLE "__SCHEMA__".documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();'))
+    cur.execute(_docs_schema('CREATE UNIQUE INDEX IF NOT EXISTS documents_folder_filename_uniq_idx ON "__SCHEMA__".documents(folder, filename);'))
+    cur.execute(_docs_schema('CREATE INDEX IF NOT EXISTS documents_updated_at_idx ON "__SCHEMA__".documents(updated_at DESC);'))
+    cur.execute(_docs_schema('CREATE INDEX IF NOT EXISTS documents_status_idx ON "__SCHEMA__".documents(status, updated_at DESC);'))
 
 
 def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
@@ -3138,7 +3144,7 @@ def documents_list(
             _ensure_documents_tables(cur)
             if folder_s and status_s:
                 cur.execute(
-                    _auth_schema(
+                    _docs_schema(
                         """
                         SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
                         FROM "__SCHEMA__".documents
@@ -3151,7 +3157,7 @@ def documents_list(
                 )
             elif folder_s:
                 cur.execute(
-                    _auth_schema(
+                    _docs_schema(
                         """
                         SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
                         FROM "__SCHEMA__".documents
@@ -3164,7 +3170,7 @@ def documents_list(
                 )
             elif status_s:
                 cur.execute(
-                    _auth_schema(
+                    _docs_schema(
                         """
                         SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
                         FROM "__SCHEMA__".documents
@@ -3177,7 +3183,7 @@ def documents_list(
                 )
             else:
                 cur.execute(
-                    _auth_schema(
+                    _docs_schema(
                         """
                         SELECT id, folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_username, created_at, updated_at
                         FROM "__SCHEMA__".documents
@@ -3224,7 +3230,7 @@ def documents_download(
         with conn.cursor() as cur:
             _ensure_documents_tables(cur)
             cur.execute(
-                _auth_schema(
+                _docs_schema(
                     """
                     SELECT filename, content_type, content
                     FROM "__SCHEMA__".documents
@@ -3293,7 +3299,7 @@ async def documents_upload(
         with conn.cursor() as cur:
             _ensure_documents_tables(cur)
             cur.execute(
-                _auth_schema(
+                _docs_schema(
                     """
                     SELECT id
                     FROM "__SCHEMA__".documents
@@ -3310,7 +3316,7 @@ async def documents_upload(
             if existing:
                 (doc_id,) = existing
                 cur.execute(
-                    _auth_schema(
+                    _docs_schema(
                         """
                         UPDATE "__SCHEMA__".documents
                         SET content_type=%s, bytes=%s, sha256=%s, status=%s, notes=%s, uploaded_by_user_id=%s, uploaded_by_username=%s, updated_at=now(), content=%s
@@ -3321,7 +3327,7 @@ async def documents_upload(
                 )
             else:
                 cur.execute(
-                    _auth_schema(
+                    _docs_schema(
                         """
                         INSERT INTO "__SCHEMA__".documents
                           (folder, filename, content_type, bytes, sha256, status, notes, uploaded_by_user_id, uploaded_by_username, content)
@@ -3337,9 +3343,7 @@ async def documents_upload(
     # If the browser submitted the HTML form directly (no JS), redirect back to the UI.
     accept = (request.headers.get("accept") or "").lower()
     if "text/html" in accept:
-        qs = urlencode({"folder": folder_s} if folder_s else {})
-        target = f"/documents/ui?{qs}" if qs else "/documents/ui"
-        return RedirectResponse(url=target, status_code=303)
+        return RedirectResponse(url="/documents/ui", status_code=303)
 
     return JSONResponse({"ok": True, "id": str(doc_id), "folder": folder_s, "filename": filename, "bytes": len(data), "sha256": digest})
 
@@ -3349,7 +3353,7 @@ def documents_delete(
     doc_id: str,
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> dict[str, Any]:
+) -> Response:
     _require_access(request=request, x_api_key=x_api_key, role="editor")
     try:
         did = uuid.UUID(doc_id)
@@ -3359,9 +3363,12 @@ def documents_delete(
     with _connect() as conn:
         with conn.cursor() as cur:
             _ensure_documents_tables(cur)
-            cur.execute(_auth_schema('DELETE FROM "__SCHEMA__".documents WHERE id=%s;'), (did,))
+            cur.execute(_docs_schema('DELETE FROM "__SCHEMA__".documents WHERE id=%s;'), (did,))
         conn.commit()
-    return {"ok": True, "deleted": doc_id}
+    accept = (request.headers.get("accept") or "").lower()
+    if "text/html" in accept:
+        return RedirectResponse(url="/documents/ui", status_code=303)
+    return JSONResponse({"ok": True, "deleted": doc_id})
 
 
 @app.get("/documents/ui", response_class=HTMLResponse)
@@ -3372,7 +3379,91 @@ def documents_ui(
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
     can_write = _role_ge(str(user.get("role") or ""), required="editor")
 
-    body_html = """
+    # Server-render the list to avoid client-side (JS) failures preventing the table from populating.
+    status_q = str(request.query_params.get("status", "") or "")
+    status_s = (status_q or "").strip().lower()
+    if status_s:
+        status_s = _require_docs_status(status_s)
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    def _fmt_bytes(n: int) -> str:
+        if n < 1024:
+            return f"{n} B"
+        if n < 1024 * 1024:
+            return f"{n/1024:.1f} KB"
+        return f"{n/(1024*1024):.1f} MB"
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_documents_tables(cur)
+            if status_s:
+                cur.execute(
+                    _docs_schema(
+                        """
+                        SELECT id, folder, filename, status, bytes, updated_at
+                        FROM "__SCHEMA__".documents
+                        WHERE status=%s
+                        ORDER BY updated_at DESC
+                        LIMIT 500;
+                        """
+                    ),
+                    (status_s,),
+                )
+            else:
+                cur.execute(
+                    _docs_schema(
+                        """
+                        SELECT id, folder, filename, status, bytes, updated_at
+                        FROM "__SCHEMA__".documents
+                        ORDER BY updated_at DESC
+                        LIMIT 500;
+                        """
+                    )
+                )
+            rows = cur.fetchall()
+
+    rows_html = ""
+    for (doc_id, f, fn, st, b, ua) in rows:
+        path = f"{(f or '').strip('/')}/{fn}" if (f or "").strip("/") else str(fn or "")
+        updated = ua.isoformat() if ua else ""
+        delete_html = ""
+        if can_write:
+            delete_html = f"""
+              <form method="post" action="/documents/delete/{_esc(doc_id)}" style="display:inline;">
+                <button class="btn" type="submit" onclick="return confirm('Delete this document?')">Delete</button>
+              </form>
+            """.strip()
+        rows_html += (
+            "<tr>"
+            f"<td><code>{_esc(path)}</code></td>"
+            f"<td><code>{_esc(st or '')}</code></td>"
+            f"<td class=\"right\"><code>{_esc(_fmt_bytes(int(b or 0)))}</code></td>"
+            f"<td><code>{_esc(updated).replace('T',' ').replace('Z','')}</code></td>"
+            "<td style=\"white-space:nowrap;\">"
+            f"<a class=\"btn\" href=\"/documents/download/{_esc(doc_id)}\">Download</a> "
+            f"{delete_html}"
+            "</td>"
+            "</tr>"
+        )
+    if not rows_html:
+        rows_html = '<tr><td colspan="5" class="muted">No documents yet.</td></tr>'
+
+    upload_note = ""
+    upload_disabled = ""
+    if not can_write:
+        upload_note = '<p class="muted">Upload is disabled (requires editor role).</p>'
+        upload_disabled = "disabled"
+
+    body_html = f"""
       <div class="card">
         <h1>Documents</h1>
         <p class="muted">Upload and download project notes (stored in Postgres). Organize by folder and status.</p>
@@ -3381,13 +3472,10 @@ def documents_ui(
       <div class="section grid-2">
         <div class="card">
           <h2>Upload</h2>
-          <form id="upForm" method="post" action="/documents/upload" enctype="multipart/form-data">
-            <label>Folder (optional)</label>
-            <input name="folder" type="text" placeholder="ideas/2026" />
-            <div style="height:12px;"></div>
-
+          {upload_note}
+          <form method="post" action="/documents/upload" enctype="multipart/form-data">
             <label>Status</label>
-            <select name="status">
+            <select name="status" {upload_disabled}>
               <option value="future">Future</option>
               <option value="in_progress">In progress</option>
               <option value="finished">Finished</option>
@@ -3395,50 +3483,45 @@ def documents_ui(
             <div style="height:12px;"></div>
 
             <label>Notes (optional)</label>
-            <input name="notes" type="text" placeholder="Short description" />
+            <input name="notes" type="text" placeholder="Short description" {upload_disabled} />
             <div style="height:12px;"></div>
 
             <label>File</label>
-            <input name="file" type="file" />
+            <input name="file" type="file" {upload_disabled} />
             <div style="height:12px;"></div>
 
             <label style="display:flex; align-items:center; gap:10px;">
-              <input name="overwrite" type="checkbox" checked />
+              <input name="overwrite" type="checkbox" checked {upload_disabled} />
               Overwrite if filename exists in folder
             </label>
 
             <div class="btnrow">
-              <button class="btn primary" type="submit">Upload</button>
+              <button class="btn primary" type="submit" {upload_disabled}>Upload</button>
               <a class="btn" href="/apps">Back</a>
             </div>
-            <div id="upStatus" class="statusbox mono" style="display:none;"></div>
           </form>
         </div>
 
         <div class="card">
           <h2>Browse</h2>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-            <div style="flex:1; min-width:200px;">
-              <label>Folder (optional)</label>
-              <input id="filterFolder" type="text" placeholder="ideas/2026" />
-            </div>
+          <form method="get" action="/documents/ui" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
             <div style="min-width:160px;">
               <label>Status</label>
-              <select id="filterStatus">
-                <option value="">All</option>
-                <option value="future">Future</option>
-                <option value="in_progress">In progress</option>
-                <option value="finished">Finished</option>
+              <select name="status">
+                <option value="" {"selected" if not status_s else ""}>All</option>
+                <option value="future" {"selected" if status_s == "future" else ""}>Future</option>
+                <option value="in_progress" {"selected" if status_s == "in_progress" else ""}>In progress</option>
+                <option value="finished" {"selected" if status_s == "finished" else ""}>Finished</option>
               </select>
             </div>
-            <button id="btnRefresh" class="btn" type="button">Refresh</button>
-          </div>
+            <button class="btn" type="submit">Filter</button>
+            <a class="btn" href="/documents/ui">Clear</a>
+          </form>
           <div class="divider"></div>
           <div class="tablewrap" style="max-height: 70vh;">
             <table>
               <thead>
                 <tr>
-                  <th>Folder</th>
                   <th>File</th>
                   <th>Status</th>
                   <th class="right">Size</th>
@@ -3446,117 +3529,17 @@ def documents_ui(
                   <th></th>
                 </tr>
               </thead>
-              <tbody id="rows"></tbody>
+              <tbody>
+                {rows_html}
+              </tbody>
             </table>
           </div>
-          <div id="listStatus" class="muted" style="margin-top:10px;"></div>
+          <div class="muted" style="margin-top:10px;">Rows: {_esc(len(rows))} · Stored in schema <code>{_esc(_require_safe_ident("DOCS_SCHEMA", DOCS_SCHEMA))}</code></div>
         </div>
       </div>
     """.strip()
 
-    script = """
-    <script>
-      const canWrite = __CAN_WRITE__;
-      const upForm = document.getElementById('upForm');
-      const upStatus = document.getElementById('upStatus');
-      const rowsEl = document.getElementById('rows');
-      const listStatus = document.getElementById('listStatus');
-      const btnRefresh = document.getElementById('btnRefresh');
-
-      function showUp(msg) {{ upStatus.style.display = 'block'; upStatus.textContent = msg; }}
-      function fmtBytes(n) {{
-        n = Number(n || 0);
-        if (n < 1024) return n + ' B';
-        if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
-        return (n/(1024*1024)).toFixed(1) + ' MB';
-      }}
-      function safe(s) {{ return String(s || ''); }}
-
-      async function loadList() {{
-        const folder = document.getElementById('filterFolder').value || '';
-        const status = document.getElementById('filterStatus').value || '';
-        const qs = new URLSearchParams();
-        if (folder.trim()) qs.set('folder', folder.trim());
-        if (status.trim()) qs.set('status', status.trim());
-        qs.set('limit', '500');
-        try {{
-          const res = await fetch('/documents/list?' + qs.toString());
-          const body = await res.json().catch(() => ({{}}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-	          const docs = body.docs || [];
-	          rowsEl.innerHTML = '';
-	          for (const d of docs) {{
-	            const tr = document.createElement('tr');
-	            const updated = safe(d.updated_at).replace('T',' ').replace('Z','');
-	            const delBtn = canWrite ? '<button class="btn" data-del="' + safe(d.id) + '">Delete</button>' : '';
-	            tr.innerHTML = `
-	              <td><code>${safe(d.folder)}</code></td>
-	              <td><code>${safe(d.filename)}</code></td>
-	              <td><code>${safe(d.status)}</code></td>
-	              <td class="right"><code>${fmtBytes(d.bytes)}</code></td>
-	              <td><code>${updated}</code></td>
-	              <td style="white-space:nowrap;">
-	                <a class="btn" href="/documents/download/${safe(d.id)}">Download</a>
-	                ${delBtn}
-	              </td>
-	            `;
-	            rowsEl.appendChild(tr);
-	          }}
-          if (docs.length === 0) {{
-            rowsEl.innerHTML = '<tr><td colspan="6" class="muted">No documents yet.</td></tr>';
-          }}
-          listStatus.textContent = `Rows: ${docs.length}`;
-        }} catch (e) {{
-          rowsEl.innerHTML = '';
-          listStatus.textContent = 'Error: ' + String(e?.message || e);
-        }}
-      }}
-
-      btnRefresh && btnRefresh.addEventListener('click', loadList);
-      rowsEl && rowsEl.addEventListener('click', async (ev) => {{
-        const btn = ev.target && ev.target.closest ? ev.target.closest('button[data-del]') : null;
-        if (!btn) return;
-        if (!canWrite) return;
-        const id = btn.getAttribute('data-del');
-        if (!id) return;
-        if (!confirm('Delete this document?')) return;
-        try {{
-          const res = await fetch('/documents/delete/' + encodeURIComponent(id), {{ method: 'POST' }});
-          const body = await res.json().catch(() => ({{}}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-          await loadList();
-        }} catch (e) {{
-          alert('Error: ' + String(e?.message || e));
-        }}
-      }});
-
-      upForm && upForm.addEventListener('submit', async (ev) => {{
-        ev.preventDefault();
-        if (!canWrite) {{
-          showUp('Upload disabled (requires editor role).');
-          return;
-        }}
-        const fd = new FormData(upForm);
-        fd.set('overwrite', upForm.querySelector('input[name="overwrite"]').checked ? 'true' : 'false');
-        showUp('Uploading…');
-        try {{
-          const res = await fetch('/documents/upload', {{ method: 'POST', body: fd }});
-          const body = await res.json().catch(() => ({{}}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${{res.status}}`);
-          showUp('Uploaded: ' + safe(body.filename) + ' (' + fmtBytes(body.bytes) + ')');
-          upForm.querySelector('input[name="file"]').value = '';
-          await loadList();
-        }} catch (e) {{
-          showUp('Error: ' + String(e?.message || e));
-        }}
-      }});
-
-      loadList();
-    </script>
-    """.strip()
-    script = script.replace("__CAN_WRITE__", json.dumps(bool(can_write)))
-
-    return _ui_shell(title="ETI360 Documents", active="apps", body_html=body_html, max_width_px=1400, user=user, extra_script=script)
+    return _ui_shell(title="ETI360 Documents", active="apps", body_html=body_html, max_width_px=1400, user=user)
 
 
 @app.get("/db/schemas")
@@ -3750,11 +3733,14 @@ def db_ui(
 
     body_html = f"""
       <div class="grid-sidebar">
-        <div class="card">
-          <h2>Tables</h2>
-          <div class="muted">Schema: <code>{_esc(schema)}</code></div>
-          <div class="divider"></div>
-          <ul style="margin: 8px 0 0 18px; padding: 0;">{table_links}</ul>
+	        <div class="card">
+	          <h2>Tables</h2>
+	          <div class="muted">Schema: <code>{_esc(schema)}</code></div>
+	          <div class="muted" style="margin-top:6px;">
+	            Common: <a href="/db/ui?schema={_esc(WEATHER_SCHEMA)}">weather</a> · <a href="/db/ui?schema=ops">ops</a>
+	          </div>
+	          <div class="divider"></div>
+	          <ul style="margin: 8px 0 0 18px; padding: 0;">{table_links}</ul>
           <div class="divider"></div>
           <div class="muted">JSON: <a href="/db/tables?schema={_esc(schema)}&include_views=true">/db/tables</a> · <a href="/db/schemas">/db/schemas</a></div>
         </div>

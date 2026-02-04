@@ -42,6 +42,10 @@ Optional:
 - `USAGE_SCHEMA` (optional, default: `ops`) — LLM token/cost logging tables
 - `PROMPTS_SCHEMA` (optional, default: `ops`) — prompts + prompt revisions tables
 
+## Prompts UI (optional)
+
+- `PROMPTS_UI_EDITING` (optional; default: disabled) — set to `enabled` to allow editing in `/prompts/edit`
+
 ## Cost configuration (optional)
 
 If unset, costs will show as `$0.000000`.
@@ -66,3 +70,4 @@ Example for `gpt-5-mini`:
 ## Documents (optional)
 
 - `DOCS_MAX_UPLOAD_BYTES` (optional; default: `10485760`) — max upload size for `/documents/upload` (stored in Postgres)
+- `DOCS_SCHEMA` (optional; default: `ops`) — schema for `documents` table

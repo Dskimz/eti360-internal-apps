@@ -30,6 +30,11 @@ Optional / for assets:
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
 - `S3_BUCKET`, `S3_PREFIX`
 
+Optional / for trip providers:
+
+- `DIRECTORY_SCHEMA` (optional; default: `directory`) schema for trip provider tables
+- `TRIP_PROVIDERS_EVIDENCE_S3_PREFIX` (optional; default: `trip_providers/evidence/`) S3 prefix for provider evidence markdown
+
 Optional / for weather helpers:
 
 - `GOOGLE_MAPS_API_KEY` (for Places lookup)
@@ -59,3 +64,4 @@ Optional / for weather helpers:
 - Token/cost tracker: `GET /weather/usage`
 - API usage log: `GET /usage/ui`, `GET /usage/log` (usage rows are attributed by `prompt_key`)
 - Documents: `GET /documents/ui`, `GET /documents/list`, `POST /documents/upload`, `GET /documents/download/{doc_id}`, `POST /documents/delete/{doc_id}`
+- Trip providers (research): `GET /trip_providers_research`, `GET /trip_providers_research/{provider_key}`, `GET /trip_providers_research/{provider_key}/evidence`

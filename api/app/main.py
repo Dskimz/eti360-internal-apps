@@ -14,6 +14,8 @@ from typing import Any
 from urllib.parse import urlencode, urlparse, quote
 from urllib.request import urlopen
 
+import bleach
+import markdown as mdlib
 import psycopg
 from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -23,7 +25,7 @@ from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
 from app.weather.openai_chat import OpenAIResult, chat_text
-from app.weather.s3 import get_s3_config, presign_get, presign_get_inline, put_bytes, put_png
+from app.weather.s3 import get_bytes, get_s3_config, presign_get, presign_get_inline, put_bytes, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
 app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
@@ -461,6 +463,15 @@ def _docs_s3_prefix() -> str:
     return raw
 
 
+def _docs_max_preview_bytes() -> int:
+    raw = os.environ.get("DOCS_MAX_PREVIEW_BYTES", "").strip()
+    try:
+        v = int(raw) if raw else 1024 * 1024
+    except Exception:
+        v = 1024 * 1024
+    return max(32 * 1024, min(v, 5 * 1024 * 1024))
+
+
 def _require_docs_status(status: str) -> str:
     s = (status or "").strip().lower()
     if not s:
@@ -468,6 +479,60 @@ def _require_docs_status(status: str) -> str:
     if s not in {"future", "in_progress", "finished"}:
         raise HTTPException(status_code=400, detail="Invalid status (future, in_progress, finished)")
     return s
+
+
+_MD_EXTS = {".md", ".markdown", ".mdown", ".mkd"}
+
+
+def _is_markdown(*, filename: str, content_type: str) -> bool:
+    fn = (filename or "").strip().lower()
+    ct = (content_type or "").strip().lower()
+    if ct in {"text/markdown", "text/x-markdown"}:
+        return True
+    for ext in _MD_EXTS:
+        if fn.endswith(ext):
+            return True
+    return False
+
+
+_MD_ALLOWED_TAGS = [
+    "p",
+    "br",
+    "hr",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "li",
+    "strong",
+    "em",
+    "code",
+    "pre",
+    "blockquote",
+    "a",
+]
+_MD_ALLOWED_ATTRS = {"a": ["href", "title", "rel", "target"]}
+
+
+def _render_markdown_safe(md_text: str) -> str:
+    html = mdlib.markdown(
+        md_text or "",
+        extensions=["fenced_code", "sane_lists"],
+        output_format="html",
+    )
+    cleaned = bleach.clean(
+        html,
+        tags=_MD_ALLOWED_TAGS,
+        attributes=_MD_ALLOWED_ATTRS,
+        protocols=["http", "https", "mailto"],
+        strip=True,
+    )
+    cleaned = bleach.linkify(cleaned, callbacks=[bleach.callbacks.nofollow, bleach.callbacks.target_blank])
+    return cleaned
 
 
 def _require_docs_app_key(app_key: str) -> str:
@@ -3383,6 +3448,153 @@ def documents_view(
     return Response(content=body, media_type=safe_ct, headers={"Content-Disposition": f"inline; filename*=UTF-8''{safe_fn}"})
 
 
+@app.get("/documents/preview/{doc_id}", response_class=HTMLResponse)
+def documents_preview(
+    doc_id: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str | Response:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    try:
+        did = uuid.UUID(doc_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid doc_id")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_documents_tables(cur)
+            cur.execute(
+                _docs_schema(
+                    """
+                    SELECT folder, filename, content_type, content, storage, s3_bucket, s3_key, status, notes, bytes, updated_at
+                    FROM "__SCHEMA__".documents
+                    WHERE id=%s
+                    LIMIT 1;
+                    """
+                ),
+                (did,),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    folder, filename, content_type, content, storage, s3_bucket, s3_key, status, notes, bytes_n, updated_at = row
+    folder_s = str(folder or "")
+    fn = str(filename or "document.md")
+    ct = str(content_type or "application/octet-stream")
+    storage_s = str(storage or "").strip().lower()
+    bucket = str(s3_bucket or "").strip()
+    key = str(s3_key or "").strip()
+
+    if not _is_markdown(filename=fn, content_type=ct):
+        return RedirectResponse(url=f"/documents/view/{doc_id}", status_code=302)
+
+    try:
+        if storage_s == "s3" or (bucket and key):
+            cfg = get_s3_config()
+            data = get_bytes(
+                region=cfg.region,
+                bucket=bucket or cfg.bucket,
+                key=key,
+                max_bytes=_docs_max_preview_bytes(),
+            )
+        else:
+            data = bytes(content or b"")
+            if len(data) > _docs_max_preview_bytes():
+                raise RuntimeError("Document too large to preview")
+    except Exception as e:
+        body_html = f"""
+          <div class="card">
+            <h1>Preview</h1>
+            <p class="muted">This document can’t be previewed ({str(e)}).</p>
+            <div class="btnrow" style="margin-top:14px;">
+              <a class="btn" href="/documents/download/{doc_id}">Download</a>
+              <a class="btn" href="/documents/ui">Back</a>
+            </div>
+          </div>
+        """.strip()
+        return _ui_shell(title="ETI360 Document Preview", active="apps", body_html=body_html, max_width_px=1100, user=user)
+
+    md_text = data.decode("utf-8", errors="replace")
+    rendered = _render_markdown_safe(md_text)
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    updated_iso = updated_at.isoformat() if updated_at else ""
+    status_s = str(status or "")
+    notes_s = str(notes or "")
+    bytes_s = int(bytes_n or 0)
+    title = fn
+    if folder_s:
+        title = f"{folder_s}/{fn}"
+
+    extra_head = """
+    <style>
+      .doc-md h1,.doc-md h2,.doc-md h3 { margin-top: 18px; }
+      .doc-md pre { background: #F5F6F7; border: 1px solid #F2F2F2; padding: 12px; overflow: auto; border-radius: 10px; }
+      .doc-md code { background: #F5F6F7; padding: 0 4px; border-radius: 6px; }
+      .doc-md pre code { background: transparent; padding: 0; }
+      .doc-meta { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    </style>
+    """.strip()
+
+    body_html = f"""
+      <div class="card">
+        <h1 style="margin-bottom:6px;">Preview</h1>
+        <div class="doc-meta muted">
+          <span><strong>File:</strong> <code>{_esc(title)}</code></span>
+          <span><strong>Status:</strong> <span class="pill">{_esc(status_s)}</span></span>
+          <span><strong>Size:</strong> <code>{_esc(bytes_s)}</code> bytes</span>
+          <span><strong>Updated (Local):</strong> <time class="dt" datetime="{_esc(updated_iso)}"><code>{_esc(updated_iso).replace('T',' ').replace('Z','')}</code></time></span>
+        </div>
+        {f'<p class="muted" style="margin-top:10px;"><strong>Notes:</strong> {_esc(notes_s)}</p>' if notes_s else ''}
+        <div class="btnrow" style="margin-top:14px;">
+          <a class="btn" href="/documents/download/{_esc(doc_id)}">Download</a>
+          <a class="btn" href="/documents/view/{_esc(doc_id)}" target="_blank" rel="noopener">View raw</a>
+          <a class="btn" href="/documents/ui">Back</a>
+        </div>
+      </div>
+
+      <div class="card doc-md">
+        {rendered}
+      </div>
+    """.strip()
+
+    extra_script = """
+    <script>
+      (function () {
+        const els = document.querySelectorAll('time.dt[datetime]');
+        for (const el of els) {
+          const iso = el.getAttribute('datetime') || '';
+          if (!iso) continue;
+          const d = new Date(iso);
+          if (!isFinite(d.getTime())) continue;
+          el.setAttribute('title', iso);
+          el.innerHTML = '<code>' + d.toLocaleString() + '</code>';
+        }
+      })();
+    </script>
+    """.strip()
+
+    return _ui_shell(
+        title="ETI360 Document Preview",
+        active="apps",
+        body_html=body_html,
+        max_width_px=1100,
+        extra_head=extra_head,
+        extra_script=extra_script,
+        user=user,
+    )
+
+
 @app.post("/documents/upload")
 async def documents_upload(
     request: Request,
@@ -3648,6 +3860,7 @@ def documents_ui(
 
     rows_html = ""
     for (doc_id, f, fn, st, b, ua) in rows:
+        is_md = _is_markdown(filename=str(fn or ""), content_type="")
         pretty_name = _pretty_path(str(f or ""), str(fn or ""))
         updated = ua.isoformat() if ua else ""
         delete_html = ""
@@ -3657,6 +3870,9 @@ def documents_ui(
                 <button class="btn" type="submit" onclick="return confirm('Delete this document?')">Delete</button>
               </form>
             """.strip()
+        preview_html = ""
+        if is_md:
+            preview_html = f"<a class=\"btn\" href=\"/documents/preview/{_esc(doc_id)}\" target=\"_blank\" rel=\"noopener\">Preview</a> "
         rows_html += (
             "<tr>"
             f"<td><code>{_esc(pretty_name)}</code></td>"
@@ -3664,6 +3880,7 @@ def documents_ui(
             f"<td class=\"right\"><code>{_esc(_fmt_bytes(int(b or 0)))}</code></td>"
             f"<td><time class=\"dt\" datetime=\"{_esc(updated)}\"><code>{_esc(updated).replace('T',' ').replace('Z','')}</code></time></td>"
             "<td style=\"white-space:nowrap;\">"
+            f"{preview_html}"
             f"<a class=\"btn\" href=\"/documents/view/{_esc(doc_id)}\" target=\"_blank\" rel=\"noopener\">View</a> "
             f"<a class=\"btn\" href=\"/documents/download/{_esc(doc_id)}\">Download</a> "
             f"{delete_html}"

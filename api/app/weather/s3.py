@@ -62,3 +62,26 @@ def presign_get(*, region: str, bucket: str, key: str, expires_in: int = 3600) -
         Params={"Bucket": bucket, "Key": key},
         ExpiresIn=expires_in,
     )
+
+
+def presign_get_inline(
+    *,
+    region: str,
+    bucket: str,
+    key: str,
+    filename: str,
+    content_type: str = "",
+    expires_in: int = 3600,
+) -> str:
+    """
+    Generate a pre-signed S3 GET URL that hints the browser to display inline.
+
+    Note: this is a hint; the browser may still download for unknown types.
+    """
+    client = s3_client(region=region)
+    params: dict[str, str] = {"Bucket": bucket, "Key": key}
+    if filename:
+        params["ResponseContentDisposition"] = f'inline; filename="{filename}"'
+    if content_type:
+        params["ResponseContentType"] = content_type
+    return client.generate_presigned_url(ClientMethod="get_object", Params=params, ExpiresIn=expires_in)

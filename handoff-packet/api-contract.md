@@ -80,6 +80,7 @@ Each usage row includes:
 - `GET /documents/ui` (UI upload + browse)
 - `GET /documents/list` (JSON list)
 - `POST /documents/upload` (multipart upload; stored in S3, metadata in Postgres)
+- `GET /documents/view/{doc_id}` (preview; inline when possible)
 - `GET /documents/download/{doc_id}` (download)
 - `POST /documents/delete/{doc_id}` (delete)
 

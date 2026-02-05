@@ -23,7 +23,7 @@ from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
 from app.weather.openai_chat import OpenAIResult, chat_text
-from app.weather.s3 import get_s3_config, presign_get, put_bytes, put_png
+from app.weather.s3 import get_s3_config, presign_get, presign_get_inline, put_bytes, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
 app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
@@ -3322,6 +3322,67 @@ def documents_download(
     return Response(content=body, media_type=ct, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_fn}"})
 
 
+@app.get("/documents/view/{doc_id}")
+def documents_view(
+    doc_id: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> Response:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    try:
+        did = uuid.UUID(doc_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid doc_id")
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_documents_tables(cur)
+            cur.execute(
+                _docs_schema(
+                    """
+                    SELECT filename, content_type, content, s3_bucket, s3_key, storage
+                    FROM "__SCHEMA__".documents
+                    WHERE id=%s
+                    LIMIT 1;
+                    """
+                ),
+                (did,),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    filename, content_type, content, s3_bucket, s3_key, storage = row
+    fn = str(filename or "document")
+    ct_raw = str(content_type or "application/octet-stream").strip()
+    bucket = str(s3_bucket or "").strip()
+    key = str(s3_key or "").strip()
+    storage_s = str(storage or "").strip().lower()
+
+    # Avoid running HTML in-browser from stored docs.
+    safe_ct = ct_raw
+    if safe_ct.lower() in {"text/html", "application/xhtml+xml"}:
+        safe_ct = "text/plain; charset=utf-8"
+
+    if storage_s == "s3" or (bucket and key):
+        cfg = get_s3_config()
+        view_url = presign_get_inline(
+            region=cfg.region,
+            bucket=bucket or cfg.bucket,
+            key=key,
+            filename=fn,
+            content_type=safe_ct,
+            expires_in=3600,
+        )
+        return RedirectResponse(url=view_url, status_code=302)
+
+    body = bytes(content or b"")
+    if not body:
+        raise HTTPException(status_code=404, detail="Document content missing")
+    safe_fn = quote(fn)
+    return Response(content=body, media_type=safe_ct, headers={"Content-Disposition": f"inline; filename*=UTF-8''{safe_fn}"})
+
+
 @app.post("/documents/upload")
 async def documents_upload(
     request: Request,
@@ -3603,6 +3664,7 @@ def documents_ui(
             f"<td class=\"right\"><code>{_esc(_fmt_bytes(int(b or 0)))}</code></td>"
             f"<td><time class=\"dt\" datetime=\"{_esc(updated)}\"><code>{_esc(updated).replace('T',' ').replace('Z','')}</code></time></td>"
             "<td style=\"white-space:nowrap;\">"
+            f"<a class=\"btn\" href=\"/documents/view/{_esc(doc_id)}\" target=\"_blank\" rel=\"noopener\">View</a> "
             f"<a class=\"btn\" href=\"/documents/download/{_esc(doc_id)}\">Download</a> "
             f"{delete_html}"
             "</td>"

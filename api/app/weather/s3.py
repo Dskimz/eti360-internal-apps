@@ -64,6 +64,24 @@ def presign_get(*, region: str, bucket: str, key: str, expires_in: int = 3600) -
     )
 
 
+def get_bytes(*, region: str, bucket: str, key: str, max_bytes: int = 2 * 1024 * 1024) -> bytes:
+    """
+    Download an object from S3, enforcing a maximum size.
+
+    Intended for small previews (e.g. Markdown rendering) where redirecting to a
+    pre-signed URL isn't sufficient.
+    """
+    client = s3_client(region=region)
+    obj = client.get_object(Bucket=bucket, Key=key)
+    body = obj.get("Body")
+    if body is None:
+        return b""
+    data = body.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise RuntimeError("Object too large to preview")
+    return data
+
+
 def presign_get_inline(
     *,
     region: str,

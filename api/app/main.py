@@ -34,6 +34,7 @@ WEATHER_SCHEMA = "weather"
 USAGE_SCHEMA = os.environ.get("USAGE_SCHEMA", "ops").strip() or "ops"
 AUTH_SCHEMA = os.environ.get("AUTH_SCHEMA", "ops").strip() or "ops"
 DOCS_SCHEMA = os.environ.get("DOCS_SCHEMA", "ops").strip() or "ops"
+DIRECTORY_SCHEMA = os.environ.get("DIRECTORY_SCHEMA", "directory").strip() or "directory"
 SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "eti360_session").strip() or "eti360_session"
 
 
@@ -100,6 +101,11 @@ def _docs_schema(sql: str) -> str:
 
 def _auth_schema(sql: str) -> str:
     schema = _require_safe_ident("AUTH_SCHEMA", AUTH_SCHEMA)
+    return sql.replace("__SCHEMA__", schema)
+
+
+def _directory_schema(sql: str) -> str:
+    schema = _require_safe_ident("DIRECTORY_SCHEMA", DIRECTORY_SCHEMA)
     return sql.replace("__SCHEMA__", schema)
 
 
@@ -611,6 +617,83 @@ def _ensure_documents_tables(cur: psycopg.Cursor) -> None:
     cur.execute(_docs_schema('CREATE INDEX IF NOT EXISTS documents_app_group_idx ON "__SCHEMA__".documents(app_key, group_key, updated_at DESC);'))
 
 
+_DIRECTORY_SCHEMA_STATEMENTS: list[str] = [
+    "CREATE EXTENSION IF NOT EXISTS pgcrypto;",
+    'CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";',
+    """
+    CREATE TABLE IF NOT EXISTS "__SCHEMA__".providers (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      provider_key TEXT NOT NULL UNIQUE,
+      provider_name TEXT NOT NULL DEFAULT '',
+      website_url TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'active',
+      last_reviewed_at TIMESTAMPTZ,
+      review_interval_days INTEGER NOT NULL DEFAULT 365,
+      profile_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT providers_status_chk CHECK (status IN ('active','excluded'))
+    );
+    """.strip(),
+    'CREATE INDEX IF NOT EXISTS providers_name_idx ON "__SCHEMA__".providers(provider_name);',
+    'CREATE INDEX IF NOT EXISTS providers_status_idx ON "__SCHEMA__".providers(status);',
+    """
+    CREATE TABLE IF NOT EXISTS "__SCHEMA__".provider_classifications (
+      provider_id UUID PRIMARY KEY REFERENCES "__SCHEMA__".providers(id) ON DELETE CASCADE,
+      market_orientation TEXT NOT NULL DEFAULT '',
+      client_profile_indicators TEXT NOT NULL DEFAULT '',
+      educational_market_orientation TEXT NOT NULL DEFAULT '',
+      commercial_posture_signal TEXT NOT NULL DEFAULT '',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    """.strip(),
+    'CREATE INDEX IF NOT EXISTS provider_classifications_market_idx ON "__SCHEMA__".provider_classifications(market_orientation);',
+    """
+    CREATE TABLE IF NOT EXISTS "__SCHEMA__".provider_social_links (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      provider_id UUID NOT NULL REFERENCES "__SCHEMA__".providers(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL DEFAULT 'other',
+      url TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT provider_social_kind_chk CHECK (kind IN ('facebook','linkedin','instagram','twitter','youtube','tiktok','other')),
+      CONSTRAINT provider_social_provider_kind_uniq UNIQUE (provider_id, kind)
+    );
+    """.strip(),
+    'CREATE INDEX IF NOT EXISTS provider_social_provider_idx ON "__SCHEMA__".provider_social_links(provider_id);',
+    """
+    CREATE TABLE IF NOT EXISTS "__SCHEMA__".provider_analysis_runs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      provider_id UUID NOT NULL REFERENCES "__SCHEMA__".providers(id) ON DELETE CASCADE,
+      analytical_prompt_version TEXT NOT NULL DEFAULT '',
+      raw_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+      generated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT provider_analysis_provider_version_uniq UNIQUE (provider_id, analytical_prompt_version)
+    );
+    """.strip(),
+    'CREATE INDEX IF NOT EXISTS provider_analysis_provider_idx ON "__SCHEMA__".provider_analysis_runs(provider_id);',
+    """
+    CREATE TABLE IF NOT EXISTS "__SCHEMA__".provider_evidence (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      provider_id UUID NOT NULL REFERENCES "__SCHEMA__".providers(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL DEFAULT 'markdown',
+      s3_bucket TEXT NOT NULL DEFAULT '',
+      s3_key TEXT NOT NULL DEFAULT '',
+      content_type TEXT NOT NULL DEFAULT 'text/markdown',
+      bytes BIGINT,
+      uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT provider_evidence_provider_kind_uniq UNIQUE (provider_id, kind)
+    );
+    """.strip(),
+    'CREATE INDEX IF NOT EXISTS provider_evidence_provider_idx ON "__SCHEMA__".provider_evidence(provider_id);',
+]
+
+
+def _ensure_directory_tables(cur: psycopg.Cursor) -> None:
+    for stmt in _DIRECTORY_SCHEMA_STATEMENTS:
+        cur.execute(_directory_schema(stmt))
+
+
 def _ensure_prompts_tables(cur: psycopg.Cursor) -> None:
     cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
     cur.execute(_prompts_schema('CREATE SCHEMA IF NOT EXISTS "__SCHEMA__";'))
@@ -1089,6 +1172,7 @@ th { font-size: 12px; letter-spacing: 0.2px; color: rgba(0, 8, 20, 0.65); backgr
 def _ui_nav(*, active: str) -> str:
     items = [
         ("Apps", "/apps", "apps"),
+        ("Trip Providers", "/trip_providers_research", "trip_providers"),
         ("Weather", "/weather/ui", "weather"),
         ("Usage", "/usage/ui", "usage"),
         ("DB", "/db/ui", "db"),
@@ -1862,6 +1946,11 @@ def apps_home(request: Request) -> str:
             </thead>
             <tbody>
               <tr>
+                <td>Trip Providers (Research)</td>
+                <td class="muted">Search and review educational trip provider profiles.</td>
+                <td><a href="/trip_providers_research">Open</a></td>
+              </tr>
+              <tr>
                 <td>Weather + Sunlight</td>
                 <td class="muted">Batch-generate climate + daylight charts to S3.</td>
                 <td><a href="/weather/ui">Open</a></td>
@@ -1908,6 +1997,490 @@ def apps_home(request: Request) -> str:
     """.strip()
 
     return _ui_shell(title="ETI360 Apps", active="apps", body_html=body_html, max_width_px=1100, user=user)
+
+
+def _safe_provider_key(provider_key: str) -> str:
+    provider_key = (provider_key or "").strip()
+    if not provider_key:
+        raise HTTPException(status_code=400, detail="Missing provider_key")
+    if "/" in provider_key or "\\" in provider_key:
+        raise HTTPException(status_code=400, detail="Invalid provider_key")
+    if len(provider_key) > 200:
+        raise HTTPException(status_code=400, detail="provider_key too long")
+    return provider_key
+
+
+@app.get("/trip_providers_research", response_class=HTMLResponse)
+def trip_providers_research_ui(
+    request: Request,
+    q: str = Query(default=""),
+    scope: str = Query(default="educational"),
+    include_excluded: bool = Query(default=False),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    q = (q or "").strip()
+    scope = (scope or "").strip().lower() or "educational"
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    filters: list[str] = []
+    params: list[Any] = []
+    if not include_excluded:
+        filters.append("p.status = 'active'")
+    if q:
+        filters.append("(p.provider_name ILIKE %s OR p.provider_key ILIKE %s)")
+        like = f"%{q}%"
+        params.extend([like, like])
+    if scope == "educational":
+        filters.append("c.market_orientation = %s")
+        params.append("Education-focused")
+
+    where_sql = ("WHERE " + " AND ".join(filters)) if filters else ""
+    sql = _directory_schema(
+        f"""
+        SELECT
+          p.provider_key,
+          p.provider_name,
+          p.website_url,
+          p.status,
+          p.last_reviewed_at,
+          p.review_interval_days,
+          c.market_orientation,
+          c.client_profile_indicators,
+          c.educational_market_orientation,
+          c.commercial_posture_signal,
+          e.s3_bucket,
+          e.s3_key
+        FROM "__SCHEMA__".providers p
+        LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
+        LEFT JOIN "__SCHEMA__".provider_evidence e ON e.provider_id = p.id AND e.kind = 'markdown'
+        {where_sql}
+        ORDER BY p.provider_name ASC
+        LIMIT 2000;
+        """
+    ).strip()
+
+    rows: list[tuple[Any, ...]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql, params)
+            rows = list(cur.fetchall())
+
+    now = datetime.now(timezone.utc)
+    tr_rows: list[str] = []
+    for (
+        provider_key,
+        provider_name,
+        website_url,
+        status,
+        last_reviewed_at,
+        review_interval_days,
+        market_orientation,
+        client_profile_indicators,
+        _educational_market_orientation,
+        _commercial_posture_signal,
+        _s3_bucket,
+        s3_key,
+    ) in rows:
+        key = str(provider_key or "")
+        name = str(provider_name or "")
+        href = f"/trip_providers_research/{quote(key)}"
+        website = str(website_url or "").strip()
+        market = str(market_orientation or "").strip()
+        client = str(client_profile_indicators or "").strip()
+
+        last = ""
+        due = ""
+        if isinstance(last_reviewed_at, datetime):
+            last = last_reviewed_at.date().isoformat()
+            try:
+                interval_days = int(review_interval_days or 365)
+            except Exception:
+                interval_days = 365
+            if (now.date() - last_reviewed_at.date()).days >= max(30, interval_days):
+                due = "Yes"
+        else:
+            due = "Yes"
+
+        evidence_link = ""
+        if str(s3_key or "").strip():
+            evidence_link = f'<a href="/trip_providers_research/{quote(key)}/evidence">View</a>'
+
+        website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">Website</a>' if website else ""
+        status_pill = f'<span class="pill">{_esc(status)}</span>' if status else ""
+        tr_rows.append(
+            f"""
+            <tr>
+              <td><a href="{href}">{_esc(name or key)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></td>
+              <td>{status_pill}</td>
+              <td>{_esc(market)}</td>
+              <td class="muted">{_esc(client)}</td>
+              <td class="muted">{_esc(last)}</td>
+              <td>{_esc(due)}</td>
+              <td>{website_html}</td>
+              <td>{evidence_link}</td>
+            </tr>
+            """.strip()
+        )
+
+    scope_edu_selected = "selected" if scope == "educational" else ""
+    scope_all_selected = "selected" if scope != "educational" else ""
+    inc_excl_checked = "checked" if include_excluded else ""
+    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="8" class="muted">No results.</td></tr>'
+
+    body_html = f"""
+      <div class="card">
+        <h1>Trip Providers (Research)</h1>
+        <p class="muted">Searchable directory of educational trip providers. Default scope is <strong>Educational only</strong> (market orientation = <code>Education-focused</code>).</p>
+      </div>
+
+      <div class="card">
+        <h2>Search</h2>
+        <form method="get" action="/trip_providers_research">
+          <div class="grid-2">
+            <div>
+              <label>Search</label>
+              <input type="text" name="q" value="{_esc(q)}" placeholder="Provider name or key" />
+              <div class="muted" style="margin-top:6px;">Tip: try <code>korea</code> or <code>adventure_korea</code>.</div>
+            </div>
+            <div>
+              <label>Scope</label>
+              <select name="scope">
+                <option value="educational" {scope_edu_selected}>Educational only</option>
+                <option value="all" {scope_all_selected}>All providers</option>
+              </select>
+              <label style="margin-top:12px;">
+                <input type="checkbox" name="include_excluded" value="true" {inc_excl_checked} />
+                Include excluded
+              </label>
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn primary" type="submit">Search</button>
+            <a class="btn" href="/trip_providers_research">Reset</a>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Providers</h2>
+        <div class="muted">Showing {len(tr_rows)} result(s). Limit: 2000.</div>
+        <div class="divider"></div>
+        <div class="section tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Status</th>
+                <th>Market</th>
+                <th>Client profile</th>
+                <th>Last reviewed</th>
+                <th>Review due</th>
+                <th>Links</th>
+                <th>Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tbody_html}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    """.strip()
+
+    return _ui_shell(title="Trip Providers", active="trip_providers", body_html=body_html, max_width_px=1400, user=user)
+
+
+@app.get("/trip_providers_research/{provider_key}", response_class=HTMLResponse)
+def trip_providers_research_detail_ui(
+    request: Request,
+    provider_key: str,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    provider_key = _safe_provider_key(provider_key)
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    sql = _directory_schema(
+        """
+        SELECT
+          p.id,
+          p.provider_key,
+          p.provider_name,
+          p.website_url,
+          p.status,
+          p.last_reviewed_at,
+          p.review_interval_days,
+          p.profile_json,
+          c.market_orientation,
+          c.client_profile_indicators,
+          c.educational_market_orientation,
+          c.commercial_posture_signal,
+          r.analytical_prompt_version,
+          r.raw_json,
+          r.generated_at,
+          e.s3_bucket,
+          e.s3_key
+        FROM "__SCHEMA__".providers p
+        LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
+        LEFT JOIN "__SCHEMA__".provider_analysis_runs r ON r.provider_id = p.id
+        LEFT JOIN "__SCHEMA__".provider_evidence e ON e.provider_id = p.id AND e.kind = 'markdown'
+        WHERE p.provider_key = %s
+        LIMIT 5;
+        """
+    ).strip()
+
+    row = None
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql, (provider_key,))
+            row = cur.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Provider not found")
+
+    (
+        _provider_id,
+        key,
+        name,
+        website_url,
+        status,
+        last_reviewed_at,
+        review_interval_days,
+        profile_json,
+        market_orientation,
+        client_profile_indicators,
+        educational_market_orientation,
+        commercial_posture_signal,
+        analytical_prompt_version,
+        raw_json,
+        generated_at,
+        _s3_bucket,
+        s3_key,
+    ) = row
+
+    profile = profile_json if isinstance(profile_json, dict) else {}
+    mission = (profile.get("mission_or_purpose") or {}).get("value") if isinstance(profile.get("mission_or_purpose"), dict) else ""
+    trips = (profile.get("types_of_trips_offered") or {}).get("categories") if isinstance(profile.get("types_of_trips_offered"), dict) else []
+    trips_text = ", ".join([str(x) for x in trips]) if isinstance(trips, list) else ""
+    operates = (profile.get("where_the_provider_operates") or {}).get("value") if isinstance(profile.get("where_the_provider_operates"), dict) else []
+    operates_text = ", ".join([str(x) for x in operates]) if isinstance(operates, list) else ""
+    serves = (profile.get("who_the_provider_serves") or {}).get("value") if isinstance(profile.get("who_the_provider_serves"), dict) else []
+    serves_text = ", ".join([str(x) for x in serves]) if isinstance(serves, list) else ""
+
+    schools = (profile.get("named_schools_referenced") or {}).get("value") if isinstance(profile.get("named_schools_referenced"), dict) else []
+    schools_text = ", ".join([str(x) for x in schools[:12]]) if isinstance(schools, list) else ""
+
+    last = last_reviewed_at.date().isoformat() if isinstance(last_reviewed_at, datetime) else ""
+    due = ""
+    if isinstance(last_reviewed_at, datetime):
+        now = datetime.now(timezone.utc)
+        try:
+            interval_days = int(review_interval_days or 365)
+        except Exception:
+            interval_days = 365
+        if (now.date() - last_reviewed_at.date()).days >= max(30, interval_days):
+            due = "Yes"
+    else:
+        due = "Yes"
+
+    website = str(website_url or "").strip()
+    website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">{_esc(website)}</a>' if website else ""
+    evidence_html = (
+        f'<a class="btn" href="/trip_providers_research/{quote(provider_key)}/evidence">View evidence</a>'
+        if str(s3_key or "").strip()
+        else '<span class="muted">No evidence uploaded</span>'
+    )
+
+    raw_pre = ""
+    if isinstance(raw_json, (dict, list)):
+        raw_pre = json.dumps(raw_json, indent=2)[:40_000]
+
+    body_html = f"""
+      <div class="card">
+        <div class="muted"><a href="/trip_providers_research">← Back to list</a></div>
+        <h1>{_esc(name or key)}</h1>
+        <div class="muted"><code>{_esc(key)}</code> · <span class="pill">{_esc(status)}</span></div>
+        <div style="margin-top:12px;">{website_html}</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2>Classification</h2>
+          <div class="section">
+            <div class="muted">Market orientation</div>
+            <div><strong>{_esc(market_orientation or '')}</strong></div>
+            <div class="divider"></div>
+            <div class="muted">Client profile indicators</div>
+            <div>{_esc(client_profile_indicators or '')}</div>
+            <div class="divider"></div>
+            <div class="muted">Educational market orientation</div>
+            <div>{_esc(educational_market_orientation or '')}</div>
+            <div class="divider"></div>
+            <div class="muted">Commercial posture signal</div>
+            <div>{_esc(commercial_posture_signal or '')}</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Profile</h2>
+          <div class="section">
+            <div class="muted">Mission</div>
+            <div>{_esc(mission or '')}</div>
+            <div class="divider"></div>
+            <div class="muted">Trips offered</div>
+            <div>{_esc(trips_text or '')}</div>
+            <div class="divider"></div>
+            <div class="muted">Where they operate</div>
+            <div>{_esc(operates_text or '')}</div>
+            <div class="divider"></div>
+            <div class="muted">Who they serve</div>
+            <div>{_esc(serves_text or '')}</div>
+            <div class="divider"></div>
+            <div class="muted">Named schools referenced</div>
+            <div class="muted">{_esc(schools_text or '')}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Governance</h2>
+        <div class="section">
+          <div class="muted">Last reviewed</div>
+          <div><strong>{_esc(last)}</strong></div>
+          <div class="muted" style="margin-top:6px;">Review due: <strong>{_esc(due)}</strong></div>
+          <div class="divider"></div>
+          <div>{evidence_html}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Analysis (raw)</h2>
+        <div class="muted">Version: <code>{_esc(analytical_prompt_version or '')}</code> · Generated: <code>{_esc(generated_at or '')}</code></div>
+        <div class="divider"></div>
+        <pre class="statusbox" style="max-height: 520px; overflow:auto;">{_esc(raw_pre)}</pre>
+      </div>
+    """.strip()
+
+    return _ui_shell(title=f"Trip Provider: {name or key}", active="trip_providers", body_html=body_html, max_width_px=1400, user=user)
+
+
+@app.get("/trip_providers_research/{provider_key}/evidence", response_class=HTMLResponse)
+def trip_providers_research_evidence(
+    request: Request,
+    provider_key: str,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    provider_key = _safe_provider_key(provider_key)
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    sql = _directory_schema(
+        """
+        SELECT e.s3_bucket, e.s3_key
+        FROM "__SCHEMA__".providers p
+        JOIN "__SCHEMA__".provider_evidence e ON e.provider_id = p.id AND e.kind = 'markdown'
+        WHERE p.provider_key = %s
+        LIMIT 1;
+        """
+    ).strip()
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql, (provider_key,))
+            row = cur.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+
+    bucket, key = row
+    cfg = get_s3_config()
+    b = str(bucket or cfg.bucket)
+    k = str(key or "").strip()
+    if not k:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+
+    try:
+        data = get_bytes(region=cfg.region, bucket=b, key=k, max_bytes=2_000_000)
+    except Exception as e:
+        body_html = f"""
+          <div class="card">
+            <h1>Evidence</h1>
+            <p class="muted">This document can’t be previewed ({_esc(str(e))}).</p>
+            <div class="btnrow" style="margin-top:14px;">
+              <a class="btn" href="/trip_providers_research/{_esc(quote(provider_key))}">Back to provider</a>
+              <a class="btn" href="/trip_providers_research">Back to list</a>
+            </div>
+          </div>
+        """.strip()
+        return _ui_shell(title="Trip Provider Evidence", active="trip_providers", body_html=body_html, max_width_px=1100, user=user)
+
+    md_text = data.decode("utf-8", errors="replace")
+    rendered = _render_markdown_safe(md_text)
+
+    extra_head = """
+    <style>
+      .doc-md h1,.doc-md h2,.doc-md h3 { margin-top: 18px; }
+      .doc-md pre { background: #F5F6F7; border: 1px solid #F2F2F2; padding: 12px; overflow: auto; border-radius: 10px; }
+      .doc-md code { background: #F5F6F7; padding: 0 4px; border-radius: 6px; }
+      .doc-md pre code { background: transparent; padding: 0; }
+    </style>
+    """.strip()
+
+    body_html = f"""
+      <div class="card">
+        <div class="muted"><a href="/trip_providers_research/{_esc(quote(provider_key))}">← Back to provider</a></div>
+        <h1 style="margin-bottom:6px;">Evidence</h1>
+        <div class="muted"><code>{_esc(provider_key)}</code></div>
+        <div class="btnrow" style="margin-top:14px;">
+          <a class="btn" href="/trip_providers_research/{_esc(quote(provider_key))}">Back</a>
+          <a class="btn" href="/trip_providers_research">List</a>
+        </div>
+      </div>
+
+      <div class="card doc-md">
+        {rendered}
+      </div>
+    """.strip()
+
+    return _ui_shell(
+        title=f"{provider_key} — Evidence",
+        active="trip_providers",
+        body_html=body_html,
+        max_width_px=1100,
+        extra_head=extra_head,
+        user=user,
+    )
 
 
 @app.get("/health")
@@ -3448,12 +4021,12 @@ def documents_view(
     return Response(content=body, media_type=safe_ct, headers={"Content-Disposition": f"inline; filename*=UTF-8''{safe_fn}"})
 
 
-@app.get("/documents/preview/{doc_id}", response_class=HTMLResponse)
+@app.get("/documents/preview/{doc_id}", response_class=HTMLResponse, response_model=None)
 def documents_preview(
     doc_id: str,
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> str | Response:
+) -> Response:
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
     try:
         did = uuid.UUID(doc_id)
@@ -3513,7 +4086,7 @@ def documents_preview(
             </div>
           </div>
         """.strip()
-        return _ui_shell(title="ETI360 Document Preview", active="apps", body_html=body_html, max_width_px=1100, user=user)
+        return HTMLResponse(_ui_shell(title="ETI360 Document Preview", active="apps", body_html=body_html, max_width_px=1100, user=user))
 
     md_text = data.decode("utf-8", errors="replace")
     rendered = _render_markdown_safe(md_text)
@@ -3584,14 +4157,16 @@ def documents_preview(
     </script>
     """.strip()
 
-    return _ui_shell(
-        title="ETI360 Document Preview",
-        active="apps",
-        body_html=body_html,
-        max_width_px=1100,
-        extra_head=extra_head,
-        extra_script=extra_script,
-        user=user,
+    return HTMLResponse(
+        _ui_shell(
+            title="ETI360 Document Preview",
+            active="apps",
+            body_html=body_html,
+            max_width_px=1100,
+            extra_head=extra_head,
+            extra_script=extra_script,
+            user=user,
+        )
     )
 
 
@@ -4122,6 +4697,7 @@ def db_ui(
 ) -> str:
     user = _require_access(request=request, x_api_key=x_api_key, role="admin")
     schema = _require_safe_ident("schema", schema)
+    dir_schema = _require_safe_ident("DIRECTORY_SCHEMA", DIRECTORY_SCHEMA)
     picked_table = ""
     if (table or "").strip():
         picked_table = _require_safe_ident("table", table)
@@ -4194,7 +4770,7 @@ def db_ui(
 	          <h2>Tables</h2>
 	          <div class="muted">Schema: <code>{_esc(schema)}</code></div>
 	          <div class="muted" style="margin-top:6px;">
-	            Common: <a href="/db/ui?schema={_esc(WEATHER_SCHEMA)}">weather</a> · <a href="/db/ui?schema=ops">ops</a>
+	            Common: <a href="/db/ui?schema={_esc(WEATHER_SCHEMA)}">weather</a> · <a href="/db/ui?schema=ops">ops</a> · <a href="/db/ui?schema={_esc(dir_schema)}">directory</a>
 	          </div>
 	          <div class="divider"></div>
 	          <ul style="margin: 8px 0 0 18px; padding: 0;">{table_links}</ul>
@@ -4326,18 +4902,26 @@ def admin_schema_init(
 ) -> dict[str, Any]:
     _require_access(request=request, x_api_key=x_api_key, role="admin")
 
-    applied: list[str] = []
+    dir_schema = _require_safe_ident("DIRECTORY_SCHEMA", DIRECTORY_SCHEMA)
+    applied: dict[str, list[str]] = {WEATHER_SCHEMA: [], dir_schema: []}
     try:
         with _connect() as conn:
             with conn.cursor() as cur:
                 for stmt in _SCHEMA_STATEMENTS:
                     cur.execute(stmt)
-                    applied.append(stmt.splitlines()[0][:120])
+                    applied[WEATHER_SCHEMA].append(stmt.splitlines()[0][:120])
+                for stmt in _DIRECTORY_SCHEMA_STATEMENTS:
+                    cur.execute(_directory_schema(stmt))
+                    applied[dir_schema].append(stmt.splitlines()[0][:120])
             conn.commit()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Schema init failed: {e}") from e
 
-    return {"ok": True, "schema": WEATHER_SCHEMA, "applied": applied}
+    return {
+        "ok": True,
+        "schemas": [WEATHER_SCHEMA, dir_schema],
+        "applied": applied,
+    }
 
 
 class PlaceCandidate(BaseModel):

@@ -5,11 +5,13 @@ import argparse
 import json
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import psycopg
+from psycopg import errors as pg_errors
 
 from app.weather.s3 import get_s3_config, put_bytes
 
@@ -429,8 +431,8 @@ def upsert_provider_country_rows(
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Import trip provider research data into Postgres + S3.")
-    ap.add_argument("--aggregated-json", type=Path, required=True, help="Path to part_a_aggregated.json")
-    ap.add_argument("--analysis-dir", type=Path, required=True, help="Directory of analytical_prompt_v1/*.json")
+    ap.add_argument("--aggregated-json", type=Path, required=False, help="Path to part_a_aggregated.json")
+    ap.add_argument("--analysis-dir", type=Path, required=False, help="Directory of analytical_prompt_v1/*.json")
     ap.add_argument("--evidence-dir", type=Path, required=False, help="Directory of evidence_markdown/*.md")
     ap.add_argument("--social-links-dir", type=Path, required=False, help="Directory of social link jsons")
     ap.add_argument("--logos-dir", type=Path, required=False, help="Directory of logo jsons (payloads with logo_url)")
@@ -449,26 +451,53 @@ def main() -> None:
     )
     ap.add_argument("--dry-run", action="store_true", help="No S3 uploads; still writes DB rows.")
     ap.add_argument("--progress-every", type=int, default=200, help="Print progress every N providers (default: 200). Use 0 to disable.")
+    ap.add_argument(
+        "--deadlock-retries",
+        type=int,
+        default=6,
+        help="Retries per provider on Postgres deadlock/serialization errors (default: 6).",
+    )
+    ap.add_argument(
+        "--assets-only",
+        action="store_true",
+        help="Only update logos/social links for existing providers; skip provider/classification/analysis/evidence/country writes.",
+    )
     args = ap.parse_args()
 
     progress_every = int(args.progress_every or 0)
     if progress_every < 0:
         raise SystemExit("--progress-every must be >= 0")
+    retries = int(args.deadlock_retries or 0)
+    if retries < 0:
+        raise SystemExit("--deadlock-retries must be >= 0")
 
     ensure_schema()
 
-    aggregated = load_aggregated(args.aggregated_json)
+    if args.assets_only:
+        if not args.social_links_dir and not args.logos_dir:
+            raise SystemExit("--assets-only requires --social-links-dir and/or --logos-dir")
+    else:
+        if not args.aggregated_json:
+            raise SystemExit("--aggregated-json is required (unless --assets-only)")
+        if not args.analysis_dir:
+            raise SystemExit("--analysis-dir is required (unless --assets-only)")
+
+    aggregated: dict[str, dict[str, Any]] = {}
+    if not args.assets_only:
+        aggregated = load_aggregated(args.aggregated_json)
 
     country_rows: list[dict[str, str]] = []
-    if args.country_providers_csv:
+    if (not args.assets_only) and args.country_providers_csv:
         country_rows = load_country_providers_csv(args.country_providers_csv)
 
-    country_generated_at = parse_iso8601(args.country_providers_generated_at) if args.country_providers_generated_at else None
-    if not country_generated_at:
+    country_generated_at = None
+    if (not args.assets_only) and args.country_providers_generated_at:
+        country_generated_at = parse_iso8601(args.country_providers_generated_at)
+    if (not args.assets_only) and (not country_generated_at):
         country_generated_at = datetime.now(timezone.utc)
 
     reviewed_by_key: dict[str, datetime] = {}
-    if args.providers_csv and args.providers_csv.exists():
+    if (not args.assets_only) and args.providers_csv and args.providers_csv.exists():
         import csv
 
         with args.providers_csv.open(newline="", encoding="utf-8") as f:
@@ -479,7 +508,9 @@ def main() -> None:
                 if name and completed:
                     reviewed_by_key[safe_key(name)] = completed
 
-    analysis_files = sorted(args.analysis_dir.glob("*.json"))
+    analysis_files: list[Path] = []
+    if not args.assets_only:
+        analysis_files = sorted(args.analysis_dir.glob("*.json"))
     started = datetime.now(timezone.utc)
     if progress_every:
         print(
@@ -491,8 +522,79 @@ def main() -> None:
     edu = 0
     excluded_missing_website = 0
     with connect() as conn:
-        with conn.cursor() as cur:
-            if country_rows:
+        if args.assets_only:
+            # Update assets for existing providers only.
+            with conn.cursor() as cur:
+                cur.execute(_schema('SELECT id, provider_key FROM "__SCHEMA__".providers ORDER BY provider_key ASC;').strip())
+                provider_rows = [(str(r[0]), str(r[1] or "").strip()) for r in cur.fetchall()]
+
+            if progress_every:
+                print(f"[import_trip_providers] Updating assets for {len(provider_rows)} providers", flush=True)
+
+            updated_logo = 0
+            updated_social = 0
+            for provider_id, provider_key in provider_rows:
+                if not provider_key:
+                    continue
+
+                logo_url = load_logo_url(args.logos_dir / f"{provider_key}.json") if args.logos_dir else ""
+                social_links = None
+                if args.social_links_dir:
+                    social_path = args.social_links_dir / f"{provider_key}.json"
+                    if social_path.exists():
+                        try:
+                            social_links = json.loads(social_path.read_text(encoding="utf-8"))
+                        except Exception:
+                            social_links = None
+
+                attempt = 0
+                while True:
+                    attempt += 1
+                    try:
+                        with conn.transaction():
+                            with conn.cursor() as cur:
+                                if logo_url:
+                                    cur.execute(
+                                        _schema(
+                                            """
+                                            UPDATE "__SCHEMA__".providers
+                                            SET logo_url=%s, updated_at=now()
+                                            WHERE id=%s;
+                                            """
+                                        ).strip(),
+                                        (logo_url, provider_id),
+                                    )
+                                    updated_logo += 1
+                                if social_links:
+                                    upsert_social_links(cur=cur, provider_id=provider_id, social_links=social_links)
+                                    updated_social += 1
+                        break
+                    except (pg_errors.DeadlockDetected, pg_errors.SerializationFailure) as e:
+                        if attempt > max(0, retries):
+                            raise
+                        backoff_s = min(8.0, 0.25 * (2 ** (attempt - 1)))
+                        print(
+                            f"[import_trip_providers] Retry {attempt}/{retries} for {provider_key} due to {type(e).__name__}; sleeping {backoff_s:.2f}s",
+                            flush=True,
+                        )
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
+                        time.sleep(backoff_s)
+
+                total += 1
+                if progress_every and (total % progress_every == 0):
+                    elapsed_s = int((datetime.now(timezone.utc) - started).total_seconds())
+                    print(f"[import_trip_providers] {total}/{len(provider_rows)} assets processed (elapsed {elapsed_s}s). Last: {provider_key}", flush=True)
+
+            print(f"Assets updated. Providers processed: {total}. Logo files applied: {updated_logo}. Social files applied: {updated_social}.")
+            return
+
+        # Provider-country rows can be a big upsert; do it in its own transaction so locks
+        # are released before the main provider import begins.
+        if country_rows:
+            with conn.cursor() as cur:
                 if progress_every:
                     print(f"[import_trip_providers] Upserting provider_country rows: {len(country_rows)}", flush=True)
                 upsert_provider_country_rows(
@@ -502,84 +604,99 @@ def main() -> None:
                     generated_at=country_generated_at,
                     progress_every=progress_every,
                 )
+            conn.commit()
 
-            for path in analysis_files:
-                provider_key = path.stem
-                analysis_payload = json.loads(path.read_text(encoding="utf-8"))
+        for path in analysis_files:
+            provider_key = path.stem
+            analysis_payload = json.loads(path.read_text(encoding="utf-8"))
 
-                signals = extract_signals(analysis_payload)
-                market = signals.get("market_orientation", "")
-                if market == "Education-focused":
-                    edu += 1
+            signals = extract_signals(analysis_payload)
+            market = signals.get("market_orientation", "")
+            if market == "Education-focused":
+                edu += 1
 
-                provider_record = aggregated.get(provider_key, {})
-                provider_name_obj = provider_record.get("provider_name") if isinstance(provider_record, dict) else {}
-                provider_name = (
-                    provider_name_obj.get("value") if isinstance(provider_name_obj, dict) else None
-                ) or provider_key
-                website_url = str(provider_record.get("website_url") or "").strip() if isinstance(provider_record, dict) else ""
-                logo_url = ""
-                if args.logos_dir:
-                    logo_url = load_logo_url(args.logos_dir / f"{provider_key}.json")
-                status = "active" if website_url else "excluded"
-                if status == "excluded":
-                    excluded_missing_website += 1
+            provider_record = aggregated.get(provider_key, {})
+            provider_name_obj = provider_record.get("provider_name") if isinstance(provider_record, dict) else {}
+            provider_name = (provider_name_obj.get("value") if isinstance(provider_name_obj, dict) else None) or provider_key
+            website_url = str(provider_record.get("website_url") or "").strip() if isinstance(provider_record, dict) else ""
+            logo_url = load_logo_url(args.logos_dir / f"{provider_key}.json") if args.logos_dir else ""
+            status = "active" if website_url else "excluded"
+            if status == "excluded":
+                excluded_missing_website += 1
 
-                last_reviewed_at = reviewed_by_key.get(provider_key)
-                if not last_reviewed_at:
-                    last_reviewed_at = parse_iso8601(analysis_payload.get("generated_at"))
-                if not last_reviewed_at:
-                    last_reviewed_at = datetime.now(timezone.utc)
+            last_reviewed_at = reviewed_by_key.get(provider_key)
+            if not last_reviewed_at:
+                last_reviewed_at = parse_iso8601(analysis_payload.get("generated_at"))
+            if not last_reviewed_at:
+                last_reviewed_at = datetime.now(timezone.utc)
 
-                provider_id = upsert_provider(
-                    cur=cur,
-                    provider_key=provider_key,
-                    provider_name=str(provider_name),
-                    website_url=website_url,
-                    logo_url=logo_url,
-                    status=status,
-                    last_reviewed_at=last_reviewed_at,
-                    profile_json=provider_record if isinstance(provider_record, dict) else {},
-                )
+            version = (
+                str(analysis_payload.get("analytical_prompt_version") or "").strip()
+                or str((analysis_payload.get("metadata") or {}).get("version") or "").strip()
+                or "v1"
+            )
+            generated_at = parse_iso8601(analysis_payload.get("generated_at"))
 
-                upsert_classifications(cur=cur, provider_id=provider_id, signals=signals)
+            attempt = 0
+            while True:
+                attempt += 1
+                try:
+                    with conn.transaction():
+                        with conn.cursor() as cur:
+                            provider_id = upsert_provider(
+                                cur=cur,
+                                provider_key=provider_key,
+                                provider_name=str(provider_name),
+                                website_url=website_url,
+                                logo_url=logo_url,
+                                status=status,
+                                last_reviewed_at=last_reviewed_at,
+                                profile_json=provider_record if isinstance(provider_record, dict) else {},
+                            )
 
-                version = (
-                    str(analysis_payload.get("analytical_prompt_version") or "").strip()
-                    or str((analysis_payload.get("metadata") or {}).get("version") or "").strip()
-                    or "v1"
-                )
-                generated_at = parse_iso8601(analysis_payload.get("generated_at"))
-                upsert_analysis_run(
-                    cur=cur,
-                    provider_id=provider_id,
-                    analytical_prompt_version=version,
-                    raw_json=analysis_payload,
-                    generated_at=generated_at,
-                )
+                            upsert_classifications(cur=cur, provider_id=provider_id, signals=signals)
+                            upsert_analysis_run(
+                                cur=cur,
+                                provider_id=provider_id,
+                                analytical_prompt_version=version,
+                                raw_json=analysis_payload,
+                                generated_at=generated_at,
+                            )
 
-                if args.social_links_dir:
-                    social_path = args.social_links_dir / f"{provider_key}.json"
-                    if social_path.exists():
-                        social_links = json.loads(social_path.read_text(encoding="utf-8"))
-                        upsert_social_links(cur=cur, provider_id=provider_id, social_links=social_links)
+                            if args.social_links_dir:
+                                social_path = args.social_links_dir / f"{provider_key}.json"
+                                if social_path.exists():
+                                    social_links = json.loads(social_path.read_text(encoding="utf-8"))
+                                    upsert_social_links(cur=cur, provider_id=provider_id, social_links=social_links)
 
-                if args.evidence_dir:
-                    evidence_path = args.evidence_dir / f"{provider_key}.md"
-                    upsert_evidence_markdown(
-                        cur=cur,
-                        provider_id=provider_id,
-                        provider_key=provider_key,
-                        evidence_path=evidence_path,
-                        dry_run=bool(args.dry_run),
+                            if args.evidence_dir:
+                                evidence_path = args.evidence_dir / f"{provider_key}.md"
+                                upsert_evidence_markdown(
+                                    cur=cur,
+                                    provider_id=provider_id,
+                                    provider_key=provider_key,
+                                    evidence_path=evidence_path,
+                                    dry_run=bool(args.dry_run),
+                                )
+                    break
+                except (pg_errors.DeadlockDetected, pg_errors.SerializationFailure) as e:
+                    if attempt > max(0, retries):
+                        raise
+                    backoff_s = min(8.0, 0.25 * (2 ** (attempt - 1)))
+                    print(
+                        f"[import_trip_providers] Retry {attempt}/{retries} for {provider_key} due to {type(e).__name__}; sleeping {backoff_s:.2f}s",
+                        flush=True,
                     )
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    time.sleep(backoff_s)
 
-                total += 1
-                if progress_every and (total % progress_every == 0):
-                    elapsed_s = int((datetime.now(timezone.utc) - started).total_seconds())
-                    print(f"[import_trip_providers] {total}/{len(analysis_files)} processed (elapsed {elapsed_s}s). Last: {provider_key}", flush=True)
-
-        conn.commit()
+            total += 1
+            if progress_every and (total % progress_every == 0):
+                elapsed_s = int((datetime.now(timezone.utc) - started).total_seconds())
+                print(f"[import_trip_providers] {total}/{len(analysis_files)} processed (elapsed {elapsed_s}s). Last: {provider_key}", flush=True)
 
     print(f"Imported {total} providers. Education-focused: {edu}. Excluded (missing website): {excluded_missing_website}.")
 

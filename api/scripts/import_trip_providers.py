@@ -328,6 +328,64 @@ def upsert_social_links(*, cur: psycopg.Cursor, provider_id: str, social_links: 
         )
 
 
+_URL_RE = re.compile(r"https?://[^\s\)\]\}\>\"']+")
+
+
+def _extract_url(text: str) -> str:
+    """
+    Extract the first http(s) URL from common formats (plain text, markdown link/bullet).
+    """
+    m = _URL_RE.search(text or "")
+    return m.group(0) if m else (text or "").strip()
+
+
+def normalize_social_links(payload: Any) -> dict[str, str]:
+    """
+    Normalize multiple social JSON shapes into {platform_kind: url}.
+
+    The canonical source shape in this project is:
+      {"links": {"facebook": "* [Facebook](https://...)", ...}}
+    """
+    if not payload:
+        return {}
+    if isinstance(payload, dict) and isinstance(payload.get("links"), dict):
+        payload = payload["links"]
+    if not isinstance(payload, dict):
+        return {}
+
+    out: dict[str, str] = {}
+    for raw_kind, raw_val in payload.items():
+        k = str(raw_kind or "").strip().lower()
+        if not k:
+            continue
+        if k in {"x"}:
+            k = "twitter"
+        if k in {"yt"}:
+            k = "youtube"
+        if k in {"tik_tok", "tik-tok"}:
+            k = "tiktok"
+
+        v: Any = raw_val
+        if isinstance(v, dict):
+            v = v.get("url") or v.get("href") or v.get("value") or ""
+        if isinstance(v, list):
+            v = v[0] if v else ""
+
+        url = _extract_url(str(v or "").strip())
+        if not url:
+            continue
+        out[k] = url
+    return out
+
+
+def replace_social_links(*, cur: psycopg.Cursor, provider_id: str, payload: Any) -> None:
+    links = normalize_social_links(payload)
+    if not links:
+        return
+    cur.execute(_schema('DELETE FROM "__SCHEMA__".provider_social_links WHERE provider_id=%s;').strip(), (provider_id,))
+    upsert_social_links(cur=cur, provider_id=provider_id, social_links=links)
+
+
 def upsert_evidence_markdown(
     *,
     cur: psycopg.Cursor,
@@ -538,14 +596,14 @@ def main() -> None:
                     continue
 
                 logo_url = load_logo_url(args.logos_dir / f"{provider_key}.json") if args.logos_dir else ""
-                social_links = None
+                social_payload = None
                 if args.social_links_dir:
                     social_path = args.social_links_dir / f"{provider_key}.json"
                     if social_path.exists():
                         try:
-                            social_links = json.loads(social_path.read_text(encoding="utf-8"))
+                            social_payload = json.loads(social_path.read_text(encoding="utf-8"))
                         except Exception:
-                            social_links = None
+                            social_payload = None
 
                 attempt = 0
                 while True:
@@ -565,8 +623,8 @@ def main() -> None:
                                         (logo_url, provider_id),
                                     )
                                     updated_logo += 1
-                                if social_links:
-                                    upsert_social_links(cur=cur, provider_id=provider_id, social_links=social_links)
+                                if social_payload:
+                                    replace_social_links(cur=cur, provider_id=provider_id, payload=social_payload)
                                     updated_social += 1
                         break
                     except (pg_errors.DeadlockDetected, pg_errors.SerializationFailure) as e:
@@ -666,8 +724,8 @@ def main() -> None:
                             if args.social_links_dir:
                                 social_path = args.social_links_dir / f"{provider_key}.json"
                                 if social_path.exists():
-                                    social_links = json.loads(social_path.read_text(encoding="utf-8"))
-                                    upsert_social_links(cur=cur, provider_id=provider_id, social_links=social_links)
+                                    social_payload = json.loads(social_path.read_text(encoding="utf-8"))
+                                    replace_social_links(cur=cur, provider_id=provider_id, payload=social_payload)
 
                             if args.evidence_dir:
                                 evidence_path = args.evidence_dir / f"{provider_key}.md"

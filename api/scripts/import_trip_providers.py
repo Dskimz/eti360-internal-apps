@@ -464,6 +464,7 @@ def main() -> None:
 
     total = 0
     edu = 0
+    excluded_missing_website = 0
     with connect() as conn:
         with conn.cursor() as cur:
             if country_rows:
@@ -492,6 +493,9 @@ def main() -> None:
                     provider_name_obj.get("value") if isinstance(provider_name_obj, dict) else None
                 ) or provider_key
                 website_url = str(provider_record.get("website_url") or "").strip() if isinstance(provider_record, dict) else ""
+                status = "active" if website_url else "excluded"
+                if status == "excluded":
+                    excluded_missing_website += 1
 
                 last_reviewed_at = reviewed_by_key.get(provider_key)
                 if not last_reviewed_at:
@@ -504,7 +508,7 @@ def main() -> None:
                     provider_key=provider_key,
                     provider_name=str(provider_name),
                     website_url=website_url,
-                    status="active",
+                    status=status,
                     last_reviewed_at=last_reviewed_at,
                     profile_json=provider_record if isinstance(provider_record, dict) else {},
                 )
@@ -548,7 +552,7 @@ def main() -> None:
 
         conn.commit()
 
-    print(f"Imported {total} providers. Education-focused: {edu}.")
+    print(f"Imported {total} providers. Education-focused: {edu}. Excluded (missing website): {excluded_missing_website}.")
 
 
 if __name__ == "__main__":

@@ -2590,21 +2590,23 @@ def trip_providers_review_not_stated_ui(
             <tr>
               <td><a href="{detail_href}">{_esc(name)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></td>
               <td>{website_html}</td>
-              <td class="muted">{_esc(mission)}</td>
+              <td class="muted" style="white-space:normal; word-break:break-word;">{_esc(mission)}</td>
               <td class="muted">{_esc(market_orientation)}</td>
               <td>
-                <label style="display:inline-flex; gap:6px; align-items:center; margin-right:12px;">
-                  <input type="radio" name="{_esc(action_name)}" value="keep" checked />
-                  Keep
-                </label>
-                <label style="display:inline-flex; gap:6px; align-items:center;">
-                  <input type="radio" name="{_esc(action_name)}" value="education_focused" />
-                  Education-focused
-                </label>
-                <label style="display:inline-flex; gap:6px; align-items:center; margin-left:12px;">
-                  <input type="radio" name="{_esc(action_name)}" value="delete" />
-                  Delete
-                </label>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <label style="display:inline-flex; gap:6px; align-items:center;">
+                    <input type="radio" name="{_esc(action_name)}" value="keep" checked />
+                    Keep
+                  </label>
+                  <label style="display:inline-flex; gap:6px; align-items:center;">
+                    <input type="radio" name="{_esc(action_name)}" value="education_focused" />
+                    Education-focused
+                  </label>
+                  <label style="display:inline-flex; gap:6px; align-items:center;">
+                    <input type="radio" name="{_esc(action_name)}" value="delete" />
+                    Delete
+                  </label>
+                </div>
               </td>
             </tr>
             """.strip()
@@ -2633,7 +2635,14 @@ def trip_providers_review_not_stated_ui(
         <div class="divider"></div>
         <form id="review-form" method="post" action="/trip_providers/review_not_stated/apply" onsubmit="return confirm('Apply these changes? Deletions are permanent.');">
           <div class="section tablewrap">
-            <table>
+            <table style="table-layout:fixed; width:100%;">
+              <colgroup>
+                <col style="width:28%;" />
+                <col style="width:8%;" />
+                <col style="width:20%;" />
+                <col style="width:8%;" />
+                <col style="width:36%;" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Provider</th>

@@ -626,6 +626,7 @@ _DIRECTORY_SCHEMA_STATEMENTS: list[str] = [
       provider_key TEXT NOT NULL UNIQUE,
       provider_name TEXT NOT NULL DEFAULT '',
       website_url TEXT NOT NULL DEFAULT '',
+      logo_url TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'active',
       last_reviewed_at TIMESTAMPTZ,
       review_interval_days INTEGER NOT NULL DEFAULT 365,
@@ -635,6 +636,7 @@ _DIRECTORY_SCHEMA_STATEMENTS: list[str] = [
       CONSTRAINT providers_status_chk CHECK (status IN ('active','excluded'))
     );
     """.strip(),
+    'ALTER TABLE "__SCHEMA__".providers ADD COLUMN IF NOT EXISTS logo_url TEXT NOT NULL DEFAULT \'\';',
     'CREATE INDEX IF NOT EXISTS providers_name_idx ON "__SCHEMA__".providers(provider_name);',
     'CREATE INDEX IF NOT EXISTS providers_status_idx ON "__SCHEMA__".providers(status);',
     """
@@ -2226,6 +2228,7 @@ def trip_providers_country_detail_ui(
           p.provider_key,
           p.provider_name,
           p.website_url,
+          p.logo_url,
           c.market_orientation,
           c.client_profile_indicators,
           (
@@ -2252,17 +2255,23 @@ def trip_providers_country_detail_ui(
             rows = list(cur.fetchall())
 
     tr_rows: list[str] = []
-    for provider_key, provider_name, website_url, _market_orientation, client_profile, social_links in rows:
+    for provider_key, provider_name, website_url, logo_url, _market_orientation, client_profile, social_links in rows:
         key = str(provider_key or "").strip()
         name = str(provider_name or "").strip() or key
         website = str(website_url or "").strip()
         website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">Website</a>' if website else ""
         client = str(client_profile or "").strip()
         social_html = _render_social_links_html(social_links) or ""
+        logo = str(logo_url or "").strip()
+        logo_html = (
+            f'<img src="{_esc(logo)}" alt="" style="height:24px; width:auto; max-width:96px; object-fit:contain; display:block;" />'
+            if logo
+            else ""
+        )
         tr_rows.append(
             f"""
             <tr>
-              <td><a href="/trip_providers_research/{_esc(quote(key))}">{_esc(name)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></td>
+              <td><div style="display:flex; gap:12px; align-items:center;">{logo_html}<div><a href="/trip_providers_research/{_esc(quote(key))}">{_esc(name)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></div></div></td>
               <td class="muted">{_esc(client)}</td>
               <td>{website_html}</td>
               <td class="muted">{social_html}</td>
@@ -2349,6 +2358,7 @@ def trip_providers_research_ui(
           p.provider_key,
           p.provider_name,
           p.website_url,
+          p.logo_url,
           p.status,
           p.last_reviewed_at,
           p.review_interval_days,
@@ -2385,6 +2395,7 @@ def trip_providers_research_ui(
         provider_key,
         provider_name,
         website_url,
+        logo_url,
         status,
         last_reviewed_at,
         review_interval_days,
@@ -2400,6 +2411,7 @@ def trip_providers_research_ui(
         name = str(provider_name or "")
         href = f"/trip_providers_research/{quote(key)}"
         website = str(website_url or "").strip()
+        logo = str(logo_url or "").strip()
         market = str(market_orientation or "").strip()
         client = str(client_profile_indicators or "").strip()
 
@@ -2421,6 +2433,11 @@ def trip_providers_research_ui(
             evidence_link = f'<a href="/trip_providers_research/{quote(key)}/evidence">View</a>'
 
         website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">Website</a>' if website else ""
+        logo_html = (
+            f'<img src="{_esc(logo)}" alt="" style="height:28px; width:auto; max-width:110px; object-fit:contain; display:block;" />'
+            if logo
+            else ""
+        )
         status_pill = f'<span class="pill">{_esc(status)}</span>' if status else ""
         social_html = _render_social_links_html(social_links) or ""
         actions_html = ""
@@ -2437,6 +2454,7 @@ def trip_providers_research_ui(
         tr_rows.append(
             f"""
             <tr>
+              <td>{logo_html}</td>
               <td><a href="{href}">{_esc(name or key)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></td>
               <td>{status_pill}</td>
               <td>{_esc(market)}</td>
@@ -2454,7 +2472,7 @@ def trip_providers_research_ui(
     scope_edu_selected = "selected" if scope == "educational" else ""
     scope_all_selected = "selected" if scope != "educational" else ""
     inc_excl_checked = "checked" if include_excluded else ""
-    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="10" class="muted">No results.</td></tr>'
+    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="11" class="muted">No results.</td></tr>'
 
     body_html = f"""
       <div class="card">
@@ -2501,6 +2519,7 @@ def trip_providers_research_ui(
 	          <table>
 	            <thead>
 	              <tr>
+	                <th>Logo</th>
 	                <th>Provider</th>
 	                <th>Status</th>
 	                <th>Market</th>
@@ -2549,8 +2568,14 @@ def trip_providers_review_not_stated_ui(
           p.provider_key,
           p.provider_name,
           p.website_url,
+          p.logo_url,
           p.profile_json,
-          COALESCE(NULLIF(c.market_orientation, ''), 'Not stated') AS market_orientation
+          COALESCE(NULLIF(c.market_orientation, ''), 'Not stated') AS market_orientation,
+          (
+            SELECT jsonb_object_agg(sl.kind, sl.url)
+            FROM "__SCHEMA__".provider_social_links sl
+            WHERE sl.provider_id = p.id
+          ) AS social_links
         FROM "__SCHEMA__".providers p
         LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
         WHERE COALESCE(NULLIF(c.market_orientation, ''), 'Not stated') = 'Not stated'
@@ -2567,30 +2592,40 @@ def trip_providers_review_not_stated_ui(
             rows = list(cur.fetchall())
 
     tr_rows: list[str] = []
-    for provider_id, provider_key, provider_name, website_url, profile_json, market_orientation in rows:
+    for provider_id, provider_key, provider_name, website_url, logo_url, profile_json, market_orientation, social_links in rows:
         key = str(provider_key or "").strip()
         if not key:
             continue
         name = str(provider_name or "").strip() or key
         website = str(website_url or "").strip()
         website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">Website</a>' if website else '<span class="muted">—</span>'
+        logo = str(logo_url or "").strip()
+        logo_html = (
+            f'<img src="{_esc(logo)}" alt="" style="height:28px; width:auto; max-width:110px; object-fit:contain; display:block;" />'
+            if logo
+            else ""
+        )
+        social_html = _render_social_links_html(social_links) or '<span class="muted">—</span>'
         profile = profile_json if isinstance(profile_json, dict) else {}
-        mission = ""
+        overview = ""
         try:
-            v = profile.get("mission_or_purpose")
+            v = profile.get("company_overview")
             if isinstance(v, dict):
-                mission = str(v.get("value") or "").strip()
+                overview = str(v.get("value") or "").strip()
+            elif isinstance(v, str):
+                overview = v.strip()
         except Exception:
-            mission = ""
+            overview = ""
 
         detail_href = f"/trip_providers_research/{quote(key)}"
         action_name = f"action__{key}"
         tr_rows.append(
             f"""
             <tr>
+              <td>{logo_html}</td>
               <td><a href="{detail_href}">{_esc(name)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></td>
               <td>{website_html}</td>
-              <td class="muted" style="white-space:normal; word-break:break-word;">{_esc(mission)}</td>
+              <td class="muted" style="white-space:normal; word-break:break-word;">{_esc(overview)}</td>
               <td class="muted">{_esc(market_orientation)}</td>
               <td>
                 <div style="display:flex; flex-direction:column; gap:10px;">
@@ -2608,11 +2643,12 @@ def trip_providers_review_not_stated_ui(
                   </label>
                 </div>
               </td>
+              <td class="muted">{social_html}</td>
             </tr>
             """.strip()
         )
 
-    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="5" class="muted">No results.</td></tr>'
+    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="7" class="muted">No results.</td></tr>'
     done_html = ""
     if (done or "").strip():
         done_html = '<div class="statusbox" style="margin-top:12px;">Saved.</div>'
@@ -2637,19 +2673,23 @@ def trip_providers_review_not_stated_ui(
           <div class="section tablewrap">
             <table style="table-layout:fixed; width:100%;">
               <colgroup>
+                <col style="width:6%;" />
+                <col style="width:22%;" />
+                <col style="width:8%;" />
+                <col style="width:18%;" />
+                <col style="width:8%;" />
                 <col style="width:28%;" />
-                <col style="width:8%;" />
-                <col style="width:20%;" />
-                <col style="width:8%;" />
-                <col style="width:36%;" />
+                <col style="width:10%;" />
               </colgroup>
               <thead>
                 <tr>
+                  <th>Logo</th>
                   <th>Provider</th>
                   <th>Website</th>
-                  <th>Mission</th>
+                  <th>Overview</th>
                   <th>Market</th>
                   <th>Decision</th>
+                  <th>Social</th>
                 </tr>
               </thead>
               <tbody>
@@ -2769,15 +2809,16 @@ def trip_providers_research_detail_ui(
 
     sql = _directory_schema(
         """
-        SELECT
-          p.id,
-          p.provider_key,
-          p.provider_name,
-          p.website_url,
-          p.status,
-          p.last_reviewed_at,
-          p.review_interval_days,
-          p.profile_json,
+	        SELECT
+	          p.id,
+	          p.provider_key,
+	          p.provider_name,
+	          p.website_url,
+	          p.logo_url,
+	          p.status,
+	          p.last_reviewed_at,
+	          p.review_interval_days,
+	          p.profile_json,
           c.market_orientation,
           c.client_profile_indicators,
           c.educational_market_orientation,
@@ -2816,6 +2857,7 @@ def trip_providers_research_detail_ui(
         key,
         name,
         website_url,
+        logo_url,
         status,
         last_reviewed_at,
         review_interval_days,
@@ -2878,6 +2920,12 @@ def trip_providers_research_detail_ui(
 
     website = str(website_url or "").strip()
     website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">{_esc(website)}</a>' if website else ""
+    logo = str(logo_url or "").strip()
+    logo_html = (
+        f'<img src="{_esc(logo)}" alt="" style="height:44px; width:auto; max-width:200px; object-fit:contain; display:block;" />'
+        if logo
+        else ""
+    )
     social_html = _render_social_links_html(social_links) or ""
     evidence_html = (
         f'<a class="btn" href="/trip_providers_research/{quote(provider_key)}/evidence">View evidence</a>'
@@ -2911,14 +2959,19 @@ def trip_providers_research_detail_ui(
         raw_pre = json.dumps(raw_json, indent=2)[:40_000]
 
     body_html = f"""
-      <div class="card">
-        <div class="muted"><a href="/trip_providers_research">← Back to list</a></div>
-        <h1>{_esc(name or key)}</h1>
-        <div class="muted"><code>{_esc(key)}</code> · <span class="pill">{_esc(status)}</span></div>
-        <div style="margin-top:12px;">{website_html}</div>
-        {f'<div class="muted" style="margin-top:10px;">{social_html}</div>' if social_html else ''}
-        {f'<div class="btnrow" style="margin-top:12px;">{actions_html}</div>' if actions_html else ''}
-      </div>
+	      <div class="card">
+	        <div class="muted"><a href="/trip_providers_research">← Back to list</a></div>
+	        <div style="display:flex; gap:16px; align-items:center; margin-top:6px;">
+	          {logo_html}
+	          <div>
+	            <h1 style="margin:0;">{_esc(name or key)}</h1>
+	            <div class="muted" style="margin-top:8px;"><code>{_esc(key)}</code> · <span class="pill">{_esc(status)}</span></div>
+	          </div>
+	        </div>
+	        <div style="margin-top:12px;">{website_html}</div>
+	        {f'<div class="muted" style="margin-top:10px;">{social_html}</div>' if social_html else ''}
+	        {f'<div class="btnrow" style="margin-top:12px;">{actions_html}</div>' if actions_html else ''}
+	      </div>
 
       <div class="grid-2">
         <div class="card">

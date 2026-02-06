@@ -70,6 +70,7 @@ DIRECTORY_SCHEMA_STATEMENTS: list[str] = [
           provider_key TEXT NOT NULL UNIQUE,
           provider_name TEXT NOT NULL DEFAULT '',
           website_url TEXT NOT NULL DEFAULT '',
+          logo_url TEXT NOT NULL DEFAULT '',
           status TEXT NOT NULL DEFAULT 'active',
           last_reviewed_at TIMESTAMPTZ,
           review_interval_days INTEGER NOT NULL DEFAULT 365,
@@ -80,6 +81,7 @@ DIRECTORY_SCHEMA_STATEMENTS: list[str] = [
         );
         """
     ).strip(),
+    _schema('ALTER TABLE "__SCHEMA__".providers ADD COLUMN IF NOT EXISTS logo_url TEXT NOT NULL DEFAULT \'\';'),
     _schema('CREATE INDEX IF NOT EXISTS providers_name_idx ON "__SCHEMA__".providers(provider_name);'),
     _schema('CREATE INDEX IF NOT EXISTS providers_status_idx ON "__SCHEMA__".providers(status);'),
     _schema(
@@ -216,6 +218,7 @@ def upsert_provider(
     provider_key: str,
     provider_name: str,
     website_url: str,
+    logo_url: str,
     status: str,
     last_reviewed_at: datetime | None,
     profile_json: dict[str, Any],
@@ -223,11 +226,12 @@ def upsert_provider(
     cur.execute(
         _schema(
             """
-            INSERT INTO "__SCHEMA__".providers (provider_key, provider_name, website_url, status, last_reviewed_at, profile_json)
-            VALUES (%s, %s, %s, %s, %s, %s::jsonb)
+            INSERT INTO "__SCHEMA__".providers (provider_key, provider_name, website_url, logo_url, status, last_reviewed_at, profile_json)
+            VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
             ON CONFLICT (provider_key) DO UPDATE SET
               provider_name = EXCLUDED.provider_name,
               website_url = EXCLUDED.website_url,
+              logo_url = CASE WHEN EXCLUDED.logo_url <> '' THEN EXCLUDED.logo_url ELSE "__SCHEMA__".providers.logo_url END,
               status = EXCLUDED.status,
               last_reviewed_at = COALESCE(EXCLUDED.last_reviewed_at, "__SCHEMA__".providers.last_reviewed_at),
               profile_json = EXCLUDED.profile_json,
@@ -235,7 +239,15 @@ def upsert_provider(
             RETURNING id;
             """
         ).strip(),
-        (provider_key, provider_name, website_url, status, last_reviewed_at, json.dumps(profile_json, ensure_ascii=False)),
+        (
+            provider_key,
+            provider_name,
+            website_url,
+            str(logo_url or "").strip(),
+            status,
+            last_reviewed_at,
+            json.dumps(profile_json, ensure_ascii=False),
+        ),
     )
     return str(cur.fetchone()[0])
 
@@ -350,6 +362,18 @@ def upsert_evidence_markdown(
     )
 
 
+def load_logo_url(path: Path) -> str:
+    if not path.exists():
+        return ""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    return str(payload.get("logo_url") or "").strip()
+
+
 def load_country_providers_csv(path: Path) -> list[dict[str, str]]:
     import csv
 
@@ -409,6 +433,7 @@ def main() -> None:
     ap.add_argument("--analysis-dir", type=Path, required=True, help="Directory of analytical_prompt_v1/*.json")
     ap.add_argument("--evidence-dir", type=Path, required=False, help="Directory of evidence_markdown/*.md")
     ap.add_argument("--social-links-dir", type=Path, required=False, help="Directory of social link jsons")
+    ap.add_argument("--logos-dir", type=Path, required=False, help="Directory of logo jsons (payloads with logo_url)")
     ap.add_argument("--providers-csv", type=Path, required=False, help="Optional providers.csv (to set last_reviewed_at)")
     ap.add_argument(
         "--country-providers-csv",
@@ -493,6 +518,9 @@ def main() -> None:
                     provider_name_obj.get("value") if isinstance(provider_name_obj, dict) else None
                 ) or provider_key
                 website_url = str(provider_record.get("website_url") or "").strip() if isinstance(provider_record, dict) else ""
+                logo_url = ""
+                if args.logos_dir:
+                    logo_url = load_logo_url(args.logos_dir / f"{provider_key}.json")
                 status = "active" if website_url else "excluded"
                 if status == "excluded":
                     excluded_missing_website += 1
@@ -508,6 +536,7 @@ def main() -> None:
                     provider_key=provider_key,
                     provider_name=str(provider_name),
                     website_url=website_url,
+                    logo_url=logo_url,
                     status=status,
                     last_reviewed_at=last_reviewed_at,
                     profile_json=provider_record if isinstance(provider_record, dict) else {},

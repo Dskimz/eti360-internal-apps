@@ -2046,6 +2046,38 @@ def _normalize_country_query(q: str) -> tuple[str, str]:
     return raw, alias
 
 
+def _render_social_links_html(social_links: Any) -> str:
+    if not isinstance(social_links, dict):
+        return ""
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    labels = {
+        "linkedin": "LinkedIn",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "twitter": "X",
+        "youtube": "YouTube",
+        "tiktok": "TikTok",
+        "other": "Other",
+    }
+    parts: list[str] = []
+    for kind in ["linkedin", "facebook", "instagram", "twitter", "youtube", "tiktok", "other"]:
+        url = str(social_links.get(kind) or "").strip()
+        if not url:
+            continue
+        parts.append(f'<a href="{_esc(url)}" target="_blank" rel="noopener">{_esc(labels.get(kind, kind))}</a>')
+    return " · ".join(parts)
+
+
 @app.get("/trip_providers/countries", response_class=HTMLResponse)
 def trip_providers_countries_index_ui(
     request: Request,
@@ -2080,6 +2112,7 @@ def trip_providers_countries_index_ui(
         JOIN "__SCHEMA__".providers p ON p.provider_key = pc.provider_key
         LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
         WHERE p.status='active'
+          AND NULLIF(TRIM(p.website_url), '') IS NOT NULL
           AND c.market_orientation = %s
           {where_sql}
         GROUP BY pc.country_or_territory
@@ -2194,12 +2227,18 @@ def trip_providers_country_detail_ui(
           p.provider_name,
           p.website_url,
           c.market_orientation,
-          c.client_profile_indicators
+          c.client_profile_indicators,
+          (
+            SELECT jsonb_object_agg(sl.kind, sl.url)
+            FROM "__SCHEMA__".provider_social_links sl
+            WHERE sl.provider_id = p.id
+          ) AS social_links
         FROM "__SCHEMA__".provider_country pc
         JOIN "__SCHEMA__".providers p ON p.provider_key = pc.provider_key
         LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
         WHERE pc.country_or_territory = %s
           AND p.status = 'active'
+          AND NULLIF(TRIM(p.website_url), '') IS NOT NULL
           AND c.market_orientation = %s
         ORDER BY p.provider_name ASC;
         """
@@ -2213,23 +2252,25 @@ def trip_providers_country_detail_ui(
             rows = list(cur.fetchall())
 
     tr_rows: list[str] = []
-    for provider_key, provider_name, website_url, _market_orientation, client_profile in rows:
+    for provider_key, provider_name, website_url, _market_orientation, client_profile, social_links in rows:
         key = str(provider_key or "").strip()
         name = str(provider_name or "").strip() or key
         website = str(website_url or "").strip()
         website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">Website</a>' if website else ""
         client = str(client_profile or "").strip()
+        social_html = _render_social_links_html(social_links) or ""
         tr_rows.append(
             f"""
             <tr>
               <td><a href="/trip_providers_research/{_esc(quote(key))}">{_esc(name)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></td>
               <td class="muted">{_esc(client)}</td>
               <td>{website_html}</td>
+              <td class="muted">{social_html}</td>
             </tr>
             """.strip()
         )
 
-    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="3" class="muted">No providers found.</td></tr>'
+    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="4" class="muted">No providers found.</td></tr>'
 
     body_html = f"""
       <div class="card">
@@ -2247,6 +2288,7 @@ def trip_providers_country_detail_ui(
                 <th>Provider</th>
                 <th>Client profile</th>
                 <th>Links</th>
+                <th>Social</th>
               </tr>
             </thead>
             <tbody>
@@ -2271,6 +2313,10 @@ def trip_providers_research_ui(
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
     q = (q or "").strip()
     scope = (scope or "").strip().lower() or "educational"
+    can_edit = _role_ge(str(user.get("role") or ""), required="editor")
+    next_path = request.url.path
+    if request.url.query:
+        next_path = next_path + "?" + str(request.url.query)
 
     def _esc(s: Any) -> str:
         return (
@@ -2286,6 +2332,8 @@ def trip_providers_research_ui(
     params: list[Any] = []
     if not include_excluded:
         filters.append("p.status = 'active'")
+    # Hide providers that don't have a usable website URL (V1 cleanup rule).
+    filters.append("NULLIF(TRIM(p.website_url), '') IS NOT NULL")
     if q:
         filters.append("(p.provider_name ILIKE %s OR p.provider_key ILIKE %s)")
         like = f"%{q}%"
@@ -2308,6 +2356,11 @@ def trip_providers_research_ui(
           c.client_profile_indicators,
           c.educational_market_orientation,
           c.commercial_posture_signal,
+          (
+            SELECT jsonb_object_agg(sl.kind, sl.url)
+            FROM "__SCHEMA__".provider_social_links sl
+            WHERE sl.provider_id = p.id
+          ) AS social_links,
           e.s3_bucket,
           e.s3_key
         FROM "__SCHEMA__".providers p
@@ -2339,6 +2392,7 @@ def trip_providers_research_ui(
         client_profile_indicators,
         _educational_market_orientation,
         _commercial_posture_signal,
+        social_links,
         _s3_bucket,
         s3_key,
     ) in rows:
@@ -2368,6 +2422,18 @@ def trip_providers_research_ui(
 
         website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">Website</a>' if website else ""
         status_pill = f'<span class="pill">{_esc(status)}</span>' if status else ""
+        social_html = _render_social_links_html(social_links) or ""
+        actions_html = ""
+        if can_edit and key:
+            desired = "excluded" if str(status or "").strip().lower() != "excluded" else "active"
+            label = "Exclude" if desired == "excluded" else "Include"
+            actions_html = f"""
+              <form method="post" action="/trip_providers_research/{_esc(quote(key))}/set_status" style="display:inline;">
+                <input type="hidden" name="status" value="{_esc(desired)}" />
+                <input type="hidden" name="next_path" value="{_esc(next_path)}" />
+                <button class="btn" type="submit" style="padding:6px 10px; font-size:12px;">{_esc(label)}</button>
+              </form>
+            """.strip()
         tr_rows.append(
             f"""
             <tr>
@@ -2378,7 +2444,9 @@ def trip_providers_research_ui(
               <td class="muted">{_esc(last)}</td>
               <td>{_esc(due)}</td>
               <td>{website_html}</td>
+              <td class="muted">{social_html}</td>
               <td>{evidence_link}</td>
+              <td>{actions_html}</td>
             </tr>
             """.strip()
         )
@@ -2386,12 +2454,15 @@ def trip_providers_research_ui(
     scope_edu_selected = "selected" if scope == "educational" else ""
     scope_all_selected = "selected" if scope != "educational" else ""
     inc_excl_checked = "checked" if include_excluded else ""
-    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="8" class="muted">No results.</td></tr>'
+    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="10" class="muted">No results.</td></tr>'
 
     body_html = f"""
       <div class="card">
         <h1>Trip Providers (Research)</h1>
         <p class="muted">Searchable directory of educational trip providers. Default scope is <strong>Educational only</strong> (market orientation = <code>Education-focused</code>).</p>
+        <div class="btnrow" style="margin-top:12px;">
+          <a class="btn" href="/trip_providers/review_not_stated">Review Trip Providers</a>
+        </div>
       </div>
 
       <div class="card">
@@ -2427,21 +2498,23 @@ def trip_providers_research_ui(
         <div class="muted">Showing {len(tr_rows)} result(s). Limit: 2000.</div>
         <div class="divider"></div>
         <div class="section tablewrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Provider</th>
-                <th>Status</th>
-                <th>Market</th>
-                <th>Client profile</th>
-                <th>Last reviewed</th>
-                <th>Review due</th>
-                <th>Links</th>
-                <th>Evidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tbody_html}
+	          <table>
+	            <thead>
+	              <tr>
+	                <th>Provider</th>
+	                <th>Status</th>
+	                <th>Market</th>
+	                <th>Client profile</th>
+	                <th>Last reviewed</th>
+	                <th>Review due</th>
+	                <th>Links</th>
+	                <th>Social</th>
+	                <th>Evidence</th>
+	                <th>Actions</th>
+	              </tr>
+	            </thead>
+	            <tbody>
+	              {tbody_html}
             </tbody>
           </table>
         </div>
@@ -2449,6 +2522,213 @@ def trip_providers_research_ui(
     """.strip()
 
     return _ui_shell(title="Trip Providers", active="trip_providers", body_html=body_html, max_width_px=1400, user=user)
+
+
+@app.get("/trip_providers/review_not_stated", response_class=HTMLResponse)
+def trip_providers_review_not_stated_ui(
+    request: Request,
+    done: str = Query(default=""),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="admin") or {}
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    sql = _directory_schema(
+        """
+        SELECT
+          p.id,
+          p.provider_key,
+          p.provider_name,
+          p.website_url,
+          p.profile_json,
+          COALESCE(NULLIF(c.market_orientation, ''), 'Not stated') AS market_orientation
+        FROM "__SCHEMA__".providers p
+        LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
+        WHERE COALESCE(NULLIF(c.market_orientation, ''), 'Not stated') = 'Not stated'
+        ORDER BY p.provider_name ASC
+        LIMIT 3000;
+        """
+    ).strip()
+
+    rows: list[tuple[Any, ...]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql)
+            rows = list(cur.fetchall())
+
+    tr_rows: list[str] = []
+    for provider_id, provider_key, provider_name, website_url, profile_json, market_orientation in rows:
+        key = str(provider_key or "").strip()
+        if not key:
+            continue
+        name = str(provider_name or "").strip() or key
+        website = str(website_url or "").strip()
+        website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">Website</a>' if website else '<span class="muted">—</span>'
+        profile = profile_json if isinstance(profile_json, dict) else {}
+        mission = ""
+        try:
+            v = profile.get("mission_or_purpose")
+            if isinstance(v, dict):
+                mission = str(v.get("value") or "").strip()
+        except Exception:
+            mission = ""
+
+        detail_href = f"/trip_providers_research/{quote(key)}"
+        action_name = f"action__{key}"
+        tr_rows.append(
+            f"""
+            <tr>
+              <td><a href="{detail_href}">{_esc(name)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></td>
+              <td>{website_html}</td>
+              <td class="muted">{_esc(mission)}</td>
+              <td class="muted">{_esc(market_orientation)}</td>
+              <td>
+                <label style="display:inline-flex; gap:6px; align-items:center; margin-right:12px;">
+                  <input type="radio" name="{_esc(action_name)}" value="delete" checked />
+                  Delete
+                </label>
+                <label style="display:inline-flex; gap:6px; align-items:center;">
+                  <input type="radio" name="{_esc(action_name)}" value="education_focused" />
+                  Education-focused
+                </label>
+                <input type="hidden" name="provider_id__{_esc(key)}" value="{_esc(provider_id)}" />
+              </td>
+            </tr>
+            """.strip()
+        )
+
+    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="5" class="muted">No results.</td></tr>'
+    done_html = ""
+    if (done or "").strip():
+        done_html = '<div class="statusbox" style="margin-top:12px;">Saved.</div>'
+
+    body_html = f"""
+      <div class="card">
+        <div class="muted"><a href="/trip_providers_research">← Back to Trip Providers</a></div>
+        <h1>Review Trip Providers</h1>
+        <p class="muted">Providers with market orientation = <code>Not stated</code>. Default action is <strong>Delete</strong> for every row.</p>
+        {done_html}
+        <div class="btnrow" style="margin-top:12px;">
+          <button class="btn primary" type="submit" form="review-form">Apply changes</button>
+          <a class="btn" href="/trip_providers/review_not_stated">Reset</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Providers</h2>
+        <div class="muted">Showing {len(tr_rows)} result(s).</div>
+        <div class="divider"></div>
+        <form id="review-form" method="post" action="/trip_providers/review_not_stated/apply" onsubmit="return confirm('Apply these changes? Deletions are permanent.');">
+          <div class="section tablewrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>Website</th>
+                  <th>Mission</th>
+                  <th>Market</th>
+                  <th>Decision</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tbody_html}
+              </tbody>
+            </table>
+          </div>
+        </form>
+      </div>
+    """.strip()
+
+    return _ui_shell(title="Review Trip Providers", active="trip_providers", body_html=body_html, max_width_px=1400, user=user)
+
+
+@app.post("/trip_providers/review_not_stated/apply")
+async def trip_providers_review_not_stated_apply(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> Response:
+    _require_access(request=request, x_api_key=x_api_key, role="admin")
+
+    form = await request.form()
+    # Extract actions of the form action__{provider_key} => decision
+    actions: dict[str, str] = {}
+    for k, v in form.items():
+        ks = str(k)
+        vs = str(v or "").strip()
+        if ks.startswith("action__"):
+            provider_key = ks.split("__", 1)[1]
+            actions[provider_key] = vs
+
+    if not actions:
+        return RedirectResponse(url="/trip_providers/review_not_stated?done=1", status_code=303)
+
+    # Apply changes in a single transaction.
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            for provider_key, decision in actions.items():
+                pk = _safe_provider_key(provider_key)
+                d = (decision or "").strip().lower()
+                if d == "delete":
+                    cur.execute(_directory_schema('DELETE FROM "__SCHEMA__".provider_country WHERE provider_key=%s;').strip(), (pk,))
+                    cur.execute(_directory_schema('DELETE FROM "__SCHEMA__".providers WHERE provider_key=%s;').strip(), (pk,))
+                    continue
+                if d == "education_focused":
+                    # Ensure status=active and classification is set to Education-focused.
+                    cur.execute(
+                        _directory_schema(
+                            """
+                            UPDATE "__SCHEMA__".providers
+                            SET status='active', updated_at=now()
+                            WHERE provider_key=%s;
+                            """
+                        ).strip(),
+                        (pk,),
+                    )
+                    cur.execute(
+                        _directory_schema(
+                            """
+                            SELECT id
+                            FROM "__SCHEMA__".providers
+                            WHERE provider_key=%s
+                            LIMIT 1;
+                            """
+                        ).strip(),
+                        (pk,),
+                    )
+                    r = cur.fetchone()
+                    provider_id = r[0] if r else None
+                    if provider_id:
+                        cur.execute(
+                            _directory_schema(
+                                """
+                                INSERT INTO "__SCHEMA__".provider_classifications (
+                                  provider_id,
+                                  market_orientation,
+                                  updated_at
+                                )
+                                VALUES (%s, %s, now())
+                                ON CONFLICT (provider_id) DO UPDATE
+                                SET market_orientation=EXCLUDED.market_orientation,
+                                    updated_at=now();
+                                """
+                            ).strip(),
+                            (provider_id, "Education-focused"),
+                        )
+                    continue
+        conn.commit()
+
+    return RedirectResponse(url="/trip_providers/review_not_stated?done=1", status_code=303)
 
 
 @app.get("/trip_providers_research/{provider_key}", response_class=HTMLResponse)
@@ -2459,6 +2739,9 @@ def trip_providers_research_detail_ui(
 ) -> str:
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
     provider_key = _safe_provider_key(provider_key)
+    can_edit = _role_ge(str(user.get("role") or ""), required="editor")
+    is_admin = _role_ge(str(user.get("role") or ""), required="admin")
+    next_path = request.url.path
 
     def _esc(s: Any) -> str:
         return (
@@ -2488,6 +2771,11 @@ def trip_providers_research_detail_ui(
           r.analytical_prompt_version,
           r.raw_json,
           r.generated_at,
+          (
+            SELECT jsonb_object_agg(sl.kind, sl.url)
+            FROM "__SCHEMA__".provider_social_links sl
+            WHERE sl.provider_id = p.id
+          ) AS social_links,
           e.s3_bucket,
           e.s3_key
         FROM "__SCHEMA__".providers p
@@ -2525,6 +2813,7 @@ def trip_providers_research_detail_ui(
         analytical_prompt_version,
         raw_json,
         generated_at,
+        social_links,
         _s3_bucket,
         s3_key,
     ) = row
@@ -2575,11 +2864,33 @@ def trip_providers_research_detail_ui(
 
     website = str(website_url or "").strip()
     website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">{_esc(website)}</a>' if website else ""
+    social_html = _render_social_links_html(social_links) or ""
     evidence_html = (
         f'<a class="btn" href="/trip_providers_research/{quote(provider_key)}/evidence">View evidence</a>'
         if str(s3_key or "").strip()
         else '<span class="muted">No evidence uploaded</span>'
     )
+    actions_html = ""
+    if can_edit:
+        desired = "excluded" if str(status or "").strip().lower() != "excluded" else "active"
+        label = "Exclude" if desired == "excluded" else "Include"
+        actions_html += f"""
+          <form method="post" action="/trip_providers_research/{_esc(quote(provider_key))}/set_status" style="display:inline;">
+            <input type="hidden" name="status" value="{_esc(desired)}" />
+            <input type="hidden" name="next_path" value="{_esc(next_path)}" />
+            <button class="btn" type="submit">{_esc(label)}</button>
+          </form>
+        """.strip()
+    if is_admin:
+        actions_html += (
+            " "
+            + f"""
+          <form method="post" action="/trip_providers_research/{_esc(quote(provider_key))}/delete" style="display:inline;" onsubmit="return confirm('Delete this provider from the database?');">
+            <input type="hidden" name="next_path" value="/trip_providers_research" />
+            <button class="btn" type="submit">Delete</button>
+          </form>
+        """.strip()
+        )
 
     raw_pre = ""
     if isinstance(raw_json, (dict, list)):
@@ -2591,6 +2902,8 @@ def trip_providers_research_detail_ui(
         <h1>{_esc(name or key)}</h1>
         <div class="muted"><code>{_esc(key)}</code> · <span class="pill">{_esc(status)}</span></div>
         <div style="margin-top:12px;">{website_html}</div>
+        {f'<div class="muted" style="margin-top:10px;">{social_html}</div>' if social_html else ''}
+        {f'<div class="btnrow" style="margin-top:12px;">{actions_html}</div>' if actions_html else ''}
       </div>
 
       <div class="grid-2">
@@ -2753,6 +3066,69 @@ def trip_providers_research_evidence(
         extra_head=extra_head,
         user=user,
     )
+
+
+def _safe_next_path(next_path: str) -> str:
+    p = (next_path or "").strip()
+    if not p.startswith("/"):
+        return "/apps"
+    if p.startswith("//"):
+        return "/apps"
+    if "\n" in p or "\r" in p:
+        return "/apps"
+    return p
+
+
+@app.post("/trip_providers_research/{provider_key}/set_status")
+async def trip_providers_set_status(
+    provider_key: str,
+    request: Request,
+    status: str = Form(...),
+    next_path: str = Form(default="/trip_providers_research"),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> Response:
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
+    provider_key = _safe_provider_key(provider_key)
+    status_s = (status or "").strip().lower()
+    if status_s not in {"active", "excluded"}:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    sql = _directory_schema(
+        """
+        UPDATE "__SCHEMA__".providers
+        SET status=%s, updated_at=now()
+        WHERE provider_key=%s;
+        """
+    ).strip()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql, (status_s, provider_key))
+        conn.commit()
+
+    return RedirectResponse(url=_safe_next_path(next_path), status_code=303)
+
+
+@app.post("/trip_providers_research/{provider_key}/delete")
+async def trip_providers_delete(
+    provider_key: str,
+    request: Request,
+    next_path: str = Form(default="/trip_providers_research"),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> Response:
+    _require_access(request=request, x_api_key=x_api_key, role="admin")
+    provider_key = _safe_provider_key(provider_key)
+
+    sql_del_country = _directory_schema('DELETE FROM "__SCHEMA__".provider_country WHERE provider_key=%s;').strip()
+    sql_del_provider = _directory_schema('DELETE FROM "__SCHEMA__".providers WHERE provider_key=%s;').strip()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql_del_country, (provider_key,))
+            cur.execute(sql_del_provider, (provider_key,))
+        conn.commit()
+
+    return RedirectResponse(url=_safe_next_path(next_path), status_code=303)
 
 
 @app.get("/health")

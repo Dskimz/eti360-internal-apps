@@ -2073,10 +2073,17 @@ def _render_social_links_html(social_links: Any) -> str:
     }
     parts: list[str] = []
     for kind in ["linkedin", "facebook", "instagram", "twitter", "youtube", "tiktok", "other"]:
-        url = str(social_links.get(kind) or "").strip()
-        if not url:
+        raw = str(social_links.get(kind) or "").strip()
+        if not raw:
             continue
-        parts.append(f'<a href="{_esc(url)}" target="_blank" rel="noopener">{_esc(labels.get(kind, kind))}</a>')
+        # Some source files store social links as markdown bullets like:
+        # "* [Facebook](https://facebook.com/...)". Extract the actual URL.
+        url = _extract_url(raw)
+        if not (url.startswith("http://") or url.startswith("https://")):
+            continue
+        parts.append(
+            f'<a href="{_esc(url)}" target="_blank" rel="noopener noreferrer">{_esc(labels.get(kind, kind))}</a>'
+        )
     return " · ".join(parts)
 
 
@@ -2317,6 +2324,7 @@ def trip_providers_research_ui(
     q: str = Query(default=""),
     scope: str = Query(default="educational"),
     include_excluded: bool = Query(default=False),
+    missing_logos: bool = Query(default=False),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> str:
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
@@ -2343,6 +2351,8 @@ def trip_providers_research_ui(
         filters.append("p.status = 'active'")
     # Hide providers that don't have a usable website URL (V1 cleanup rule).
     filters.append("NULLIF(TRIM(p.website_url), '') IS NOT NULL")
+    if missing_logos:
+        filters.append("NULLIF(TRIM(p.logo_url), '') IS NULL")
     if q:
         filters.append("(p.provider_name ILIKE %s OR p.provider_key ILIKE %s)")
         like = f"%{q}%"
@@ -2472,6 +2482,7 @@ def trip_providers_research_ui(
     scope_edu_selected = "selected" if scope == "educational" else ""
     scope_all_selected = "selected" if scope != "educational" else ""
     inc_excl_checked = "checked" if include_excluded else ""
+    missing_logos_checked = "checked" if missing_logos else ""
     tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="11" class="muted">No results.</td></tr>'
 
     body_html = f"""
@@ -2501,6 +2512,10 @@ def trip_providers_research_ui(
               <label style="margin-top:12px;">
                 <input type="checkbox" name="include_excluded" value="true" {inc_excl_checked} />
                 Include excluded
+              </label>
+              <label style="margin-top:10px;">
+                <input type="checkbox" name="missing_logos" value="true" {missing_logos_checked} />
+                Only missing logos
               </label>
             </div>
           </div>

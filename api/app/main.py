@@ -686,6 +686,18 @@ _DIRECTORY_SCHEMA_STATEMENTS: list[str] = [
     );
     """.strip(),
     'CREATE INDEX IF NOT EXISTS provider_evidence_provider_idx ON "__SCHEMA__".provider_evidence(provider_id);',
+    """
+    CREATE TABLE IF NOT EXISTS "__SCHEMA__".provider_country (
+      provider_key TEXT NOT NULL,
+      country_or_territory TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT '',
+      generated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT provider_country_provider_country_uniq UNIQUE (provider_key, country_or_territory)
+    );
+    """.strip(),
+    'CREATE INDEX IF NOT EXISTS provider_country_provider_key_idx ON "__SCHEMA__".provider_country(provider_key);',
+    'CREATE INDEX IF NOT EXISTS provider_country_country_idx ON "__SCHEMA__".provider_country(country_or_territory);',
 ]
 
 
@@ -1173,6 +1185,7 @@ def _ui_nav(*, active: str) -> str:
     items = [
         ("Apps", "/apps", "apps"),
         ("Trip Providers", "/trip_providers_research", "trip_providers"),
+        ("Countries", "/trip_providers/countries", "trip_providers_countries"),
         ("Weather", "/weather/ui", "weather"),
         ("Usage", "/usage/ui", "usage"),
         ("DB", "/db/ui", "db"),
@@ -2010,6 +2023,243 @@ def _safe_provider_key(provider_key: str) -> str:
     return provider_key
 
 
+_COUNTRY_ALIASES: dict[str, str] = {
+    "us": "United States",
+    "usa": "United States",
+    "u.s.": "United States",
+    "u.s.a.": "United States",
+    "united states of america": "United States",
+    "uk": "United Kingdom",
+    "u.k.": "United Kingdom",
+    "uae": "United Arab Emirates",
+    "u.a.e.": "United Arab Emirates",
+}
+
+
+def _normalize_country_query(q: str) -> tuple[str, str]:
+    """
+    Returns (raw_query, alias_canonical) where alias_canonical may be "".
+    """
+    raw = (q or "").strip()
+    k = raw.lower().replace(",", "").strip()
+    alias = _COUNTRY_ALIASES.get(k, "")
+    return raw, alias
+
+
+@app.get("/trip_providers/countries", response_class=HTMLResponse)
+def trip_providers_countries_index_ui(
+    request: Request,
+    q: str = Query(default=""),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    q_raw, q_alias = _normalize_country_query(q)
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    where_sql = ""
+    params: list[Any] = ["Education-focused"]
+    if q_raw:
+        where_sql = "AND (pc.country_or_territory ILIKE %s OR pc.country_or_territory = %s)"
+        params.extend([f"%{q_raw}%", q_alias or q_raw])
+
+    sql = _directory_schema(
+        f"""
+        SELECT
+          pc.country_or_territory,
+          COUNT(DISTINCT pc.provider_key) AS provider_count
+        FROM "__SCHEMA__".provider_country pc
+        JOIN "__SCHEMA__".providers p ON p.provider_key = pc.provider_key
+        LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
+        WHERE p.status='active'
+          AND c.market_orientation = %s
+          {where_sql}
+        GROUP BY pc.country_or_territory
+        ORDER BY pc.country_or_territory ASC;
+        """
+    ).strip()
+
+    rows: list[tuple[Any, ...]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql, params)
+            rows = list(cur.fetchall())
+
+    lis: list[str] = []
+    for country, provider_count in rows:
+        c = str(country or "").strip()
+        if not c:
+            continue
+        slug = _slugify(c)
+        href = f"/trip_providers/countries/{quote(slug)}"
+        lis.append(f'<li><a href="{href}">{_esc(c)}</a> <span class="muted">({int(provider_count or 0)})</span></li>')
+
+    list_html = "<ul style=\"margin: 8px 0 0 18px; padding: 0;\">" + "".join(lis) + "</ul>" if lis else "<p class=\"muted\">No countries found.</p>"
+
+    body_html = f"""
+      <div class="card">
+        <h1>Trip Providers — Countries</h1>
+        <p class="muted">Browse countries/territories and see education-focused providers operating there.</p>
+      </div>
+
+      <div class="card">
+        <h2>Search</h2>
+        <form method="get" action="/trip_providers/countries">
+          <div class="grid-2">
+            <div>
+              <label>Country / territory</label>
+              <input type="text" name="q" value="{_esc(q_raw)}" placeholder="e.g., Japan, USA, UK" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <div style="margin-top:2px;">
+                <button class="btn primary" type="submit">Search</button>
+                <a class="btn" href="/trip_providers/countries">Reset</a>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Countries</h2>
+        <div class="muted">Showing {len(lis)} result(s).</div>
+        <div class="divider"></div>
+        <div class="section">
+          {list_html}
+        </div>
+      </div>
+    """.strip()
+
+    return _ui_shell(title="Trip Providers — Countries", active="trip_providers_countries", body_html=body_html, max_width_px=1100, user=user)
+
+
+@app.get("/trip_providers/countries/{country_slug}", response_class=HTMLResponse)
+def trip_providers_country_detail_ui(
+    request: Request,
+    country_slug: str,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    slug = (country_slug or "").strip().lower()
+    if not slug:
+        raise HTTPException(status_code=400, detail="Missing country")
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    # Resolve slug -> canonical country label from DB.
+    sql_countries = _directory_schema(
+        """
+        SELECT DISTINCT pc.country_or_territory
+        FROM "__SCHEMA__".provider_country pc
+        ORDER BY pc.country_or_territory ASC;
+        """
+    ).strip()
+    countries: list[str] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql_countries)
+            countries = [str(r[0] or "").strip() for r in cur.fetchall() if str(r[0] or "").strip()]
+
+    canonical = ""
+    for c in countries:
+        if _slugify(c) == slug:
+            canonical = c
+            break
+    if not canonical:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    sql = _directory_schema(
+        """
+        SELECT
+          p.provider_key,
+          p.provider_name,
+          p.website_url,
+          c.market_orientation,
+          c.client_profile_indicators
+        FROM "__SCHEMA__".provider_country pc
+        JOIN "__SCHEMA__".providers p ON p.provider_key = pc.provider_key
+        LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
+        WHERE pc.country_or_territory = %s
+          AND p.status = 'active'
+          AND c.market_orientation = %s
+        ORDER BY p.provider_name ASC;
+        """
+    ).strip()
+
+    rows: list[tuple[Any, ...]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql, (canonical, "Education-focused"))
+            rows = list(cur.fetchall())
+
+    tr_rows: list[str] = []
+    for provider_key, provider_name, website_url, _market_orientation, client_profile in rows:
+        key = str(provider_key or "").strip()
+        name = str(provider_name or "").strip() or key
+        website = str(website_url or "").strip()
+        website_html = f'<a href="{_esc(website)}" target="_blank" rel="noopener">Website</a>' if website else ""
+        client = str(client_profile or "").strip()
+        tr_rows.append(
+            f"""
+            <tr>
+              <td><a href="/trip_providers_research/{_esc(quote(key))}">{_esc(name)}</a><div class="muted" style="margin-top:4px;"><code>{_esc(key)}</code></div></td>
+              <td class="muted">{_esc(client)}</td>
+              <td>{website_html}</td>
+            </tr>
+            """.strip()
+        )
+
+    tbody_html = "".join(tr_rows) if tr_rows else '<tr><td colspan="3" class="muted">No providers found.</td></tr>'
+
+    body_html = f"""
+      <div class="card">
+        <div class="muted"><a href="/trip_providers/countries">← Back to countries</a></div>
+        <h1>{_esc(canonical)}</h1>
+        <div class="muted">{len(tr_rows)} provider(s)</div>
+      </div>
+
+      <div class="card">
+        <h2>Providers</h2>
+        <div class="section tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Client profile</th>
+                <th>Links</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tbody_html}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    """.strip()
+
+    return _ui_shell(title=f"Trip Providers — {canonical}", active="trip_providers_countries", body_html=body_html, max_width_px=1100, user=user)
+
+
 @app.get("/trip_providers_research", response_class=HTMLResponse)
 def trip_providers_research_ui(
     request: Request,
@@ -2279,6 +2529,21 @@ def trip_providers_research_detail_ui(
         s3_key,
     ) = row
 
+    countries_sql = _directory_schema(
+        """
+        SELECT country_or_territory
+        FROM "__SCHEMA__".provider_country
+        WHERE provider_key = %s
+        ORDER BY country_or_territory ASC;
+        """
+    ).strip()
+    countries: list[str] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(countries_sql, (provider_key,))
+            countries = [str(r[0] or "").strip() for r in cur.fetchall() if str(r[0] or "").strip()]
+
     profile = profile_json if isinstance(profile_json, dict) else {}
     mission = (profile.get("mission_or_purpose") or {}).get("value") if isinstance(profile.get("mission_or_purpose"), dict) else ""
     trips = (profile.get("types_of_trips_offered") or {}).get("categories") if isinstance(profile.get("types_of_trips_offered"), dict) else []
@@ -2290,6 +2555,10 @@ def trip_providers_research_detail_ui(
 
     schools = (profile.get("named_schools_referenced") or {}).get("value") if isinstance(profile.get("named_schools_referenced"), dict) else []
     schools_text = ", ".join([str(x) for x in schools[:12]]) if isinstance(schools, list) else ""
+    countries_text = ", ".join(countries[:24])
+    countries_note = ""
+    if len(countries) > 24:
+        countries_note = f" (+{len(countries) - 24} more)"
 
     last = last_reviewed_at.date().isoformat() if isinstance(last_reviewed_at, datetime) else ""
     due = ""
@@ -2359,6 +2628,9 @@ def trip_providers_research_detail_ui(
             <div class="divider"></div>
             <div class="muted">Named schools referenced</div>
             <div class="muted">{_esc(schools_text or '')}</div>
+            <div class="divider"></div>
+            <div class="muted">Countries / territories</div>
+            <div class="muted">{_esc(countries_text or '—')}{_esc(countries_note)}</div>
           </div>
         </div>
       </div>

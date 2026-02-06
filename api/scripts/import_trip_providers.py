@@ -139,6 +139,20 @@ DIRECTORY_SCHEMA_STATEMENTS: list[str] = [
         """
     ).strip(),
     _schema('CREATE INDEX IF NOT EXISTS provider_evidence_provider_idx ON "__SCHEMA__".provider_evidence(provider_id);'),
+    _schema(
+        """
+        CREATE TABLE IF NOT EXISTS "__SCHEMA__".provider_country (
+          provider_key TEXT NOT NULL,
+          country_or_territory TEXT NOT NULL,
+          source TEXT NOT NULL DEFAULT '',
+          generated_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          CONSTRAINT provider_country_provider_country_uniq UNIQUE (provider_key, country_or_territory)
+        );
+        """
+    ).strip(),
+    _schema('CREATE INDEX IF NOT EXISTS provider_country_provider_key_idx ON "__SCHEMA__".provider_country(provider_key);'),
+    _schema('CREATE INDEX IF NOT EXISTS provider_country_country_idx ON "__SCHEMA__".provider_country(country_or_territory);'),
 ]
 
 
@@ -336,6 +350,59 @@ def upsert_evidence_markdown(
     )
 
 
+def load_country_providers_csv(path: Path) -> list[dict[str, str]]:
+    import csv
+
+    if not path.exists():
+        raise SystemExit(f"Missing country-providers CSV: {path}")
+
+    rows: list[dict[str, str]] = []
+    with path.open(newline="", encoding="utf-8") as f:
+        r = csv.DictReader(f)
+        expected = {"country_or_territory", "provider_key"}
+        if set(r.fieldnames or []) != expected:
+            raise SystemExit(f"Unexpected columns in {path} (expected {sorted(expected)}; got {r.fieldnames})")
+        for row in r:
+            c = str(row.get("country_or_territory") or "").strip()
+            k = str(row.get("provider_key") or "").strip()
+            if not c or not k:
+                continue
+            rows.append({"country_or_territory": c, "provider_key": k})
+    return rows
+
+
+def upsert_provider_country_rows(
+    *,
+    cur: psycopg.Cursor,
+    rows: list[dict[str, str]],
+    source: str,
+    generated_at: datetime | None,
+    progress_every: int,
+) -> None:
+    total = 0
+    for rec in rows:
+        cur.execute(
+            _schema(
+                """
+                INSERT INTO "__SCHEMA__".provider_country (provider_key, country_or_territory, source, generated_at)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (provider_key, country_or_territory) DO UPDATE SET
+                  source = EXCLUDED.source,
+                  generated_at = COALESCE(EXCLUDED.generated_at, "__SCHEMA__".provider_country.generated_at);
+                """
+            ).strip(),
+            (
+                rec["provider_key"],
+                rec["country_or_territory"],
+                str(source or "").strip(),
+                generated_at,
+            ),
+        )
+        total += 1
+        if progress_every and (total % progress_every == 0):
+            print(f"[import_trip_providers] provider_country: {total}/{len(rows)} rows upserted", flush=True)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Import trip provider research data into Postgres + S3.")
     ap.add_argument("--aggregated-json", type=Path, required=True, help="Path to part_a_aggregated.json")
@@ -343,12 +410,37 @@ def main() -> None:
     ap.add_argument("--evidence-dir", type=Path, required=False, help="Directory of evidence_markdown/*.md")
     ap.add_argument("--social-links-dir", type=Path, required=False, help="Directory of social link jsons")
     ap.add_argument("--providers-csv", type=Path, required=False, help="Optional providers.csv (to set last_reviewed_at)")
+    ap.add_argument(
+        "--country-providers-csv",
+        type=Path,
+        required=False,
+        help="Optional market_orientation_country_providers.csv (to populate provider_country table)",
+    )
+    ap.add_argument(
+        "--country-providers-generated-at",
+        type=str,
+        required=False,
+        help="Optional ISO8601 timestamp for provider_country.generated_at (default: now)",
+    )
     ap.add_argument("--dry-run", action="store_true", help="No S3 uploads; still writes DB rows.")
+    ap.add_argument("--progress-every", type=int, default=200, help="Print progress every N providers (default: 200). Use 0 to disable.")
     args = ap.parse_args()
+
+    progress_every = int(args.progress_every or 0)
+    if progress_every < 0:
+        raise SystemExit("--progress-every must be >= 0")
 
     ensure_schema()
 
     aggregated = load_aggregated(args.aggregated_json)
+
+    country_rows: list[dict[str, str]] = []
+    if args.country_providers_csv:
+        country_rows = load_country_providers_csv(args.country_providers_csv)
+
+    country_generated_at = parse_iso8601(args.country_providers_generated_at) if args.country_providers_generated_at else None
+    if not country_generated_at:
+        country_generated_at = datetime.now(timezone.utc)
 
     reviewed_by_key: dict[str, datetime] = {}
     if args.providers_csv and args.providers_csv.exists():
@@ -362,11 +454,30 @@ def main() -> None:
                 if name and completed:
                     reviewed_by_key[safe_key(name)] = completed
 
+    analysis_files = sorted(args.analysis_dir.glob("*.json"))
+    started = datetime.now(timezone.utc)
+    if progress_every:
+        print(
+            f"[import_trip_providers] Starting import: {len(analysis_files)} analysis files; dry_run={bool(args.dry_run)}; schema={directory_schema()}",
+            flush=True,
+        )
+
     total = 0
     edu = 0
     with connect() as conn:
         with conn.cursor() as cur:
-            for path in sorted(args.analysis_dir.glob("*.json")):
+            if country_rows:
+                if progress_every:
+                    print(f"[import_trip_providers] Upserting provider_country rows: {len(country_rows)}", flush=True)
+                upsert_provider_country_rows(
+                    cur=cur,
+                    rows=country_rows,
+                    source=str(args.country_providers_csv.name),
+                    generated_at=country_generated_at,
+                    progress_every=progress_every,
+                )
+
+            for path in analysis_files:
                 provider_key = path.stem
                 analysis_payload = json.loads(path.read_text(encoding="utf-8"))
 
@@ -431,6 +542,9 @@ def main() -> None:
                     )
 
                 total += 1
+                if progress_every and (total % progress_every == 0):
+                    elapsed_s = int((datetime.now(timezone.utc) - started).total_seconds())
+                    print(f"[import_trip_providers] {total}/{len(analysis_files)} processed (elapsed {elapsed_s}s). Last: {provider_key}", flush=True)
 
         conn.commit()
 
@@ -439,4 +553,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

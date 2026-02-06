@@ -2594,14 +2594,17 @@ def trip_providers_review_not_stated_ui(
               <td class="muted">{_esc(market_orientation)}</td>
               <td>
                 <label style="display:inline-flex; gap:6px; align-items:center; margin-right:12px;">
-                  <input type="radio" name="{_esc(action_name)}" value="delete" checked />
-                  Delete
+                  <input type="radio" name="{_esc(action_name)}" value="keep" checked />
+                  Keep
                 </label>
                 <label style="display:inline-flex; gap:6px; align-items:center;">
                   <input type="radio" name="{_esc(action_name)}" value="education_focused" />
                   Education-focused
                 </label>
-                <input type="hidden" name="provider_id__{_esc(key)}" value="{_esc(provider_id)}" />
+                <label style="display:inline-flex; gap:6px; align-items:center; margin-left:12px;">
+                  <input type="radio" name="{_esc(action_name)}" value="delete" />
+                  Delete
+                </label>
               </td>
             </tr>
             """.strip()
@@ -2616,7 +2619,7 @@ def trip_providers_review_not_stated_ui(
       <div class="card">
         <div class="muted"><a href="/trip_providers_research">← Back to Trip Providers</a></div>
         <h1>Review Trip Providers</h1>
-        <p class="muted">Providers with market orientation = <code>Not stated</code>. Default action is <strong>Delete</strong> for every row.</p>
+        <p class="muted">Providers with market orientation = <code>Not stated</code>. Default action is <strong>Keep</strong> (no changes) for every row.</p>
         {done_html}
         <div class="btnrow" style="margin-top:12px;">
           <button class="btn primary" type="submit" form="review-form">Apply changes</button>
@@ -2679,6 +2682,8 @@ async def trip_providers_review_not_stated_apply(
             for provider_key, decision in actions.items():
                 pk = _safe_provider_key(provider_key)
                 d = (decision or "").strip().lower()
+                if d in {"", "keep", "no_change", "none"}:
+                    continue
                 if d == "delete":
                     cur.execute(_directory_schema('DELETE FROM "__SCHEMA__".provider_country WHERE provider_key=%s;').strip(), (pk,))
                     cur.execute(_directory_schema('DELETE FROM "__SCHEMA__".providers WHERE provider_key=%s;').strip(), (pk,))

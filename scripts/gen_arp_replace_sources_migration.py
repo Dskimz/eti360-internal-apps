@@ -34,7 +34,7 @@ def main() -> int:
     )
     ap.add_argument(
         "--out",
-        default="api/app/migrations/0006_arp_replace_sources_v2.sql",
+        default="api/app/migrations/0007_arp_replace_sources_v3.sql",
         help="Output migration path (repo-relative)",
     )
     args = ap.parse_args()
@@ -58,6 +58,7 @@ def main() -> int:
         if not activity_name:
             continue
 
+        activity_slug = stable_slug(activity_name, max_len=64)
         title = (r.get("Title") or "").strip()
         organization = (r.get("Organization / Publisher") or r.get("Organization") or r.get("Publisher") or "").strip()
         jurisdiction = (r.get("Country / Jurisdiction") or r.get("Jurisdiction") or r.get("Country") or "").strip()
@@ -77,6 +78,7 @@ def main() -> int:
             + ", ".join(
                 [
                     sql_str(source_id),
+                    sql_str(activity_slug),
                     sql_str(activity_name),
                     sql_str(title),
                     sql_str(organization),
@@ -97,22 +99,22 @@ def main() -> int:
 
     sql = "\n".join(
         [
-            "-- 0006_arp_replace_sources_v2.sql",
+            f"-- {out_path.name}",
             "-- Replace ARP sources from the canonical research.csv export (correct column mapping).",
             "-- One-off corrective migration: deletes sources+evidence for activities present in the CSV, then re-inserts.",
-            "-- Activity IDs are mapped by activity_name to avoid ID mismatches across environments.",
+            "-- Mapping uses activity_slug (computed from activity_name) to avoid ID/name mismatches across environments.",
             "",
             'CREATE SCHEMA IF NOT EXISTS "__ARP_SCHEMA__";',
             "",
-            "WITH data(source_id, activity_name, title, organization, jurisdiction, url, source_type, activities_covered_raw, brief_focus, authority_class, publication_date) AS (",
+            "WITH data(source_id, activity_slug, activity_name, title, organization, jurisdiction, url, source_type, activities_covered_raw, brief_focus, authority_class, publication_date) AS (",
             "  VALUES",
             ",\n".join(values_lines),
             "), dedup AS (",
             "  SELECT DISTINCT ON (source_id) * FROM data ORDER BY source_id",
             "), mapped AS (",
-            '  SELECT d.source_id, a.activity_id, d.activity_name, d.title, d.organization, d.jurisdiction, d.url, d.source_type, d.activities_covered_raw, d.brief_focus, d.authority_class, d.publication_date',
+            '  SELECT d.source_id, a.activity_id, a.activity_name, d.title, d.organization, d.jurisdiction, d.url, d.source_type, d.activities_covered_raw, d.brief_focus, d.authority_class, d.publication_date',
             "  FROM dedup d",
-            '  JOIN "__ARP_SCHEMA__".activities a ON lower(a.activity_name) = lower(d.activity_name)',
+            '  JOIN "__ARP_SCHEMA__".activities a ON a.activity_slug = d.activity_slug',
             "), affected AS (",
             "  SELECT DISTINCT activity_id FROM mapped",
             "), del_reports AS (",

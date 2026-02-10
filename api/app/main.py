@@ -4038,7 +4038,7 @@ def arp_api_schools_redirect(request: Request) -> Response:
 def schools_api_list(
     request: Request,
     include_all: bool = Query(default=False),
-) -> dict[str, Any]:
+) -> Response:
     _ = request
     schools: list[dict[str, Any]] = []
     fallback_used = False
@@ -4047,6 +4047,18 @@ def schools_api_list(
             with conn.cursor() as cur:
                 _ensure_arp_tables(cur)
                 schema = _require_safe_ident("ARP_SCHEMA", ARP_SCHEMA)
+                cur.execute("SELECT to_regclass(%s);", (f"{schema}.schools",))
+                has_schools = cur.fetchone()[0] is not None  # type: ignore[index]
+                if not has_schools:
+                    return JSONResponse(
+                        status_code=500,
+                        headers={"Cache-Control": "no-store"},
+                        content={
+                            "ok": False,
+                            "error": "Schools tables are missing in the ARP schema.",
+                            "hint": "This usually means migrations did not apply on Render. Check /health/db output and Render deploy status.",
+                        },
+                    )
                 has_llm_json = _has_column(cur, schema=schema, table="school_overviews", column="llm_json")
                 llm_json_expr = "COALESCE(o.llm_json,'{}'::jsonb)" if has_llm_json else "'{}'::jsonb"
 
@@ -4128,9 +4140,21 @@ def schools_api_list(
                         }
                     )
             conn.commit()
-        return {"ok": True, "schools": schools, "fallback_used": fallback_used}
+        return JSONResponse(
+            headers={"Cache-Control": "no-store"},
+            content={"ok": True, "schools": schools, "fallback_used": fallback_used},
+        )
     except Exception as e:
-        return JSONResponse(status_code=500, content={"ok": False, "error": str(getattr(e, "detail", e))})
+        return JSONResponse(
+            status_code=500,
+            headers={"Cache-Control": "no-store"},
+            content={
+                "ok": False,
+                "error": "Failed to load schools.",
+                "detail": str(getattr(e, "detail", e)),
+                "hint": "If this mentions missing relations, migrations may not have applied. Check /health/db.",
+            },
+        )
 
 
 @app.get("/arp/schools/{school_key}", response_class=HTMLResponse)

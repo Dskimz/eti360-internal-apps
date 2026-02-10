@@ -16,6 +16,13 @@ This repo can be deployed as a password-protected static site by building an enc
 - **Publish Directory:** `dist`
 - **Environment:** add an env var named `PASSWORD` (the shared password users will enter)
 
+### Prevent settings drift (recommended)
+
+This repo includes a Render Blueprint file that pins the important Render settings (especially the static site publish directory `dist`).
+
+- File: `render.yaml`
+- In Render: connect the repo using the Blueprint so future config changes come from Git, not manual UI edits.
+
 ### Notes
 
 - The build inlines `ui_style.css` + `apps.json` into the HTML before encrypting, so those files are not exposed when publishing `dist`.

@@ -1,0 +1,18 @@
+services:
+  # Static site (UI shell + links to apps)
+  - type: web
+    name: eti360-internal-apps
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+
+  # Internal API (FastAPI)
+  - type: web
+    name: eti360-internal-api
+    runtime: python
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+

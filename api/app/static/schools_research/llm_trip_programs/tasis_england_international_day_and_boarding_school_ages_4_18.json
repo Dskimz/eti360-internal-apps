@@ -1,0 +1,118 @@
+{
+  "school_key": "tasis_england_international_day_and_boarding_school_ages_4_18",
+  "school_name": "TASIS England | International Day and Boarding School | Ages 4-18",
+  "homepage": "https://www.tasisengland.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:37 PM",
+  "tokens_in": 883,
+  "tokens_out": 629,
+  "tokens_total": 1512,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "3db8c1b35d65737d",
+    "pages": [
+      "https://www.tasisengland.org/co-curricular/sports-activities",
+      "https://www.tasisengland.org/co-curricular/clubs-activities",
+      "https://www.tasisengland.org/co-curricular/community-service",
+      "https://www.tasisengland.org/boarding/weekend-activities",
+      "https://www.tasisengland.org/",
+      "https://www.tasisengland.org/summer-program/sports",
+      "https://www.tasisengland.org/academics/middle-school",
+      "https://www.tasisengland.org/academics/upper-school",
+      "http://www.tasisengland.org/academics/upper-school/university-college-counseling",
+      "https://www.tasisengland.org/academics",
+      "https://www.tasisengland.org/academics/lower-school"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "TASIS England offers a variety of trip and travel programs that complement academic learning and boarding life. These include weekend trips and excursions for boarding students, local and European sports competitions, and opportunities to travel abroad for tournaments through the International Schools Athletic Association (ISAA). Trips range from day trips to international travel, focusing on sports, cultural exposure, and experiential learning.",
+    "programs": [
+      {
+        "program_name": "Weekend Trips and Excursions",
+        "program_format": "boarding program supplement",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "weekends",
+        "duration": "day or weekend",
+        "locations": [
+          "local UK destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.tasisengland.org/boarding/weekend-activities",
+            "quote": "Weekend trips and excursions available to our boarding school students include... These exciting and varied experiences may complement academic study or simply provide an opportunity to have fun and build life-long relationships."
+          }
+        ]
+      },
+      {
+        "program_name": "Local and European Sports Competitions",
+        "program_format": "competitive sports travel",
+        "trip_types": [
+          "day_trip",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "seasonal/annual",
+        "duration": "varies by event",
+        "locations": [
+          "local UK schools",
+          "Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.tasisengland.org/co-curricular/sports-activities",
+            "quote": "Our teams take part in competitions with local schools and other international schools here on our campus and at other schools in the UK. Membership in the International Schools Athletic Association (ISAA) also gives our students exciting opportunities to travel abroad to tournaments in Europe."
+          }
+        ]
+      },
+      {
+        "program_name": "Sporting Event Trips",
+        "program_format": "spectator trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "occasional",
+        "duration": "day",
+        "locations": [
+          "local stadiums in the UK"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.tasisengland.org/boarding/weekend-activities",
+            "quote": "Students can travel to local stadiums to watch professional teams play football and rugby."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local UK destinations",
+      "local UK schools",
+      "local stadiums in the UK",
+      "Europe"
+    ],
+    "unknowns": [
+      "Specific grade bands for weekend trips and excursions",
+      "Exact frequency and duration details for sports competitions and spectator trips",
+      "Details on any expedition, service learning, or exchange travel programs"
+    ]
+  }
+}

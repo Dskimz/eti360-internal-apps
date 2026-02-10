@@ -1,0 +1,123 @@
+{
+  "school_key": "international_school_hilversum",
+  "school_name": "International School Hilversum",
+  "homepage": "http://www.ishilversum.nl/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 1301,
+  "tokens_out": 619,
+  "tokens_total": 1920,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 7,
+    "prompt_hash": "a249a5d60af0459b",
+    "pages": [
+      "http://www.ishilversum.nl/",
+      "http://www.ishilversum.nl/learning",
+      "http://www.ishilversum.nl/learning/pyp",
+      "https://www.ishilversum.nl/learning/pyp",
+      "http://www.ishilversum.nl/learning/pyp/pyp-course-info",
+      "http://www.ishilversum.nl/learning/pyp/pyp-assessment",
+      "http://www.ishilversum.nl/learning/pyp/pyp-calendar",
+      "http://www.ishilversum.nl/learning/pyp/pyp-action-in-pyp",
+      "http://www.ishilversum.nl/learning/pyp/admissions",
+      "http://www.ishilversum.nl/learning/myp",
+      "https://www.ishilversum.nl/learning/myp",
+      "http://www.ishilversum.nl/learning/myp/myp-course-info",
+      "http://www.ishilversum.nl/learning/myp/myp-assessment",
+      "http://www.ishilversum.nl/learning/myp/careers",
+      "http://www.ishilversum.nl/learning/myp/excursions-and-exchanges",
+      "http://www.ishilversum.nl/learning/myp/service-as-action",
+      "http://www.ishilversum.nl/learning/myp/admissions",
+      "http://www.ishilversum.nl/learning/dp",
+      "https://www.ishilversum.nl/learning/dp",
+      "http://www.ishilversum.nl/learning/dp/dp-course-info",
+      "http://www.ishilversum.nl/learning/dp/cas"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "International School Hilversum offers a range of trip and travel programs primarily in the Middle Years Programme (MYP), including outdoor learning experiences, language development trips, and historical visits. These trips aim to expose students to new experiences, cultures, and languages through both domestic and international travel.",
+    "programs": [
+      {
+        "program_name": "Grade 8 Outdoor Learning Experience",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "England",
+          "Maastricht"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ishilversum.nl/learning/myp/excursions-and-exchanges",
+            "quote": "In Grade 8, all students take part in an outdoor learning experience to either England or Maastricht. The aim is to expose students to new experiences as well as local cultures, and to provide new opportunities for activities such as outdoor pursuits and drama."
+          }
+        ]
+      },
+      {
+        "program_name": "Grade 9 Language Development Trips",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "international"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "France",
+          "Spain (Toledo)"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ishilversum.nl/learning/myp/excursions-and-exchanges",
+            "quote": "Grade 9 language development trips to Spain and France. Currently students that have chosen French as their modern language option, will travel to France and those studying Spanish will go to Toledo, where they can learn the language first hand as well as share in the culture of the country."
+          }
+        ]
+      },
+      {
+        "program_name": "WWI Historical Trip to the Somme",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "international"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Somme, France"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ishilversum.nl/learning/myp/excursions-and-exchanges",
+            "quote": "Going to the Somme gave us a profound experience of how the immense battles that had been fought there, must have felt. Seeing the graves and the memorials in person was an emotional and humbling moment."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "England",
+      "Maastricht",
+      "France",
+      "Spain (Toledo)",
+      "Somme, France"
+    ],
+    "unknowns": []
+  }
+}

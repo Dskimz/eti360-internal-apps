@@ -1,0 +1,70 @@
+{
+  "school_key": "modern_american_school",
+  "school_name": "Modern American School",
+  "homepage": "https://www.mas.edu.jo/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 1121,
+  "tokens_out": 250,
+  "tokens_total": 1371,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 7,
+    "prompt_hash": "581ae371a10d294d",
+    "pages": [
+      "https://www.mas.edu.jo/student-life/e-books",
+      "https://www.mas.edu.jo/student-life",
+      "https://www.mas.edu.jo/student-life/current-students",
+      "https://www.mas.edu.jo/student-life/community-engagement",
+      "https://www.mas.edu.jo/student-life/leadership-development",
+      "https://www.mas.edu.jo/student-life/act-program",
+      "https://www.mas.edu.jo/student-life/travel-abroad-program",
+      "https://www.mas.edu.jo/student-life/student-council",
+      "https://www.mas.edu.jo/student-life/mas-mun",
+      "https://www.mas.edu.jo/",
+      "https://www.mas.edu.jo/academics",
+      "https://www.mas.edu.jo/academics/our-program-study",
+      "https://www.mas.edu.jo/academics/international-education",
+      "https://www.mas.edu.jo/academics/international-baccalaureate-programme",
+      "https://www.mas.edu.jo/academics/courses-descriptions",
+      "https://www.mas.edu.jo/academics/language-programs",
+      "https://www.mas.edu.jo/academics/college-counseling-guidance",
+      "https://www.mas.edu.jo/academics/national-honor-society",
+      "https://www.mas.edu.jo/academics/technology-education",
+      "https://www.mas.edu.jo/academics/libraries",
+      "https://www.mas.edu.jo/academics/stem-program"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Modern American School offers a variety of travel abroad programs aimed at fostering international connectedness and global citizenship. These programs provide students with opportunities to travel internationally and learn about different cultures, supporting their growth and prosperity in a globalized world.",
+    "programs": [
+      {
+        "program_name": "Travel Abroad Program",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.mas.edu.jo/student-life/travel-abroad-program",
+            "quote": "We at MAS believe that world travel is imperative for the growth and prosperity of our students. We realize that our students are very diverse in their talents and interests, and therefore we offer a variety of opportunities for students to travel abroad and learn about different cultures."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific grade bands for travel programs",
+      "Frequency of trips",
+      "Duration of trips",
+      "Exact international destinations"
+    ]
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "school_key": "north_cobb_christian_school",
+  "school_name": "North Cobb Christian School",
+  "homepage": "https://www.ncchristian.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:33 PM",
+  "tokens_in": 814,
+  "tokens_out": 567,
+  "tokens_total": 1381,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "ffeecb8408f49c83",
+    "pages": [
+      "https://www.ncchristian.org/student-life",
+      "https://www.ncchristian.org/student-life/chapel-small-groups",
+      "https://www.ncchristian.org/student-life/retreats",
+      "https://www.ncchristian.org/student-life/spring-term",
+      "https://www.ncchristian.org/student-life/community-service",
+      "https://www.ncchristian.org/student-life/timothy-program",
+      "https://www.ncchristian.org/student-life/global-impact",
+      "https://www.ncchristian.org/student-life/school-counseling",
+      "https://www.ncchristian.org/student-life/community-service/",
+      "https://www.ncchristian.org/",
+      "https://www.ncchristian.org/academics/middle-school",
+      "https://www.ncchristian.org/academics/upper-school",
+      "https://www.ncchristian.org/academics/upper-school/higher-grounds-coffee",
+      "https://www.ncchristian.org/academics",
+      "https://www.ncchristian.org/academics/preschool-jk5",
+      "https://www.ncchristian.org/academics/lower-school",
+      "https://www.ncchristian.org/academics/academies",
+      "https://www.ncchristian.org/academics/college-counseling",
+      "https://www.ncchristian.org/academics/moving-forward-program",
+      "https://www.ncchristian.org/helpful-links/summer-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "North Cobb Christian School offers a range of trip and travel programs designed to foster spiritual growth, team-building, service, and real-world learning. Programs include outdoor adventure day trips for middle school, multi-day retreats focused on worship and friendship, and a Spring Term for grades 7-12 that involves local service and international travel opportunities.",
+    "programs": [
+      {
+        "program_name": "Middle School Outdoor Adventure",
+        "program_format": "day trip",
+        "trip_types": [
+          "day_trip",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "1 day",
+        "locations": [
+          "off-campus outdoor location"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.ncchristian.org/academics/middle-school",
+            "quote": "Fifth and sixth graders enjoy a day of outdoor adventure and team-building designed to build bonds and set a positive tone."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Retreat",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "3 days",
+        "locations": [
+          "beautiful off-campus location"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.ncchristian.org/academics/middle-school",
+            "quote": "Seventh and eighth graders embark on a three-day retreat at a beautiful off-campus location, where time is devoted to spiritual growth, worship, and deepening friendships."
+          }
+        ]
+      },
+      {
+        "program_name": "Spring Term",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "term length",
+        "locations": [
+          "local",
+          "international destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.ncchristian.org/student-life/spring-term",
+            "quote": "Spring Term is a cornerstone of the North Cobb Christian School experience for students in 7th through 12th grade. Whether serving locally or traveling abroad, students return changed — with a deeper faith, stronger friendships, and a clearer sense of purpose in Christ."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "off-campus outdoor location",
+      "beautiful off-campus location",
+      "local",
+      "international destinations"
+    ],
+    "unknowns": []
+  }
+}

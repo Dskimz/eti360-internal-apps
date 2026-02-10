@@ -3395,21 +3395,22 @@ def schools_ui(
             </label>
           </div>
         </div>
-        <div class="section tablewrap">
-          <table>
-            <thead>
-              <tr>
-                <th>School</th>
-                <th>Tier</th>
-                <th class="mono">Score</th>
-                <th>Programs</th>
-                <th>Overview</th>
-                <th>Evidence</th>
-              </tr>
-            </thead>
-            <tbody id="rows"></tbody>
-          </table>
-        </div>
+	        <div class="section tablewrap">
+	          <table>
+	            <thead>
+	              <tr>
+	                <th>School</th>
+	                <th>Tier</th>
+	                <th class="mono">Score</th>
+	                <th>Social</th>
+	                <th>Programs</th>
+	                <th>LLM review</th>
+	                <th>Links</th>
+	              </tr>
+	            </thead>
+	            <tbody id="rows"></tbody>
+	          </table>
+	        </div>
         <div class="muted" id="meta" style="margin-top:10px;">Loading…</div>
       </div>
 
@@ -3427,50 +3428,97 @@ def schools_ui(
       function esc(s) {
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
       }
-      function pickPrograms(programs) {
+	      function pickPrograms(programs) {
         const arr = Array.isArray(programs) ? programs.map(x => String(x||'').trim()).filter(Boolean) : [];
         const first = arr.slice(0, 3);
         const more = arr.length > 3 ? ` +${arr.length - 3} more` : '';
         return first.map(esc).join(', ') + (more ? `<span class="muted">${esc(more)}</span>` : '');
       }
-      function matches(it, q) {
-        if (!q) return true;
-        const hay = [
-          it.name, it.primary_domain, it.school_key, it.tier,
-          ...(Array.isArray(it.programs) ? it.programs : [])
-        ].map(x => String(x||'').toLowerCase()).join(' | ');
-        return hay.includes(q);
-      }
-      function render() {
+	      function matches(it, q) {
+	        if (!q) return true;
+	        const hay = [
+	          it.name, it.primary_domain, it.school_key, it.tier,
+	          it.review,
+	          ...(Array.isArray(it.programs) ? it.programs : [])
+	        ].map(x => String(x||'').toLowerCase()).join(' | ');
+	        return hay.includes(q);
+	      }
+
+	      function normalizeSocial(obj) {
+	        const out = {};
+	        if (!obj || typeof obj !== 'object') return out;
+	        for (const [k,v] of Object.entries(obj)) {
+	          const key = String(k||'').trim().toLowerCase();
+	          const url = String(v||'').trim();
+	          if (!key || !url) continue;
+	          out[key] = url;
+	        }
+	        return out;
+	      }
+
+	      function renderSocial(obj) {
+	        const sl = normalizeSocial(obj);
+	        const order = [
+	          ['instagram','Instagram'],
+	          ['facebook','Facebook'],
+	          ['x','X'],
+	          ['twitter','X'],
+	          ['linkedin','LinkedIn'],
+	          ['youtube','YouTube'],
+	          ['tiktok','TikTok'],
+	        ];
+	        const seen = new Set();
+	        const parts = [];
+	        for (const [k,label] of order) {
+	          const url = sl[k];
+	          if (!url || seen.has(url)) continue;
+	          seen.add(url);
+	          parts.push(`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`);
+	        }
+	        // Any other platforms
+	        for (const [k,url] of Object.entries(sl)) {
+	          if (!url || seen.has(url)) continue;
+	          if (order.some(([ok]) => ok === k)) continue;
+	          seen.add(url);
+	          parts.push(`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(k)}</a>`);
+	        }
+	        return parts.length ? parts.join(' · ') : '<span class="muted">—</span>';
+	      }
+	      function render() {
         const q = String(qEl.value || '').trim().toLowerCase();
         const filtered = items.filter((it) => matches(it, q));
         rowsEl.innerHTML = '';
-        for (const it of filtered) {
-          const key = String(it.school_key || '');
-          const home = String(it.homepage_url || '');
-          const detailUrl = `/schools/${encodeURIComponent(key)}`;
-          const ev = it.has_evidence ? `<a href="${detailUrl}">View</a>` : '<span class="muted">—</span>';
-          const schoolCell = `
-            <div style="font-weight:600; color:var(--text-secondary);">${esc(it.name||key||'(missing)')}</div>
-            <div class="muted">
-              ${home ? `<a href="${esc(home)}" target="_blank" rel="noopener">${esc(it.primary_domain||home)}</a>` : esc(it.primary_domain||'')}
-              ${key ? ` · <span class="mono">${esc(key)}</span>` : ''}
-            </div>
-          `;
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${schoolCell}</td>
-            <td><span class="pill">${esc(it.tier || '')}</span></td>
-            <td class="mono">${Number(it.health_score||0)}</td>
-            <td>${pickPrograms(it.programs||[]) || '<span class="muted">—</span>'}</td>
-            <td>${esc(it.overview_75w || '')}</td>
-            <td>${ev}</td>
-          `;
-          rowsEl.appendChild(tr);
-        }
-        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="6" class="muted">No matching schools.</td></tr>';
-        metaEl.textContent = `Schools: ${filtered.length}/${items.length}`;
-      }
+	        for (const it of filtered) {
+	          const key = String(it.school_key || '');
+	          const home = String(it.homepage_url || '');
+	          const detailUrl = `/schools/${encodeURIComponent(key)}`;
+	          const llmUrl = `/schools/${encodeURIComponent(key)}/llm`;
+	          const links = [
+	            it.has_evidence ? `<a href="${detailUrl}">Evidence</a>` : '<span class="muted">Evidence —</span>',
+	            it.has_llm ? `<a href="${llmUrl}">LLM</a>` : '<span class="muted">LLM —</span>',
+	          ].join(' · ');
+	          const schoolCell = `
+	            <div style="font-weight:600; color:var(--text-secondary);">${esc(it.name||key||'(missing)')}</div>
+	            <div class="muted">
+	              ${home ? `<a href="${esc(home)}" target="_blank" rel="noopener">${esc(it.primary_domain||home)}</a>` : esc(it.primary_domain||'')}
+	              ${key ? ` · <span class="mono">${esc(key)}</span>` : ''}
+	            </div>
+	          `;
+	          const tr = document.createElement('tr');
+	          tr.innerHTML = `
+	            <td>${schoolCell}</td>
+	            <td><span class="pill">${esc(it.tier || '')}</span></td>
+	            <td class="mono">${Number(it.health_score||0)}</td>
+	            <td>${renderSocial(it.social_links)}</td>
+	            <td>${pickPrograms(it.programs||[]) || '<span class="muted">—</span>'}</td>
+	            <td>${esc(it.review || '') || '<span class="muted">—</span>'}</td>
+	            <td>${links}</td>
+	          `;
+	          rowsEl.appendChild(tr);
+	        }
+	        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="7" class="muted">No matching schools.</td></tr>';
+	        metaEl.textContent = `Schools: ${filtered.length}/${items.length}`;
+	      }
       async function load() {
         const includeAll = includeAllEl.checked ? '1' : '0';
         const res = await fetch(`/schools/api/list?include_all=${encodeURIComponent(includeAll)}`, { cache:'no-store' });
@@ -3520,6 +3568,7 @@ def _bootstrap_schools_from_static() -> None:
 
     evidence_dir = base / "evidence_markdown"
     extracted_dir = base / "extracted"
+    llm_dir = base / "llm_trip_programs"
 
     evidence_by_key: dict[str, str] = {}
     if evidence_dir.exists():
@@ -3542,6 +3591,19 @@ def _bootstrap_schools_from_static() -> None:
             if isinstance(obj, dict):
                 extracted_by_key[key] = obj
 
+    llm_by_key: dict[str, dict[str, Any]] = {}
+    if llm_dir.exists():
+        for p in llm_dir.glob("*.json"):
+            key = p.stem.strip()
+            if not key:
+                continue
+            try:
+                obj = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+            except Exception:
+                continue
+            if isinstance(obj, dict):
+                llm_by_key[key] = obj
+
     schools_raw = csv_path.read_bytes()
     _, rows = _parse_csv_bytes(schools_raw)
     if not rows:
@@ -3552,9 +3614,29 @@ def _bootstrap_schools_from_static() -> None:
             _ensure_arp_tables(cur)
             cur.execute(_arp_schema('SELECT COUNT(*) FROM "__ARP_SCHEMA__".schools;'))
             (existing,) = cur.fetchone()
-            if int(existing or 0) > 0:
-                conn.commit()
-                return
+            has_any = int(existing or 0) > 0
+
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT
+                      s.school_key,
+                      (COALESCE(s.social_links,'{}'::jsonb) <> '{}'::jsonb) AS has_social,
+                      (e.school_key IS NOT NULL AND COALESCE(e.evidence_markdown,'') <> '') AS has_evidence,
+                      (o.school_key IS NOT NULL AND (COALESCE(o.llm_json,'{}'::jsonb) <> '{}'::jsonb OR COALESCE(o.narrative,'') <> '' OR COALESCE(o.overview_75w,'') <> '')) AS has_llm
+                    FROM "__ARP_SCHEMA__".schools s
+                    LEFT JOIN "__ARP_SCHEMA__".school_evidence e ON e.school_key = s.school_key
+                    LEFT JOIN "__ARP_SCHEMA__".school_overviews o ON o.school_key = s.school_key;
+                    """
+                ).strip()
+            )
+            existing_state: dict[str, dict[str, bool]] = {}
+            for k, has_social, has_evidence, has_llm in cur.fetchall() or []:
+                existing_state[str(k)] = {
+                    "has_social": bool(has_social),
+                    "has_evidence": bool(has_evidence),
+                    "has_llm": bool(has_llm),
+                }
 
             schools_count = 0
             evidence_count = 0
@@ -3594,12 +3676,23 @@ def _bootstrap_schools_from_static() -> None:
                 except Exception:
                     continue
 
+                social_links: dict[str, str] = {}
+                extracted_obj = extracted_by_key.get(school_key) or {}
+                if isinstance(extracted_obj, dict):
+                    sl = extracted_obj.get("social_links")
+                    if isinstance(sl, dict):
+                        for k3, v3 in sl.items():
+                            if not k3 or not v3:
+                                continue
+                            social_links[str(k3).strip().lower()] = str(v3).strip()
+
+                # Upsert core school row.
                 cur.execute(
                     _arp_schema(
                         """
                         INSERT INTO "__ARP_SCHEMA__".schools
-                          (school_key, name, homepage_url, primary_domain, last_crawled_at, tier, health_score, logo_url, emails, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
+                          (school_key, name, homepage_url, primary_domain, last_crawled_at, tier, health_score, logo_url, emails, social_links, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, now())
                         ON CONFLICT (school_key) DO UPDATE SET
                           name=EXCLUDED.name,
                           homepage_url=EXCLUDED.homepage_url,
@@ -3609,6 +3702,11 @@ def _bootstrap_schools_from_static() -> None:
                           health_score=EXCLUDED.health_score,
                           logo_url=EXCLUDED.logo_url,
                           emails=EXCLUDED.emails,
+                          social_links=CASE
+                            WHEN COALESCE("__ARP_SCHEMA__".schools.social_links,'{}'::jsonb)='{}'::jsonb
+                              THEN EXCLUDED.social_links
+                            ELSE "__ARP_SCHEMA__".schools.social_links
+                          END,
                           updated_at=now();
                         """
                     ).strip(),
@@ -3622,12 +3720,14 @@ def _bootstrap_schools_from_static() -> None:
                         int(health_score),
                         logo_url,
                         json.dumps(emails),
+                        json.dumps(social_links),
                     ),
                 )
                 schools_count += 1
 
                 md_text = evidence_by_key.get(school_key)
-                if md_text:
+                st = existing_state.get(school_key) or {}
+                if md_text and (not has_any or not st.get("has_evidence")):
                     cur.execute(
                         _arp_schema(
                             """
@@ -3642,20 +3742,16 @@ def _bootstrap_schools_from_static() -> None:
                     )
                     evidence_count += 1
 
-                obj = extracted_by_key.get(school_key) or {}
-                if isinstance(obj, dict) and obj:
-                    narrative = str(
-                        obj.get("trip_overview_narrative")
-                        or obj.get("narrative")
-                        or obj.get("overview_narrative")
-                        or ""
-                    ).strip()
-                    overview_75w = str(obj.get("overview_75w") or "").strip()
+                llm_obj = llm_by_key.get(school_key) or {}
+                if isinstance(llm_obj, dict) and llm_obj and (not has_any or not st.get("has_llm")):
+                    result = llm_obj.get("result") if isinstance(llm_obj.get("result"), dict) else {}
+                    narrative = str((result or {}).get("trip_overview_narrative") or "").strip()
+                    overview_75w = str((result or {}).get("overview_75w") or "").strip()
                     if not overview_75w and narrative:
                         overview_75w = _truncate_words(narrative, 75)
 
-                    model = str(obj.get("model") or "").strip()
-                    run_id = str(obj.get("run_id") or obj.get("runId") or "").strip()
+                    model = str(llm_obj.get("model") or "").strip()
+                    run_id = str(llm_obj.get("run_id") or llm_obj.get("runId") or "").strip()
 
                     def _to_int(v) -> int:
                         try:
@@ -3672,17 +3768,17 @@ def _bootstrap_schools_from_static() -> None:
                         except Exception:
                             return 0.0
 
-                    tokens_in = _to_int(obj.get("tokens_in") or obj.get("tokensIn") or obj.get("prompt_tokens"))
-                    tokens_out = _to_int(obj.get("tokens_out") or obj.get("tokensOut") or obj.get("completion_tokens"))
-                    tokens_total = _to_int(obj.get("tokens_total") or obj.get("tokensTotal") or obj.get("total_tokens"))
-                    cost_usd = _to_float(obj.get("cost_usd") or obj.get("costUsd"))
+                    tokens_in = _to_int(llm_obj.get("tokens_in") or llm_obj.get("tokensIn") or llm_obj.get("prompt_tokens"))
+                    tokens_out = _to_int(llm_obj.get("tokens_out") or llm_obj.get("tokensOut") or llm_obj.get("completion_tokens"))
+                    tokens_total = _to_int(llm_obj.get("tokens_total") or llm_obj.get("tokensTotal") or llm_obj.get("total_tokens"))
+                    cost_usd = _to_float(llm_obj.get("cost_usd") or llm_obj.get("costUsd"))
 
                     cur.execute(
                         _arp_schema(
                             """
                             INSERT INTO "__ARP_SCHEMA__".school_overviews
-                              (school_key, overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                              (school_key, overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at, llm_json)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
                             ON CONFLICT (school_key) DO UPDATE SET
                               overview_75w=EXCLUDED.overview_75w,
                               narrative=EXCLUDED.narrative,
@@ -3692,7 +3788,8 @@ def _bootstrap_schools_from_static() -> None:
                               tokens_out=EXCLUDED.tokens_out,
                               tokens_total=EXCLUDED.tokens_total,
                               cost_usd=EXCLUDED.cost_usd,
-                              extracted_at=EXCLUDED.extracted_at;
+                              extracted_at=EXCLUDED.extracted_at,
+                              llm_json=EXCLUDED.llm_json;
                             """
                         ).strip(),
                         (
@@ -3706,10 +3803,11 @@ def _bootstrap_schools_from_static() -> None:
                             tokens_total,
                             cost_usd,
                             extracted_at,
+                            json.dumps(llm_obj),
                         ),
                     )
 
-                    progs_raw = obj.get("programs") or []
+                    progs_raw = (result or {}).get("programs") or []
                     program_names: list[str] = []
                     if isinstance(progs_raw, list):
                         for p in progs_raw:
@@ -3805,7 +3903,10 @@ def schools_api_list(
                       s.last_crawled_at,
                       s.tier,
                       s.health_score,
+                      COALESCE(s.social_links, '{{}}'::jsonb) AS social_links,
                       COALESCE(o.overview_75w, '') AS overview_75w,
+                      COALESCE(o.narrative, '') AS narrative,
+                      (o.school_key IS NOT NULL AND (COALESCE(o.llm_json,'{{}}'::jsonb) <> '{{}}'::jsonb OR COALESCE(o.narrative,'') <> '' OR COALESCE(o.overview_75w,'') <> '')) AS has_llm,
                       COALESCE(p.programs, ARRAY[]::text[]) AS programs,
                       (e.school_key IS NOT NULL AND COALESCE(e.evidence_markdown,'') <> '') AS has_evidence
                     FROM "__ARP_SCHEMA__".schools s
@@ -3830,10 +3931,16 @@ def schools_api_list(
                     last_crawled_at,
                     tier,
                     health_score,
+                    social_links,
                     overview_75w,
+                    narrative,
+                    has_llm,
                     programs,
                     has_evidence,
                 ) = row
+                review = str(overview_75w or "").strip()
+                if not review:
+                    review = _truncate_words(str(narrative or "").strip(), 75)
                 schools.append(
                     {
                         "school_key": str(school_key),
@@ -3843,9 +3950,11 @@ def schools_api_list(
                         "last_crawled_at": last_crawled_at.isoformat() if last_crawled_at else None,
                         "tier": str(tier or ""),
                         "health_score": int(health_score or 0),
-                        "overview_75w": str(overview_75w or ""),
+                        "social_links": social_links if isinstance(social_links, dict) else {},
+                        "review": review,
                         "programs": list(programs or []),
                         "has_evidence": bool(has_evidence),
+                        "has_llm": bool(has_llm),
                     }
                 )
         conn.commit()
@@ -3952,9 +4061,22 @@ def school_detail_ui(
             emails_items.append(f"<div><span class=\"pill\">{_escape_html(label)}</span> <span class=\"mono\">{_escape_html(v)}</span></div>")
     emails_html = "".join(emails_items) if emails_items else "<span class=\"muted\">—</span>"
 
+    social_obj = social_links if isinstance(social_links, dict) else {}
+    social_items = []
+    for k2, v2 in (social_obj or {}).items() if isinstance(social_obj, dict) else []:
+        k2s = str(k2 or "").strip()
+        v2s = str(v2 or "").strip()
+        if not k2s or not v2s:
+            continue
+        social_items.append(
+            f'<div><span class="pill">{_escape_html(k2s)}</span> <a href="{_escape_html(v2s)}" target="_blank" rel="noopener">{_escape_html(v2s)}</a></div>'
+        )
+    social_html = "".join(social_items) if social_items else "<span class=\"muted\">—</span>"
+
     home_link = ""
     if homepage_url:
         home_link = f'<a class="btn" href="{_escape_html(str(homepage_url))}" target="_blank" rel="noopener">Homepage</a>'
+    llm_link = f'<a class="btn" href="/schools/{quote(key)}/llm">LLM</a>'
 
     evidence_html = ""
     if evidence_md:
@@ -3995,6 +4117,7 @@ def school_detail_ui(
           <div class="btnrow" style="margin-top:0;">
             <a class="btn" href="/schools">Back</a>
             {home_link}
+            {llm_link}
           </div>
         </div>
         <p class="muted">
@@ -4024,11 +4147,111 @@ def school_detail_ui(
       </div>
 
       <div class="card">
+        <h2>Social</h2>
+        {social_html}
+      </div>
+
+      <div class="card">
         <h2>Evidence</h2>
         {evidence_html}
       </div>
     """.strip()
     return _ui_shell(title=f"School — {str(name or key)}", active="apps", body_html=body_html, max_width_px=1100, user=user)
+
+
+@app.get("/schools/{school_key}/llm", response_class=HTMLResponse)
+def school_llm_ui(
+    school_key: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    key = _safe_school_key(school_key)
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema('SELECT name FROM "__ARP_SCHEMA__".schools WHERE school_key=%s;'),
+                (key,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Unknown school")
+            (name,) = row
+
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at, llm_json
+                    FROM "__ARP_SCHEMA__".school_overviews
+                    WHERE school_key=%s;
+                    """
+                ).strip(),
+                (key,),
+            )
+            row2 = cur.fetchone()
+            if not row2:
+                raise HTTPException(status_code=404, detail="No LLM output found for this school")
+            (
+                overview_75w,
+                narrative,
+                model,
+                run_id,
+                tokens_in,
+                tokens_out,
+                tokens_total,
+                cost_usd,
+                extracted_at,
+                llm_json,
+            ) = row2
+        conn.commit()
+
+    llm_json_str = ""
+    try:
+        llm_json_str = json.dumps(llm_json or {}, indent=2, ensure_ascii=False, sort_keys=True)
+    except Exception:
+        llm_json_str = str(llm_json or "")
+
+    usage_bits = []
+    if model:
+        usage_bits.append(f"Model: {model}")
+    if run_id:
+        usage_bits.append(f"Run: {run_id}")
+    if extracted_at:
+        usage_bits.append(f"Extracted: {extracted_at}")
+    if int(tokens_total or 0) > 0:
+        usage_bits.append(f"Tokens: {int(tokens_in or 0)}/{int(tokens_out or 0)}/{int(tokens_total or 0)}")
+    if float(cost_usd or 0) > 0:
+        usage_bits.append(f"Cost: ${float(cost_usd or 0):.4f}")
+    usage_line = " · ".join(usage_bits)
+
+    overview_html = _escape_html(str(overview_75w or "")) if overview_75w else "<span class=\"muted\">—</span>"
+    narrative_html = _escape_html(str(narrative or "")) if narrative else ""
+
+    body_html = f"""
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <h1>LLM output</h1>
+          <div class="btnrow" style="margin-top:0;">
+            <a class="btn" href="/schools/{quote(key)}">Back</a>
+          </div>
+        </div>
+        <p class="muted">{_escape_html(str(name or key))} · <span class="mono">{_escape_html(key)}</span></p>
+        <p class="muted">{_escape_html(usage_line)}</p>
+      </div>
+
+      <div class="card">
+        <h2>Review</h2>
+        <p>{overview_html}</p>
+        {f'<div class=\"section\"><h2>Narrative</h2><pre class=\"log\">{narrative_html}</pre></div>' if narrative_html else ''}
+      </div>
+
+      <div class="card">
+        <h2>Raw JSON</h2>
+        <pre class="log">{_escape_html(llm_json_str)}</pre>
+      </div>
+    """.strip()
+    return _ui_shell(title=f"LLM — {str(name or key)}", active="apps", body_html=body_html, max_width_px=1100, user=user)
 
 
 def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:

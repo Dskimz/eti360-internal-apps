@@ -1,0 +1,170 @@
+{
+  "school_key": "united_world_college_usa",
+  "school_name": "United World College-USA",
+  "homepage": "http://www.uwc-usa.org/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:40 PM",
+  "tokens_in": 1702,
+  "tokens_out": 1070,
+  "tokens_total": 2772,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 13,
+    "prompt_hash": "871b72c014d8b550",
+    "pages": [
+      "https://www.uwc-usa.org/learning/co-curricular-programs/",
+      "https://www.uwc-usa.org/learning/co-curricular-programs/the-wilderness-program/",
+      "https://www.uwc-usa.org/learning/co-curricular-programs/learning-expeditions/",
+      "https://www.uwc-usa.org/learning/co-curricular-programs/community-engagement/",
+      "https://www.uwc-usa.org/learning/co-curricular-programs/arts-culture-programs/",
+      "http://www.uwc-usa.org/learning/co-curricular-programs/learning-expeditions/",
+      "http://www.uwc-usa.org/",
+      "https://www.uwc-usa.org/learning/",
+      "https://www.uwc-usa.org/learning/the-international-baccalaureate-curriculum/",
+      "https://www.uwc-usa.org/learning/student-success/",
+      "https://www.uwc-usa.org/learning/faculty/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "UWC-USA offers a range of experiential learning trips including wilderness backpacking, outdoor expeditions, and learning expeditions that connect classroom theory with real-world practice. These trips include multi-day backpacking and outdoor activities primarily in the US Southwest, as well as week-long thematic expeditions addressing global challenges. Students engage in service learning and community engagement locally in New Mexico.",
+    "programs": [
+      {
+        "program_name": "First-Year Wilderness Backpacking Trip",
+        "program_format": "backpacking trip",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "3 days",
+        "locations": [
+          "UWC-USA campus area",
+          "US Southwest"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwc-usa.org/learning/co-curricular-programs/the-wilderness-program/",
+            "quote": "A few days after arriving on campus, all first-year students participate in a 3-day backpacking trip led by second-year wilderness leaders and trained adults."
+          }
+        ]
+      },
+      {
+        "program_name": "Southwest Studies Week Expeditions",
+        "program_format": "backpacking and outdoor expeditions",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "5 days",
+        "locations": [
+          "Grand Canyon, Northern Arizona",
+          "US Southwest"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwc-usa.org/learning/co-curricular-programs/the-wilderness-program/",
+            "quote": "The October Southwest Studies week has six to eight expeditions students can choose from, one of which is a five-day backpacking trip in the Grand Canyon."
+          },
+          {
+            "source_url": "https://www.uwc-usa.org/learning/co-curricular-programs/the-wilderness-program/",
+            "quote": "Almost half of all UWC-USA first-year students go on a Southwest Studies trip to the Grand Canyon in Northern Arizona."
+          }
+        ]
+      },
+      {
+        "program_name": "Additional Wilderness Trips",
+        "program_format": "varied outdoor trips",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "multiple per academic year",
+        "duration": "1-5 days",
+        "locations": [
+          "US Southwest"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwc-usa.org/learning/co-curricular-programs/the-wilderness-program/",
+            "quote": "First year students must participate in two additional wilderness trips during the academic year. Options include several two-day, one-night rock climbing or mountain biking trips, a snow camping expedition, or the five-day Grand Canyon trip during Southwest Studies."
+          }
+        ]
+      },
+      {
+        "program_name": "Learning Expeditions",
+        "program_format": "week-long thematic expeditions",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "twice a year",
+        "duration": "1 week",
+        "locations": [
+          "Las Vegas, New Mexico",
+          "US Southwest"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwc-usa.org/learning/co-curricular-programs/learning-expeditions/",
+            "quote": "Twice a year, week-long expeditions (Southwest Studies and Project Week) challenge students to engage with one of four global challenges."
+          },
+          {
+            "source_url": "https://www.uwc-usa.org/learning/co-curricular-programs/learning-expeditions/",
+            "quote": "UWC-USA learning expeditions take place off campus, immersing students in real-world experiences that inspire curiosity and action."
+          }
+        ]
+      },
+      {
+        "program_name": "Community Engagement Service Learning",
+        "program_format": "service learning",
+        "trip_types": [
+          "day_trip",
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "ongoing",
+        "duration": "varied",
+        "locations": [
+          "Local schools and NGOs in New Mexico"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwc-usa.org/learning/co-curricular-programs/community-engagement/",
+            "quote": "Engagement Learn about the people and cultures of New Mexico through service in local schools and NGO’s."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "UWC-USA campus area",
+      "US Southwest",
+      "Grand Canyon, Northern Arizona",
+      "Las Vegas, New Mexico",
+      "Local schools and NGOs in New Mexico"
+    ],
+    "unknowns": []
+  }
+}

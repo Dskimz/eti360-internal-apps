@@ -1,0 +1,226 @@
+{
+  "school_key": "american_school_of_paris",
+  "school_name": "American School of Paris",
+  "homepage": "https://www.asparis.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:22 PM",
+  "tokens_in": 2141,
+  "tokens_out": 1327,
+  "tokens_total": 3468,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 19,
+    "prompt_hash": "1c1da4a23fd2f4d9",
+    "pages": [
+      "https://www.asparis.org/student-life/school-calendar",
+      "https://www.asparis.org/arts-activities-and-athletics",
+      "https://www.asparis.org/arts-activities-and-athletics/curricular-arts",
+      "https://www.asparis.org/arts-activities-and-athletics/after-school-activities",
+      "https://www.asparis.org/arts-activities-and-athletics/athletics",
+      "https://www.asparis.org/student-life",
+      "https://www.asparis.org/student-life/student-transportation",
+      "https://www.asparis.org/student-life/health-and-wellbeing",
+      "https://www.asparis.org/",
+      "https://www.asparis.org/academics/middle-school",
+      "https://www.asparis.org/academics/upper-school",
+      "https://www.asparis.org/academics",
+      "https://www.asparis.org/academics/curriculum-and-diplomas",
+      "https://www.asparis.org/academics/language-and-educational-support",
+      "https://www.asparis.org/academics/focus-areas",
+      "https://www.asparis.org/academics/early-childhood",
+      "https://www.asparis.org/academics/lower-school",
+      "https://www.asparis.org/community/service-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American School of Paris offers a variety of trip and travel programs across grade levels, including cultural field trips in Paris and surrounding regions for Lower School, off-campus excursions and authentic learning experiences for Middle School, competitive sports tournaments across Europe for Upper and Middle School, and service-learning trips to Bucharest. Students also participate in international music festivals and STEM competitions held in France and worldwide.",
+    "programs": [
+      {
+        "program_name": "Lower School Cultural Field Trips",
+        "program_format": "day trips and week-long trips",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "throughout the year",
+        "duration": "afternoon to one week",
+        "locations": [
+          "Paris",
+          "Brittany region",
+          "Giverny",
+          "local markets",
+          "farms"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asparis.org/arts-activities-and-athletics/curricular-arts",
+            "quote": "From an afternoon at the Louvre to a week in the Brittany region, ASP students have numerous opportunities to experience all that Paris and the surroun…"
+          },
+          {
+            "source_url": "https://www.asparis.org/academics/lower-school",
+            "quote": "Field trips are an essential part of the program. Students visit cultural landmarks including the Musée d'Orsay, Monet’s garden at Giverny, local markets, farms and other Parisian sites that enrich their learning and broaden their understanding of the world."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Off-Campus Excursions",
+        "program_format": "off-campus excursions",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "regularly during the school year",
+        "duration": "varied",
+        "locations": [
+          "Paris"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asparis.org/academics/middle-school",
+            "quote": "Through hands-on projects and myriad off-campus excursions, students engage in authentic learning experiences, applying skills and habits…"
+          }
+        ]
+      },
+      {
+        "program_name": "Upper and Middle School Competitive Sports Travel",
+        "program_format": "team travel for competitions",
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "seasonal",
+        "duration": "varied",
+        "locations": [
+          "Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asparis.org/arts-activities-and-athletics/athletics",
+            "quote": "Within a network of member schools, teams compete against international schools in Europe, with a season-ending championship tournament for each sport."
+          },
+          {
+            "source_url": "https://www.asparis.org/arts-activities-and-athletics",
+            "quote": "We have over 30 competitive varsity and junior varsity teams, who travel and compete across Europe."
+          }
+        ]
+      },
+      {
+        "program_name": "Romania Service-Learning Trips",
+        "program_format": "week-long service trips",
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "during Toussaint and April breaks",
+        "duration": "one week",
+        "locations": [
+          "Bucharest, Romania"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asparis.org/arts-activities-and-athletics/after-school-activities",
+            "quote": "The Romania club usually sends groups of students to Bucharest for a week during the Toussaint and April breaks to work."
+          }
+        ]
+      },
+      {
+        "program_name": "AMIS Music Festivals",
+        "program_format": "week-long workshops and festivals",
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "various international locations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asparis.org/arts-activities-and-athletics/curricular-arts",
+            "quote": "Each year a number of festivals are organized, inviting selected students to join a choir or orchestra composed of accomplished musicians from schools around the world for a week of workshops and instru…"
+          }
+        ]
+      },
+      {
+        "program_name": "FIRST Lego League Competitions",
+        "program_format": "competition travel",
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "varied",
+        "locations": [
+          "France",
+          "worldwide"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asparis.org/arts-activities-and-athletics/after-school-activities",
+            "quote": "This competition is held in France and around the world to inspire students in the STEM field."
+          }
+        ]
+      },
+      {
+        "program_name": "INK Magazine Literary Expeditions",
+        "program_format": "day trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "day trips",
+        "locations": [
+          "Paris"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asparis.org/arts-activities-and-athletics/after-school-activities",
+            "quote": "We take part in expeditions into Paris (Shakespeare & Co most recently), host an open-mic literary evening every year..."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Paris",
+      "Brittany region",
+      "Giverny",
+      "local markets",
+      "farms",
+      "Europe",
+      "Bucharest, Romania",
+      "various international locations",
+      "France",
+      "worldwide"
+    ],
+    "unknowns": []
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "school_key": "the_american_school_in_london",
+  "school_name": "The American School in London",
+  "homepage": "https://www.asl.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:20 PM",
+  "tokens_in": 1376,
+  "tokens_out": 409,
+  "tokens_total": 1785,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 8,
+    "prompt_hash": "272c6fd1db1fa2c0",
+    "pages": [
+      "https://www.asl.org/",
+      "https://www.asl.org/facilities-and-services",
+      "https://www.asl.org/academics/high-school/student-advising/transcripts",
+      "https://www.asl.org/academics/middle-school",
+      "https://www.asl.org/academics/middle-school/curriculum",
+      "https://www.asl.org/academics/middle-school/eight-day-cycle",
+      "https://www.asl.org/academics/middle-school/rules-policies-and-behavior",
+      "https://www.asl.org/academics/high-school",
+      "https://www.asl.org/academics/high-school/curriculum",
+      "https://www.asl.org/academics/high-school/student-advising",
+      "https://www.asl.org/academics/high-school/eight-day-cycle",
+      "https://www.asl.org/academics/high-school/rules-policies-and-behavior",
+      "https://www.asl.org/academics",
+      "https://www.asl.org/admissions/learn-about-us/curriculum",
+      "https://www.asl.org/academics/lower-school",
+      "https://www.asl.org/academics/lower-school/curriculum",
+      "https://www.asl.org/academics/lower-school/home-learning",
+      "https://www.asl.org/academics/lower-school/behavior-policy",
+      "https://www.asl.org/academics/assessment-at-asl",
+      "https://www.asl.org/academics/student-support-services",
+      "https://www.asl.org/academics/student-support-services/english-as-an-language"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American School in London offers multiple travel programs that enhance curriculum and personal growth through domestic and international trips. These include the Alternatives program with group travel to UK, Europe, and beyond, and a service learning program integral to middle school students involving on- and off-campus service activities.",
+    "programs": [
+      {
+        "program_name": "Alternatives program",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "UK",
+          "Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asl.org/admissions/learn-about-us/curriculum",
+            "quote": "The Alternatives program offers authentic, challenging, and immersive opportunities that foster relationships, personal growth, and a deeper understanding of the world beyond the classroom. Groups of 12-25 students travel together to destinations in the UK, Europe and beyond."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Service Learning program",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.asl.org/academics/middle-school/curriculum",
+            "quote": "The service learning program is an integral part of the life of each middle school student and helps them to grow in confidence as they participate in on- and off-campus serv…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "UK",
+      "Europe"
+    ],
+    "unknowns": [
+      "Program frequency",
+      "Program duration",
+      "Specific grade bands for Alternatives program",
+      "Specific locations for service learning trips"
+    ]
+  }
+}

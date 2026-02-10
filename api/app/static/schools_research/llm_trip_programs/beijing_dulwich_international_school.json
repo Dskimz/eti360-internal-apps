@@ -1,0 +1,112 @@
+{
+  "school_key": "beijing_dulwich_international_school",
+  "school_name": "Beijing Dulwich International School",
+  "homepage": "https://beijing.dulwich.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:20 PM",
+  "tokens_in": 732,
+  "tokens_out": 570,
+  "tokens_total": 1302,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "9027c9b314b6668e",
+    "pages": [
+      "https://beijing.dulwich.org/holistic-curriculum/co-curricular-activities",
+      "https://beijing.dulwich.org/",
+      "https://beijing.dulwich.org/holistic-curriculum/educational-pillars",
+      "https://beijing.dulwich.org/holistic-curriculum/ducks",
+      "https://beijing.dulwich.org/holistic-curriculum/junior-school-ages-7-to-11",
+      "https://beijing.dulwich.org/holistic-curriculum/senior-school-ages-11-to-18",
+      "https://beijing.dulwich.org/holistic-curriculum/mandarin",
+      "https://beijing.dulwich.org/holistic-curriculum/stem-se21",
+      "https://beijing.dulwich.org/holistic-curriculum/visual-performing-arts",
+      "https://beijing.dulwich.org/holistic-curriculum/sports"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Beijing Dulwich International School offers a range of trip and travel programs including day trips, age-appropriate residential trips, sports tournaments in Beijing, other cities in China, and Asia, and vertically aligned service and educational residential trips across year groups.",
+    "programs": [
+      {
+        "program_name": "Junior School Learning Beyond the Classroom",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "throughout the school year",
+        "duration": "half-day or full-day trips; age-appropriate residential trips during the school year",
+        "locations": [
+          "local community"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://beijing.dulwich.org/holistic-curriculum/junior-school-ages-7-to-11",
+            "quote": "Over the course of the school year, teachers will arrange half-day or full-day trips to enrich the students’ education, and age-appropriate residential trips during the school year."
+          }
+        ]
+      },
+      {
+        "program_name": "Senior School Residential Trips",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://beijing.dulwich.org/holistic-curriculum/co-curricular-activities",
+            "quote": "Residential trips in each year group provide service and educational experiences that enable students to reach out of their comfort zones. These are vertically aligned and planned in collaboration."
+          }
+        ]
+      },
+      {
+        "program_name": "Sports Tournaments and Exchanges",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international",
+          "exchange"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Beijing",
+          "other cities in China",
+          "Asia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://beijing.dulwich.org/holistic-curriculum/sports",
+            "quote": "Students have the chance to participate in many tournaments on offer in different sports and age categories, some taking place here in Beijing, some in other cities in China and in Asia."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local community",
+      "Beijing",
+      "other cities in China",
+      "Asia"
+    ],
+    "unknowns": []
+  }
+}

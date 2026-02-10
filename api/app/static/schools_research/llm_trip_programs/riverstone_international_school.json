@@ -1,0 +1,243 @@
+{
+  "school_key": "riverstone_international_school",
+  "school_name": "Riverstone International School",
+  "homepage": "http://www.riverstoneschool.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:35 PM",
+  "tokens_in": 1641,
+  "tokens_out": 1474,
+  "tokens_total": 3115,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 14,
+    "prompt_hash": "cd6410aa542bcd3b",
+    "pages": [
+      "https://www.riverstoneschool.org/about-us/outdoor-education/",
+      "https://www.riverstoneschool.org/student-life/school-services-transportation/",
+      "https://www.riverstoneschool.org/academics/preschool-pre-k/before-after-care-activities/",
+      "https://www.riverstoneschool.org/academics/elementary-school/before-after-care-activities/",
+      "http://www.riverstoneschool.org/",
+      "https://www.riverstoneschool.org/about-us/community-service/",
+      "https://www.riverstoneschool.org/academics/middle-school/",
+      "https://www.riverstoneschool.org/academics/middle-school/curriculum/",
+      "https://www.riverstoneschool.org/academics/high-school/",
+      "https://www.riverstoneschool.org/academics/preschool-pre-k/",
+      "https://www.riverstoneschool.org/academics/elementary-school/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Riverstone International School offers a comprehensive outdoor education program with seasonal trips designed to build community, confidence, leadership, and environmental stewardship across all grade levels. Trips range from day experiences to multi-day overnight expeditions involving activities such as rafting, biking, backpacking, rock climbing, snowshoeing, and camping. These trips are curriculum-connected and progressively challenging, emphasizing skill development, teamwork, and reflection.",
+    "programs": [
+      {
+        "program_name": "Fall Outdoor Education",
+        "program_format": "multi-day trips",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "multi-day",
+        "locations": [
+          "Idaho wilderness",
+          "Oregon Trail"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riverstoneschool.org/about-us/outdoor-education/",
+            "quote": "Fall outdoor education at Riverstone is intentionally designed to build community, confidence, and connection at the start of the school year. Across all grade levels, students begin with shared outdoor experiences—such as rafting, biking, camping, or backpacking... As students progress through the grades, fall trips become increasingly immersive and challenging... middle and high school students take on multi-day wilderness expeditions..."
+          },
+          {
+            "source_url": "https://www.riverstoneschool.org/about-us/outdoor-education/",
+            "quote": "Overnight camping on the Oregon Trail"
+          }
+        ]
+      },
+      {
+        "program_name": "Spring Outdoor Education",
+        "program_format": "multi-day trips",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "multi-day",
+        "locations": [
+          "Idaho wilderness",
+          "rafting locations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riverstoneschool.org/about-us/outdoor-education/",
+            "quote": "Spring outdoor education focuses on application, growth, and celebration. Students apply skills during longer overnight trips, rafting expeditions, backpacking adventures, and curriculum-connected outdoor experiences."
+          }
+        ]
+      },
+      {
+        "program_name": "City of Rocks Overnight Trip",
+        "program_format": "overnight trip",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [
+          "City of Rocks, Idaho"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riverstoneschool.org/about-us/outdoor-education/",
+            "quote": "The City of Rocks overnight trip provides Grade 1 students with a hands-on outdoor education experience, combining hiking, rock climbing, and environmental stewardship."
+          }
+        ]
+      },
+      {
+        "program_name": "Bruneau Sand Dunes Overnight Trip",
+        "program_format": "overnight trip",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [
+          "Bruneau Sand Dunes, Idaho"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riverstoneschool.org/about-us/outdoor-education/",
+            "quote": "The Bruneau Sand Dunes overnight trip connects classroom learning with hands-on outdoor experience. Students attend Telescope Talks and planetarium sessions before camping beneath the tallest single-structure sand dune in North America."
+          }
+        ]
+      },
+      {
+        "program_name": "Snowshoeing and Winter Outdoor Education",
+        "program_format": "day and overnight trips",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "seasonal",
+        "duration": "varies",
+        "locations": [
+          "Idaho mountains",
+          "Galena, Idaho"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riverstoneschool.org/about-us/outdoor-education/",
+            "quote": "Snowshoeing teaches students winter navigation, safety, and endurance while exploring Idaho’s trails. Winter yurt camping in Galena, Idaho introduces students to safe travel and outdoor exploration in cold environments."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Outdoor Education",
+        "program_format": "multi-day trips",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "multi-day",
+        "locations": [
+          "Idaho wilderness"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riverstoneschool.org/about-us/outdoor-education/",
+            "quote": "Middle School outdoor education emphasizes leadership, challenge, and skill development through multi-day trips including biking, rafting, backpacking, and winter camping."
+          }
+        ]
+      },
+      {
+        "program_name": "Grade 5 Celebration Camping",
+        "program_format": "overnight trip",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [
+          "Moab"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riverstoneschool.org/about-us/outdoor-education/",
+            "quote": "Grade 5 celebration camping in Moab"
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Summer Trip",
+        "program_format": "multi-day trip",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "5 days",
+        "locations": [
+          "Washington DC"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riverstoneschool.org/academics/middle-school/curriculum/",
+            "quote": "Starting with the summer trip to Washington DC, students learn independence, teamwork, and resilience through once-in-a-lifetime experiences including 5 days rafting trips."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Idaho wilderness",
+      "Oregon Trail",
+      "City of Rocks, Idaho",
+      "Bruneau Sand Dunes, Idaho",
+      "Idaho mountains",
+      "Galena, Idaho",
+      "Moab",
+      "Washington DC"
+    ],
+    "unknowns": []
+  }
+}

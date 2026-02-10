@@ -1,0 +1,89 @@
+{
+  "school_key": "atlanta_international_school",
+  "school_name": "Atlanta International School",
+  "homepage": "http://www.aischool.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:23 PM",
+  "tokens_in": 689,
+  "tokens_out": 427,
+  "tokens_total": 1116,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "422174557e19e9ca",
+    "pages": [
+      "http://www.aischool.org/academics/primary-school/afterschool-activities",
+      "http://www.aischool.org/academics/secondary-school/beyond-the-classroom",
+      "http://www.aischool.org/",
+      "http://www.aischool.org/academics",
+      "http://www.aischool.org/academics/what-is-the-international-baccalaureate",
+      "http://www.aischool.org/academics/what-is-the-international-baccalaureate/primary-years-program",
+      "http://www.aischool.org/academics/what-is-the-international-baccalaureate/myp",
+      "http://www.aischool.org/academics/what-is-the-international-baccalaureate/diploma-program",
+      "http://www.aischool.org/academics/what-is-the-international-baccalaureate/careers-related-program",
+      "http://www.aischool.org/academics/primary-school/early-learning-center-3k-4k",
+      "http://www.aischool.org/academics/primary-school/primary-school-5k-grade-5"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Atlanta International School offers annual field trips for all Primary School grades to local educational and community sites. Grade 5 students participate in an overseas trip connected to their language learning at the end of the school year.",
+    "programs": [
+      {
+        "program_name": "Primary School Annual Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "day",
+        "locations": [
+          "civil rights museums",
+          "local businesses",
+          "farms"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aischool.org/academics/primary-school/primary-school-5k-grade-5",
+            "quote": "Every grade in the Primary School goes on field trips every year. Destinations include civil rights museums, local businesses, to learn what community support entails; or farms, to learn about sustainability."
+          }
+        ]
+      },
+      {
+        "program_name": "Grade 5 Overseas Language Trip",
+        "program_format": "chaperoned excursion",
+        "trip_types": [
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "end of school year",
+        "locations": [
+          "country connected to their language learning"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aischool.org/academics/primary-school/primary-school-5k-grade-5",
+            "quote": "Grade 5 students travel overseas at the end of the school year to a country connected to their language learning. During this chaperoned excursion, they experience everything they’ve learned about language and culture."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "civil rights museums",
+      "local businesses",
+      "farms",
+      "country connected to their language learning"
+    ],
+    "unknowns": []
+  }
+}

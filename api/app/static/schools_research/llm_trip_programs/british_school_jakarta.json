@@ -1,0 +1,203 @@
+{
+  "school_key": "british_school_jakarta",
+  "school_name": "British School Jakarta",
+  "homepage": "http://www.bsj.sch.id/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:24 PM",
+  "tokens_in": 1074,
+  "tokens_out": 1150,
+  "tokens_total": 2224,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 8,
+    "prompt_hash": "58f7dbcccad96625",
+    "pages": [
+      "https://www.bsj.sch.id/arts-activities-sports/welcome-bsj-arts-activities-sports",
+      "http://www.bsj.sch.id/",
+      "https://www.bsj.sch.id/learning-bsj/bsj-curriculum-overview",
+      "https://www.bsj.sch.id/learning-bsj/primary-school",
+      "https://www.bsj.sch.id/learning-bsj/secondary-school",
+      "https://www.bsj.sch.id/learning-bsj/arts-curriculum",
+      "https://www.bsj.sch.id/learning-bsj/music-curriculum",
+      "https://www.bsj.sch.id/learning-bsj/health-physical-education",
+      "https://www.bsj.sch.id/learning-bsj/service-learning",
+      "https://www.bsj.sch.id/learning-bsj/student-services",
+      "https://www.bsj.sch.id/learning-bsj/university-hub"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "British School Jakarta offers a range of residential and field trip programs across multiple grade levels, focusing on personal growth, ecological learning, and cultural exploration. Trips include local residential experiences in Indonesian locations and international field trips for ecological studies.",
+    "programs": [
+      {
+        "program_name": "IB Environmental Systems and Societies Field Trip",
+        "program_format": "field trip",
+        "trip_types": [
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "five days",
+        "locations": [
+          "Tioman Island, Malaysia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsj.sch.id/",
+            "quote": "BSJ students benefit from exceptional learning opportunities beyond the classroom, including the IB Environmental Systems and Societies field trip to Tioman Island, Malaysia. Recently, our Year 12 students spent five days exploring this biodiversity hotspot..."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 10 Residential Trip to Bandung",
+        "program_format": "residential trip",
+        "trip_types": [
+          "domestic",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Bandung, Indonesia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsj.sch.id/",
+            "quote": "Last week, our Year 10 students returned from a remarkable residential trip to Bandung, an experience filled with adventure, connection, and personal growth. From rainforest hikes to off-road jeep rides..."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 6 Residential Trip",
+        "program_format": "residential trip",
+        "trip_types": [
+          "domestic",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.bsj.sch.id/",
+            "quote": "Stepping far beyond the classroom, our Year 6 students are exploring the wonders of nature while developing resilience, independence, and a true sense of responsibility. This residential trip helps them build confidence..."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 9 Residential Trip",
+        "program_format": "residential trip",
+        "trip_types": [
+          "domestic",
+          "overnight_residential",
+          "expedition_outdoor",
+          "cultural"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Indonesia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsj.sch.id/",
+            "quote": "The Year 9 residential trip has been an incredible journey of personal growth. Away from the classroom and digital distractions, our students embraced challenges in nature, explored Indonesian culture..."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 4 Residential Trip",
+        "program_format": "residential trip",
+        "trip_types": [
+          "domestic",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.bsj.sch.id/",
+            "quote": "What an incredible adventure for our Year 4 students on their recent residential trip! They embraced every challenge, from outdoor exploration to collaborative learning..."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 5 Residential Trip to Sentul",
+        "program_format": "residential trip",
+        "trip_types": [
+          "domestic",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Sentul, Indonesia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsj.sch.id/",
+            "quote": "Our Year 5 students embraced their first residential trip to Sentul, an experience which encouraged them to take risks, build resilience, and learn valuable life skills."
+          }
+        ]
+      },
+      {
+        "program_name": "Residential Trip to Sukabumi",
+        "program_format": "residential trip",
+        "trip_types": [
+          "domestic",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Sukabumi, Indonesia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsj.sch.id/",
+            "quote": "Their residential trip to Sukabumi was more than just a change of scenery, it was an opportunity to challenge themselves, develop leadership, and strengthen their sense of community."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Tioman Island, Malaysia",
+      "Bandung, Indonesia",
+      "Sentul, Indonesia",
+      "Sukabumi, Indonesia",
+      "Indonesia"
+    ],
+    "unknowns": [
+      "Frequency of trips",
+      "Exact duration of most residential trips",
+      "Specific grade bands for Sukabumi trip"
+    ]
+  }
+}

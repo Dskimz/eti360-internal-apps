@@ -1,0 +1,91 @@
+{
+  "school_key": "international_school_ho_chi_minh_city_secondary_campus",
+  "school_name": "International School Ho Chi Minh City - Secondary Campus",
+  "homepage": "https://www.ishcmc.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 659,
+  "tokens_out": 367,
+  "tokens_total": 1026,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "553220d6daf081f7",
+    "pages": [
+      "https://www.ishcmc.com/beyond-the-classroom/after-school-activities/",
+      "https://www.ishcmc.com/beyond-the-classroom/outdoor-education-and-duke-of-edinburgh/",
+      "https://www.ishcmc.com/beyond-the-classroom/sports-and-athletics/",
+      "https://www.ishcmc.com/beyond-the-classroom/the-arts/",
+      "https://www.ishcmc.com/beyond-the-classroom/health-centre-and-air-quality/",
+      "https://www.ishcmc.com/",
+      "https://www.ishcmc.com/academics/ib-continuum-school/",
+      "https://www.ishcmc.com/academics/early-years/",
+      "https://www.ishcmc.com/academics/primary-school/",
+      "https://www.ishcmc.com/academics/secondary-school/",
+      "https://www.ishcmc.com/academics/student-support-and-enrichment/",
+      "https://www.ishcmc.com/academics/language-programs-and-english-support/",
+      "https://www.ishcmc.com/academics/digital-learning-and-innovation/",
+      "https://www.ishcmc.com/academics/leadership-and-service/",
+      "https://www.ishcmc.com/academics/college-and-university-counseling/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The school offers outdoor education programs including the Duke of Edinburgh Award which involves skill development and an adventurous overnight expedition. Service learning opportunities include voluntary exchanges such as work at an Animal Rescue Center.",
+    "programs": [
+      {
+        "program_name": "Duke of Edinburgh Award",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.ishcmc.com/beyond-the-classroom/outdoor-education-and-duke-of-edinburgh/",
+            "quote": "Develop a new skill or further enhance existing talents. Plan and complete an adventurous overnight expedition as part of a team."
+          }
+        ]
+      },
+      {
+        "program_name": "Service Learning at Animal Rescue Center",
+        "program_format": null,
+        "trip_types": [
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Animal Rescue Center"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.ishcmc.com/academics/leadership-and-service/",
+            "quote": "Service – an unpaid and voluntary exchange that has a learning benefit for the student. The rights, dignity and autonomy of all those involved are respected. Animal Rescue Center"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Animal Rescue Center"
+    ],
+    "unknowns": [
+      "frequency",
+      "duration",
+      "specific grade bands for Duke of Edinburgh"
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "school_key": "st_george_s_international_school",
+  "school_name": "St. George's International School",
+  "homepage": "http://www.stgeorges.ch/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:36 PM",
+  "tokens_in": 480,
+  "tokens_out": 259,
+  "tokens_total": 739,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "615dad4e508d8167",
+    "pages": [
+      "http://www.stgeorges.ch/education/extracurricular-activities",
+      "http://www.stgeorges.ch/school-life/school-transport",
+      "http://www.stgeorges.ch/school-life/school-calendar",
+      "http://www.stgeorges.ch/school-life/catering-nutrition",
+      "http://www.stgeorges.ch/school-life/pastoral-care",
+      "http://www.stgeorges.ch/school-life/parent-community",
+      "http://www.stgeorges.ch/school-life/doe-international-award",
+      "http://www.stgeorges.ch/",
+      "http://www.stgeorges.ch/fr/vie-scolaire/service-de-minibus"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "St. George's International School organizes field trips for students in Years 6 to 13, with specific dates announced in advance. These trips include day trips and potentially multi-day excursions during the school calendar.",
+    "programs": [
+      {
+        "program_name": "Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "up to 5 days",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.stgeorges.ch/school-life/school-calendar",
+            "quote": "Field trips (Exact dates will be confirmed, parents will be notified): Sunday, 12 October to Thursday, 16 October 2025\nYears 6-13 day off: Friday, 17 October 2025"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific destinations of field trips",
+      "Frequency of trips",
+      "Other types of trips such as international, expedition, service learning, or exchange programs"
+    ]
+  }
+}

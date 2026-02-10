@@ -1,0 +1,156 @@
+{
+  "school_key": "the_british_school_of_milan_sir_james_henderson",
+  "school_name": "The British School of Milan - Sir James Henderson",
+  "homepage": "https://www.britishschoolmilan.com/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:39 PM",
+  "tokens_in": 837,
+  "tokens_out": 859,
+  "tokens_total": 1696,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "d190af5f63c058b4",
+    "pages": [
+      "https://www.britishschoolmilan.com/school-life/pastoral-care",
+      "https://www.britishschoolmilan.com/school-life/english-language-support",
+      "https://www.britishschoolmilan.com/school-life/additional-italian",
+      "https://www.britishschoolmilan.com/school-life/school-nurse",
+      "https://www.britishschoolmilan.com/school-life/counsellor",
+      "https://www.britishschoolmilan.com/school-life/scholars-blog",
+      "https://www.britishschoolmilan.com/school-life/the-sir-james-lecture-series",
+      "https://www.britishschoolmilan.com/school-life/co-curriculum",
+      "https://www.britishschoolmilan.com/school-life/learning-support",
+      "https://www.britishschoolmilan.com/school-life/co-curriculum/educational-trips-and-visits",
+      "https://www.britishschoolmilan.com/",
+      "https://www.britishschoolmilan.com/early-years/curriculum",
+      "https://www.britishschoolmilan.com/primary/key-stages-and-curriculum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British School of Milan offers a broad range of educational trips and visits designed to enrich learning and develop student independence and communication skills. These trips vary from local day trips to month-long international expeditions, including regular international excursions for sports tournaments, debate competitions, Model United Nations conferences, and academic competitions.",
+    "programs": [
+      {
+        "program_name": "Sports Tournaments Excursions",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "domestic",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [],
+        "frequency": "regular",
+        "duration": null,
+        "locations": [
+          "Switzerland",
+          "Austria"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.britishschoolmilan.com/school-life/co-curriculum/educational-trips-and-visits",
+            "quote": "Regular international excursions in the BSM year include those for sports tournaments (Switzerland, Austria)"
+          }
+        ]
+      },
+      {
+        "program_name": "Debate Competitions Excursions",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [],
+        "frequency": "regular",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.britishschoolmilan.com/school-life/co-curriculum/educational-trips-and-visits",
+            "quote": "Regular international excursions in the BSM year include those for debate competitions"
+          }
+        ]
+      },
+      {
+        "program_name": "Model United Nations Conferences",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [],
+        "frequency": "regular",
+        "duration": null,
+        "locations": [
+          "France",
+          "Spain"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.britishschoolmilan.com/school-life/co-curriculum/educational-trips-and-visits",
+            "quote": "Regular international excursions in the BSM year include those for Model United Nations conferences (France, Spain)"
+          }
+        ]
+      },
+      {
+        "program_name": "Maths and History Competitions Excursions",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [],
+        "frequency": "regular",
+        "duration": null,
+        "locations": [
+          "Luxembourg",
+          "Austria",
+          "Belgium"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.britishschoolmilan.com/school-life/co-curriculum/educational-trips-and-visits",
+            "quote": "Regular international excursions in the BSM year include those for Maths and History competitions (Luxembourg, Austria, Belgium)"
+          }
+        ]
+      },
+      {
+        "program_name": "World Challenge Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": "month-long",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.britishschoolmilan.com/school-life/co-curriculum/educational-trips-and-visits",
+            "quote": "There have been World Challenge Expeditions - the most recent of which was to…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Switzerland",
+      "Austria",
+      "France",
+      "Spain",
+      "Luxembourg",
+      "Belgium"
+    ],
+    "unknowns": [
+      "Specific grade bands for each program",
+      "Exact duration for most trips except World Challenge Expeditions",
+      "Frequency details for most trips except noted as regular"
+    ]
+  }
+}

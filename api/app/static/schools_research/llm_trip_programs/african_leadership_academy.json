@@ -1,0 +1,31 @@
+{
+  "school_key": "african_leadership_academy",
+  "school_name": "African Leadership Academy",
+  "homepage": "http://www.africanleadershipacademy.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:21 PM",
+  "tokens_in": 513,
+  "tokens_out": 49,
+  "tokens_total": 562,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "00ab29337157af02",
+    "pages": [
+      "https://www.africanleadershipacademy.org/the-academy/residential-student-life/",
+      "http://www.africanleadershipacademy.org/",
+      "https://www.africanleadershipacademy.org/the-academy/academics/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "No specific trip programs or destinations were explicitly described in the provided evidence snippets.",
+    "programs": [],
+    "locations_all": [],
+    "unknowns": [
+      "No explicit information on trip or travel programs found in the provided evidence."
+    ]
+  }
+}

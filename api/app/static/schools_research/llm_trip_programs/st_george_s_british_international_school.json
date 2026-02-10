@@ -1,0 +1,57 @@
+{
+  "school_key": "st_george_s_british_international_school",
+  "school_name": "St George's British International School",
+  "homepage": "http://www.stgeorge.school.it/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:36 PM",
+  "tokens_in": 417,
+  "tokens_out": 264,
+  "tokens_total": 681,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "eecbd070385ea0d7",
+    "pages": [
+      "http://www.stgeorge.school.it/",
+      "http://www.stgeorge.school.it/junior/curriculum",
+      "http://www.stgeorge.school.it/ual/curriculum",
+      "https://www.stgeorge.school.it/detail-page/~board/news-post/post/st-georges-unveils-ambitious-campus-developments-to-enrich-student-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "St George's British International School offers a well-established programme of local and residential trips that provide learning opportunities both inside and outside the classroom, integrated within and outside the timetable.",
+    "programs": [
+      {
+        "program_name": "Local and Residential Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.stgeorge.school.it/junior/curriculum",
+            "quote": "The school provides opportunities for learning, both inside and outside the classroom, within the timetable and off timetable, through our well-established programme of local and residential trips"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific grade bands for trips",
+      "Frequency of trips",
+      "Duration of trips",
+      "Exact locations/destinations of trips",
+      "Program names beyond 'local and residential trips'",
+      "Details on international, expedition, service learning, or exchange trips"
+    ]
+  }
+}

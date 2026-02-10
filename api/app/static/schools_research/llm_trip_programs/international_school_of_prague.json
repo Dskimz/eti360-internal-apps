@@ -1,0 +1,100 @@
+{
+  "school_key": "international_school_of_prague",
+  "school_name": "International School of Prague",
+  "homepage": "http://isp.cz/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:30 PM",
+  "tokens_in": 725,
+  "tokens_out": 396,
+  "tokens_total": 1121,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "0788b3e969a505c3",
+    "pages": [
+      "http://isp.cz/student-life",
+      "http://isp.cz/student-life/leadership-and-service",
+      "http://isp.cz/student-life/design-technology-and-innovation",
+      "http://isp.cz/student-life/design-technology-and-innovation/the-idea-lab",
+      "http://isp.cz/student-life/the-arts",
+      "http://isp.cz/student-life/athletics1",
+      "http://isp.cz/student-life/after-school-activities",
+      "http://isp.cz/",
+      "http://isp.cz/learning/middle-school",
+      "http://isp.cz/learning/upper-school",
+      "http://isp.cz/learning",
+      "http://isp.cz/learning/learningisp",
+      "http://isp.cz/learning/ib-programmes-isp",
+      "http://isp.cz/learning/ib-programmes-isp/primary-year-programme-isp",
+      "http://isp.cz/learning/ib-programmes-isp/diploma-programme-isp",
+      "http://isp.cz/learning/ib-programmes-isp/career-related-programme-isp",
+      "http://isp.cz/learning/ib-programmes-isp/middle-years-programme-isp",
+      "http://isp.cz/learning/early-childhood-foundations",
+      "http://isp.cz/learning/elementary-school",
+      "http://isp.cz/learning/ib-diploma-results",
+      "http://isp.cz/learning/student-support"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The International School of Prague offers multiple grade-level trips for middle school students, including outdoor education trips and a ski trip, as well as an annual international volleyball exchange event.",
+    "programs": [
+      {
+        "program_name": "Grade-level Trips",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "throughout the year",
+        "duration": null,
+        "locations": [
+          "Czech Republic",
+          "Lipno"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://isp.cz/learning/middle-school",
+            "quote": "Grade-level trips happen throughout the year in grades 6, 7, and 8, offering our students incredible opportunities to travel within the Czech Republic... In the first few weeks of the school year, grades 7 and 8 have outdoor education trips hosted by Cesca Cesta, while Grade 6 has a ski trip to Lipno in January."
+          }
+        ]
+      },
+      {
+        "program_name": "Vienna Volleyball Exchange",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Vienna"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://isp.cz/student-life/athletics1",
+            "quote": "MYP Journalism Elective student Safia brings you an in-depth look at the ISP Volleyball teams' experience hosting the Vienna Exchange... showcasing their dedication and teamwork on the court."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Czech Republic",
+      "Lipno",
+      "Vienna"
+    ],
+    "unknowns": [
+      "program_format",
+      "duration"
+    ]
+  }
+}

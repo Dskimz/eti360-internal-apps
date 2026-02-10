@@ -1,0 +1,67 @@
+{
+  "school_key": "the_british_school_manila",
+  "school_name": "The British School Manila",
+  "homepage": "http://www.britishschoolmanila.org/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:20 PM",
+  "tokens_in": 688,
+  "tokens_out": 349,
+  "tokens_total": 1037,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "1d5f33f700214034",
+    "pages": [
+      "http://www.britishschoolmanila.org/life-at-bsm/after-school-activities",
+      "http://www.britishschoolmanila.org/life-at-bsm/activities-week-trips",
+      "http://www.britishschoolmanila.org/",
+      "http://www.britishschoolmanila.org/academics/the-key-stages",
+      "http://www.britishschoolmanila.org/academics/our-curriculum",
+      "http://www.britishschoolmanila.org/academics/senior-school-curriculum",
+      "http://www.britishschoolmanila.org/academics/senior-school-curriculum/ib-diploma",
+      "http://www.britishschoolmanila.org/academics/careers-higher-education",
+      "http://www.britishschoolmanila.org/academics/visual-and-performing-arts",
+      "http://www.britishschoolmanila.org/academics/sports",
+      "http://www.britishschoolmanila.org/academics/student-support"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British School Manila offers a residential and outdoor education programme central to student learning, focusing on personal challenge, well-being, and community service. Senior School students from Year 7 to 10 participate in week-long residential trips during Activities Week that are physically demanding and include service learning.",
+    "programs": [
+      {
+        "program_name": "Activities Week Residential Trips",
+        "program_format": "week-long residential",
+        "trip_types": [
+          "overnight_residential",
+          "service_learning",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.britishschoolmanila.org/life-at-bsm/activities-week-trips",
+            "quote": "From Year 7 to 10 students participate in Activities Week, choosing from an extensive range of week-long residential trips, which are physically demanding and allow our students to get hands-on with community service."
+          },
+          {
+            "source_url": "http://www.britishschoolmanila.org/life-at-bsm/activities-week-trips",
+            "quote": "The British School Manila’s residential and outdoor education programme is central to the learning experience of our students. It provides them with personal challenge and develops their well-being by helping them grow as individuals."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific trip destinations",
+      "Other trip programs beyond Activities Week",
+      "Programs for ES and HS grade bands"
+    ]
+  }
+}

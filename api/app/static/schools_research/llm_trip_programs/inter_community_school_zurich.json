@@ -1,0 +1,123 @@
+{
+  "school_key": "inter_community_school_zurich",
+  "school_name": "Inter-Community School Zurich",
+  "homepage": "https://www.icsz.ch/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:28 PM",
+  "tokens_in": 1546,
+  "tokens_out": 601,
+  "tokens_total": 2147,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 11,
+    "prompt_hash": "724a3501321aa151",
+    "pages": [
+      "https://www.icsz.ch/student-life",
+      "https://www.icsz.ch/student-life/ecas",
+      "https://www.icsz.ch/student-life/athletics",
+      "https://www.icsz.ch/student-life/theatre-arts",
+      "https://www.icsz.ch/student-life/music",
+      "https://www.icsz.ch/student-life/experiential-learning",
+      "https://www.icsz.ch/",
+      "https://www.icsz.ch/academics/middle-school",
+      "https://www.icsz.ch/academics",
+      "https://www.icsz.ch/academics/ib-programme",
+      "https://www.icsz.ch/academics/nursery",
+      "https://www.icsz.ch/academics/preschool",
+      "https://www.icsz.ch/academics/primary-school",
+      "https://www.icsz.ch/academics/diploma-studies",
+      "https://www.icsz.ch/academics/visual-arts",
+      "https://www.icsz.ch/academics/design-technology",
+      "https://www.icsz.ch/academics/waldkinder-forest-programme",
+      "https://www.icsz.ch/academics/language-learning",
+      "https://www.icsz.ch/academics/english-as-an-additional-language",
+      "https://www.icsz.ch/academics/learning-support",
+      "https://www.icsz.ch/community-life/service-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Inter-Community School Zurich integrates experiential learning through a variety of field trips including one-day curricular trips and residential trips. These trips support educational objectives, interdisciplinary learning, CAS, and Service-Learning goals. Residential trips foster social skills, independence, and cultural immersion, often accessible by train or bus to reduce carbon footprint.",
+    "programs": [
+      {
+        "program_name": "Primary Residential Field Trips",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [
+          "Zermatt",
+          "Engelberg"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.icsz.ch/student-life/experiential-learning",
+            "quote": "Students in Grades 2 to 5 celebrate the culmination of the academic year with residential field trips in which they travel across the region to alpine areas such as Zermatt and Engelberg."
+          }
+        ]
+      },
+      {
+        "program_name": "Senior Residential Field Trips",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.icsz.ch/student-life/experiential-learning",
+            "quote": "Our Senior Residential field trips are split into one venue for each grade level. The aim is to positively develop each cohort’s grade level culture away from the school."
+          },
+          {
+            "source_url": "https://www.icsz.ch/student-life/experiential-learning",
+            "quote": "These residential field trips are readily accessible by train or bus transport, respecting our school’s commitment to lessening our collective carbon footprint."
+          }
+        ]
+      },
+      {
+        "program_name": "One-day Curricular Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.icsz.ch/student-life/experiential-learning",
+            "quote": "Our residential field trips and one-day curricular trips have a powerful effect on children's development and allow students to learn first-hand in a different and real-life context."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Zermatt",
+      "Engelberg"
+    ],
+    "unknowns": [
+      "Exact locations for Senior Residential Field Trips"
+    ]
+  }
+}

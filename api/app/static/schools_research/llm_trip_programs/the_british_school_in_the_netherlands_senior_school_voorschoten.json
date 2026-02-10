@@ -1,0 +1,73 @@
+{
+  "school_key": "the_british_school_in_the_netherlands_senior_school_voorschoten",
+  "school_name": "The British School in The Netherlands - Senior School Voorschoten",
+  "homepage": "http://www.britishschool.nl/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:38 PM",
+  "tokens_in": 826,
+  "tokens_out": 327,
+  "tokens_total": 1153,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "e01887f1f239c47a",
+    "pages": [
+      "http://www.britishschool.nl/school-life/co-curricular-activities/school-trips",
+      "http://www.britishschool.nl/",
+      "http://www.britishschool.nl/learning-academics/curriculum",
+      "http://www.britishschool.nl/learning-academics/curriculum/british-education-system",
+      "http://www.britishschool.nl/learning-academics/curriculum/ib-programme",
+      "http://www.britishschool.nl/learning-academics/curriculum/foundation-curriculum",
+      "http://www.britishschool.nl/learning-academics/curriculum/junior-curriculum",
+      "http://www.britishschool.nl/learning-academics/curriculum/senior-curriculum",
+      "http://www.britishschool.nl/learning-academics/curriculum/sixth-form-curriculum",
+      "http://www.britishschool.nl/learning-academics/ed-tech",
+      "http://www.britishschool.nl/learning-academics/language-instruction"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British School in The Netherlands offers a range of school trips, cultural excursions, and residential visits for students of all ages. These trips are closely linked to the curriculum and designed to support and extend classroom learning. They include local day trips, short residential trips, and cultural excursions.",
+    "programs": [
+      {
+        "program_name": "Junior School Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": "up to three nights",
+        "locations": [
+          "Peace Palace",
+          "Rijksmuseum",
+          "Arnhem forest, Belgium"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.britishschool.nl/school-life/co-curricular-activities/school-trips",
+            "quote": "Junior School students experience a variety of school excursions, from local day trips (e.g. Peace Palace and the Rijksmuseum) to short residential trips (e.g. three nights stay in Belgium's Arnhem forest)."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Peace Palace",
+      "Rijksmuseum",
+      "Arnhem forest, Belgium"
+    ],
+    "unknowns": [
+      "Details on trips for Middle School and High School students",
+      "Frequency of trips",
+      "Specific program names beyond Junior School Trips",
+      "International trips beyond Belgium",
+      "Expedition, service learning, or exchange trip details"
+    ]
+  }
+}

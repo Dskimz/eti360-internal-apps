@@ -1,0 +1,70 @@
+{
+  "school_key": "uwc_isak_japan",
+  "school_name": "UWC ISAK Japan",
+  "homepage": "https://uwcisak.jp/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:40 PM",
+  "tokens_in": 712,
+  "tokens_out": 383,
+  "tokens_total": 1095,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "089cb28d94f94e0e",
+    "pages": [
+      "https://uwcisak.jp/our-high-school/boarding-school-life/",
+      "https://uwcisak.jp/about-us/the-uwc-isak-japan-experience/the-outdoor-classroom/",
+      "https://uwcisak.jp/our-high-school/academics/outdoor-education/",
+      "https://uwcisak.jp/our-high-school/academics/clubs-and-activities/",
+      "https://uwcisak.jp/ja/our-high-school/academics/outdoor-education/",
+      "https://uwcisak.jp/ja/our-high-school/academics/clubs-and-activities/",
+      "https://uwcisak.jp/",
+      "https://uwcisak.jp/our-high-school/academics/",
+      "https://uwcisak.jp/our-high-school/academics/academic-overview/",
+      "https://uwcisak.jp/our-high-school/academics/the-arts/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "UWC ISAK Japan's Outdoor Education (OEd) program is a core part of the student experience, offering hands-on outdoor activities and seasonal mandatory class trips to explore natural environments. The program promotes sustainability, responsibility, resiliency, and environmental stewardship through various outdoor activities and community engagement.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education (OEd)",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "each season",
+        "duration": null,
+        "locations": [
+          "natural environments around UWC ISAK Japan"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://uwcisak.jp/our-high-school/academics/outdoor-education/",
+            "quote": "Throughout their UWC ISAK Japan education, students attend OEd classes and a mandatory class trip each season (Autumn: hiking, Winter: skiing/snowboarding, Spring: rock…"
+          },
+          {
+            "source_url": "https://uwcisak.jp/our-high-school/academics/outdoor-education/",
+            "quote": "The Outdoor Education (OEd) program is a core part of the UWC ISAK Japan experience. It provides a hands-on educational experience through a wide range of outdoor activities and an opportunity to explore and appreciate beautiful natural environments."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "natural environments around UWC ISAK Japan"
+    ],
+    "unknowns": [
+      "Specific trip durations",
+      "Exact locations of trips beyond general natural environments",
+      "Whether trips include international or domestic travel"
+    ]
+  }
+}

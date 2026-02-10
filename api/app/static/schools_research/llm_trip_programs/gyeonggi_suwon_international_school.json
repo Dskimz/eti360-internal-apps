@@ -1,0 +1,88 @@
+{
+  "school_key": "gyeonggi_suwon_international_school",
+  "school_name": "Gyeonggi Suwon International School",
+  "homepage": "http://www.gsis.sc.kr/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:41 PM",
+  "tokens_in": 667,
+  "tokens_out": 401,
+  "tokens_total": 1068,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "c338b2eddc85ea58",
+    "pages": [
+      "http://www.gsis.sc.kr/services/after-school-activities",
+      "https://www.gsis.sc.kr/services/after-school-activities",
+      "http://www.gsis.sc.kr/",
+      "http://www.gsis.sc.kr/services",
+      "http://www.gsis.sc.kr/services/counseling",
+      "http://www.gsis.sc.kr/services/spiritual-life",
+      "http://www.gsis.sc.kr/services/well-being",
+      "http://www.gsis.sc.kr/services/transportation",
+      "http://www.gsis.sc.kr/services/cafeteria",
+      "http://www.gsis.sc.kr/services/request-official-documents"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "GSIS offers various trip and travel programs including annual spiritual retreats for middle and high school students and the VASE Program which involves service trips throughout Southeast Asia. These trips aim to build relationships and serve others, reflecting the school's core identity and vision.",
+    "programs": [
+      {
+        "program_name": "VASE Program",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "South East Asia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.gsis.sc.kr/services/spiritual-life",
+            "quote": "One way this is possible is through the VASE Program. It is our desire that GSIS builds fruitful and lasting relationships with workers in other nations to support the work God has given them to do. Currently our VASE trips travel throughout various locations in South East Asia."
+          }
+        ]
+      },
+      {
+        "program_name": "Annual Retreats",
+        "program_format": "retreat",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "weekend",
+        "locations": [
+          "on campus (MS)",
+          "off campus (HS)"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.gsis.sc.kr/services/spiritual-life",
+            "quote": "Our annual retreats are some of the most anticipated events for our students. High School students are taken off campus for the weekend while Middle school students have their retreat on campus."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "South East Asia",
+      "on campus",
+      "off campus"
+    ],
+    "unknowns": []
+  }
+}

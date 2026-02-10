@@ -1,0 +1,63 @@
+{
+  "school_key": "the_british_international_school_of_jeddah",
+  "school_name": "The British International School of Jeddah",
+  "homepage": "https://bis-jeddah.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:38 PM",
+  "tokens_in": 645,
+  "tokens_out": 301,
+  "tokens_total": 946,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "95ef3de9061555c3",
+    "pages": [
+      "https://bis-jeddah.com/beyond-the-classroom/sports-and-athletics",
+      "https://bis-jeddah.com/beyond-the-classroom/outdoor-education",
+      "https://bis-jeddah.com/beyond-the-classroom/duke-of-edinburgh039s-award",
+      "https://bis-jeddah.com/beyond-the-classroom/performing-arts",
+      "https://bis-jeddah.com/beyond-the-classroom/model-united-nations-mun",
+      "https://bis-jeddah.com/beyond-the-classroom/the-student-council",
+      "https://bis-jeddah.com/beyond-the-classroom/learning-beyond-the-classroom",
+      "https://bis-jeddah.com/",
+      "https://bis-jeddah.com/primary/international-primary-curriculum-ipc",
+      "https://bis-jeddah.com/primary/learning-support",
+      "https://bis-jeddah.com/secondary/learning-support"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British International School of Jeddah offers a range of trips and travel programs including adventurous journeys linked to the Duke of Edinburgh's Award, with expeditions during school holiday breaks. These trips foster skills development, friendships, and community involvement.",
+    "programs": [
+      {
+        "program_name": "Duke of Edinburgh's Award Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "February Half Term Break for Bronze and Silver; Spring Holiday for Gold",
+        "locations": [
+          "local wilds/expedition areas"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://bis-jeddah.com/beyond-the-classroom/duke-of-edinburgh039s-award",
+            "quote": "Appropriate training is undertaken before adventurous journeys, with Bronze and Silver journey's taking place in the February Half Term Break, and Gold over the Spring Holiday. Parents are also encouraged to join us for our newly established parent walk, where students can show off their skills and abilities to their parents, in the wilds where they undertake their expeditions."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local wilds/expedition areas"
+    ],
+    "unknowns": []
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "school_key": "chadwick_international_school",
+  "school_name": "Chadwick International School",
+  "homepage": "http://www.chadwickinternational.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 1180,
+  "tokens_out": 730,
+  "tokens_total": 1910,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "d8700571d59ee06b",
+    "pages": [
+      "http://www.chadwickinternational.org/middle-school/beyond-the-classroom",
+      "http://www.chadwickinternational.org/upper-school/beyond-the-classroom",
+      "http://www.chadwickinternational.org/village-school/beyond-the-classroom",
+      "http://www.chadwickinternational.org/student-life",
+      "http://www.chadwickinternational.org/student-life/athletics",
+      "http://www.chadwickinternational.org/student-life/outdoor-education",
+      "http://www.chadwickinternational.org/student-life/performing-arts",
+      "http://www.chadwickinternational.org/student-life/visual-arts",
+      "http://www.chadwickinternational.org/student-life/global-programs",
+      "http://www.chadwickinternational.org/student-life/community-service",
+      "http://www.chadwickinternational.org/student-life/summer-programs",
+      "https://www.chadwickinternational.org/about/school-news/~board/school-life/post/winter-alumni-reunion-2026",
+      "https://www.chadwickinternational.org/about/school-news/~board/school-life/post/vs-vex-go-robotics-practice",
+      "https://www.chadwickinternational.org/about/school-news/~board/school-life/post/alumni-panel-2026",
+      "http://www.chadwickinternational.org/",
+      "http://www.chadwickinternational.org/middle-school/middle-school-academics",
+      "http://www.chadwickinternational.org/middle-school/middle-school-curriculum",
+      "http://www.chadwickinternational.org/upper-school/upper-school-academics",
+      "http://www.chadwickinternational.org/upper-school/upper-school-curriculum",
+      "http://www.chadwickinternational.org/village-school/village-school-academics",
+      "http://www.chadwickinternational.org/village-school/village-school-curriculum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Chadwick International School offers a variety of trip and travel programs focused on global citizenship, cultural exchange, and service learning. These include exchange programs with Chadwick School in California and other Round Square schools, participation in regional and international Round Square conferences, and travel opportunities linked to athletics and service activities.",
+    "programs": [
+      {
+        "program_name": "Global Exchange Programs",
+        "program_format": "exchange",
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "not specified",
+        "duration": "not specified",
+        "locations": [
+          "Palos Verdes, California",
+          "Songdo, South Korea",
+          "other Round Square schools"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.chadwickinternational.org/middle-school/beyond-the-classroom",
+            "quote": "Exchanges between Chadwick International in Songdo and Chadwick School in Palos Verdes, California, help forge rich connections and broaden perspectives."
+          },
+          {
+            "source_url": "http://www.chadwickinternational.org/upper-school/beyond-the-classroom",
+            "quote": "Exchanges between Chadwick School in California and Chadwick International students in Songdo foster cross-cultural connections, eye-opening experiences and lasting memories."
+          },
+          {
+            "source_url": "http://www.chadwickinternational.org/student-life/global-programs",
+            "quote": "Exchange programs with Chadwick School in Palos Verdes, California (and other Round Square schools)"
+          }
+        ]
+      },
+      {
+        "program_name": "Round Square Conferences",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "not specified",
+        "duration": "not specified",
+        "locations": [
+          "regional locations",
+          "international locations"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.chadwickinternational.org/student-life/global-programs",
+            "quote": "Regional and international Round Square conferences"
+          },
+          {
+            "source_url": "http://www.chadwickinternational.org/middle-school/beyond-the-classroom",
+            "quote": "As one of over 200 Round Square schools, Chadwick students participate in global conferences, events and initiatives"
+          }
+        ]
+      },
+      {
+        "program_name": "Athletic Travel and Service Opportunities",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "not specified",
+        "duration": "not specified",
+        "locations": [
+          "not specified"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.chadwickinternational.org/middle-school/beyond-the-classroom",
+            "quote": "Middle School athletics ... enjoy unique opportunities for travel and service through their athletic commitments."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Palos Verdes, California",
+      "Songdo, South Korea",
+      "other Round Square schools",
+      "regional locations",
+      "international locations"
+    ],
+    "unknowns": [
+      "Frequency and duration of exchange programs",
+      "Specific locations and frequency of athletic travel",
+      "Exact grade bands for some programs",
+      "Details on service learning trips beyond athletics"
+    ]
+  }
+}

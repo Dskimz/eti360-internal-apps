@@ -1,0 +1,158 @@
+{
+  "school_key": "st_helen_s_school",
+  "school_name": "St Helen's School",
+  "homepage": "http://www.sthelens.london/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:36 PM",
+  "tokens_in": 648,
+  "tokens_out": 784,
+  "tokens_total": 1432,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "2d671d1028cc662f",
+    "pages": [
+      "https://www.sthelens.london/learning/beyond-the-classroom/",
+      "http://www.sthelens.london/",
+      "https://www.sthelens.london/learning/",
+      "https://www.sthelens.london/learning/curriculum/",
+      "https://www.sthelens.london/learning/digital-learning/",
+      "https://www.sthelens.london/individual-learning-needs/",
+      "https://www.sthelens.london/learning/leadership-development/",
+      "https://www.sthelens.london/learning/futures-programme/",
+      "https://www.sthelens.london/learning/leavers-destinations/",
+      "https://www.sthelens.london/learning/curriculum/overview/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "St Helen's School offers a range of educational trips and travel programs across different year groups, including local visits, residential trips, and international travel focused on history, culture, and fieldwork.",
+    "programs": [
+      {
+        "program_name": "Early Years Local Visits",
+        "program_format": "day_trip",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "day",
+        "locations": [
+          "Aldenham Country Park",
+          "Chiltern Open Air Museum"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.sthelens.london/learning/beyond-the-classroom/",
+            "quote": "Visiting Aldenham Country Park in Nursery or Chiltern Open Air Museum in Reception"
+          }
+        ]
+      },
+      {
+        "program_name": "Year 6 Residential Trip to France",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "international"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "five days",
+        "locations": [
+          "France"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.sthelens.london/learning/beyond-the-classroom/",
+            "quote": "Enjoying a five-day residential trip to France in Year 6"
+          }
+        ]
+      },
+      {
+        "program_name": "Year 8 History Trip to Bletchley Park",
+        "program_format": "day_trip",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "day",
+        "locations": [
+          "Bletchley Park"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.sthelens.london/learning/beyond-the-classroom/",
+            "quote": "Learning about history by visiting Bletchley Park in Year 8"
+          }
+        ]
+      },
+      {
+        "program_name": "Year 9 WW1 Battlefields Trip to Ypres",
+        "program_format": "day_trip",
+        "trip_types": [
+          "day_trip",
+          "international"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "day",
+        "locations": [
+          "Ypres"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.sthelens.london/learning/beyond-the-classroom/",
+            "quote": "Learning about history by visiting the WW1 battlefields at Ypres in Year 9"
+          }
+        ]
+      },
+      {
+        "program_name": "Geography Field Trips",
+        "program_format": "day_trip",
+        "trip_types": [
+          "day_trip",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "regular",
+        "duration": "day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.sthelens.london/learning/beyond-the-classroom/",
+            "quote": "Practising fieldwork skills on Geography field trips"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Aldenham Country Park",
+      "Chiltern Open Air Museum",
+      "France",
+      "Bletchley Park",
+      "Ypres"
+    ],
+    "unknowns": [
+      "Exact frequency of Geography field trips",
+      "Specific locations for Geography field trips",
+      "Any additional trip programs beyond those listed"
+    ]
+  }
+}

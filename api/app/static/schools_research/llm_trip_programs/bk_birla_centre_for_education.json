@@ -1,0 +1,53 @@
+{
+  "school_key": "bk_birla_centre_for_education",
+  "school_name": "BK Birla Centre For Education",
+  "homepage": "https://bkbirlacentre.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:23 PM",
+  "tokens_in": 366,
+  "tokens_out": 265,
+  "tokens_total": 631,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "7fd8426d2b05ce91",
+    "pages": [
+      "https://bkbirlacentre.com/trips-and-tours.html",
+      "https://bkbirlacentre.com/Outdoor",
+      "https://bkbirlacentre.com/",
+      "https://bkbirlacentre.com/curriculum.html"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The B.K. Birla Centre for Education organizes field trips and educational excursions throughout the academic year as an integral part of out-of-school learning, providing practical learning experiences outside the classroom.",
+    "programs": [
+      {
+        "program_name": "Field Trips and Educational Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [],
+        "frequency": "throughout the academic year",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://bkbirlacentre.com/trips-and-tours.html",
+            "quote": "Field trips and educational excursions are an integral part of the out-of-school learning experience at the B.K. Birla Centre for Education. These trips are organized throughout the academic year to provide students with practical learning experiences outside the classroom."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific grade bands for trips",
+      "Exact duration of trips",
+      "Specific locations or destinations",
+      "Other types of trips such as overnight, international, expedition, service learning, or exchange"
+    ]
+  }
+}

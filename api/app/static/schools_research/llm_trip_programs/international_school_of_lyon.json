@@ -1,0 +1,82 @@
+{
+  "school_key": "international_school_of_lyon",
+  "school_name": "International School of Lyon",
+  "homepage": "https://www.islyon.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:30 PM",
+  "tokens_in": 532,
+  "tokens_out": 331,
+  "tokens_total": 863,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "7b3b8a7c1212487d",
+    "pages": [
+      "https://www.islyon.org/pta/events-and-activities/",
+      "https://www.islyon.org/",
+      "https://www.islyon.org/learning-at-isl/middle-school/",
+      "https://www.islyon.org/learning-at-isl/high-school/",
+      "https://www.islyon.org/learning-at-isl/",
+      "https://www.islyon.org/learning-at-isl/kindergarten/",
+      "https://www.islyon.org/learning-at-isl/primary-school/",
+      "https://www.islyon.org/learning-at-isl/creativity-activity-service/",
+      "https://www.islyon.org/learning-at-isl/enrichment-programme/",
+      "https://www.islyon.org/learning-at-isl/professional-development/",
+      "https://www.islyon.org/learning-at-isl/tony-parker-adequat-academy/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Primary students participate in regular out-of-school visits linked to their Units of Inquiry and all classes from Grades 1-5 enjoy an annual three-day residential trip, prioritizing destinations within France.",
+    "programs": [
+      {
+        "program_name": "Primary School Residential Trip",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "three days",
+        "locations": [
+          "France"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.islyon.org/learning-at-isl/primary-school/",
+            "quote": "All classes from Grades 1–5 enjoy an annual three-day residential trip, prioritizing destinations within Fra…"
+          }
+        ]
+      },
+      {
+        "program_name": "Primary School Out-of-School Visits",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "regular",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.islyon.org/learning-at-isl/primary-school/",
+            "quote": "Primary students benefit from regular out-of-school visits and trips linked to their Units of Inquiry."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "France"
+    ],
+    "unknowns": []
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "school_key": "uwc_thailand",
+  "school_name": "UWC Thailand",
+  "homepage": "https://uwcthailand.ac.th/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:21 PM",
+  "tokens_in": 535,
+  "tokens_out": 255,
+  "tokens_total": 790,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "6dd23fd428163526",
+    "pages": [
+      "https://uwcthailand.ac.th/school-life",
+      "https://uwcthailand.ac.th/school-life/school-uniform",
+      "https://uwcthailand.ac.th/school-life/food",
+      "https://uwcthailand.ac.th/school-life/transportation",
+      "https://uwcthailand.ac.th/school-life/campus-security-aqi",
+      "https://uwcthailand.ac.th/school-life/counselling-services",
+      "https://uwcthailand.ac.th/school-life/counselling-services/social-emotional-support",
+      "https://uwcthailand.ac.th/school-life/counselling-services/peer-support",
+      "https://uwcthailand.ac.th/school-life/counselling-services/boarding-support",
+      "https://uwcthailand.ac.th/beyond-the-classroom/outdoor-experiential-education",
+      "https://uwcthailand.ac.th/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "UWC Thailand offers outdoor experiential education through the Duke of Edinburgh International Award for Grades 9-12, including camps for Grades 9 and 10 to support bronze and silver award requirements.",
+    "programs": [
+      {
+        "program_name": "Duke of Edinburgh International Award",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://uwcthailand.ac.th/beyond-the-classroom/outdoor-experiential-education",
+            "quote": "The Duke of Edinburgh International Award is open to all students in Grades 9-12, offering an inclusive opportunity for self-discovery and personal development. Specifically, Grade 9 and 10 camps are specifically designed to support students in completing the adventurous journey requirements for the bronze and silver awards, respectively."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "program_format",
+      "frequency",
+      "duration",
+      "locations"
+    ]
+  }
+}

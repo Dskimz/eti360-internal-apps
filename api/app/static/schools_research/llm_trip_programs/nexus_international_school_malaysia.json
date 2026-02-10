@@ -1,0 +1,102 @@
+{
+  "school_key": "nexus_international_school_malaysia",
+  "school_name": "Nexus International School Malaysia",
+  "homepage": "https://www.nexus.edu.my/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:33 PM",
+  "tokens_in": 873,
+  "tokens_out": 577,
+  "tokens_total": 1450,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "888d93a6d41b9e2a",
+    "pages": [
+      "https://www.nexus.edu.my/",
+      "https://www.nexus.edu.my/about-nexus/facilities-services/",
+      "https://www.nexus.edu.my/innovative-learning/middle-school/",
+      "https://www.nexus.edu.my/innovative-learning/whole-school-journey/",
+      "https://www.nexus.edu.my/innovative-learning/academic-results/",
+      "https://www.nexus.edu.my/innovative-learning/early-years-centre/",
+      "https://www.nexus.edu.my/innovative-learning/primary/",
+      "https://www.nexus.edu.my/innovative-learning/igcse/",
+      "https://www.nexus.edu.my/innovative-learning/international-baccalaureate/",
+      "https://www.nexus.edu.my/innovative-learning/wider-learning/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Nexus International School Malaysia offers a variety of educational trips including residential trips and participation in The Duke of Edinburgh’s International Award from Year 9 onwards. These programs foster independence, resilience, leadership, teamwork, and global citizenship through service, skills development, physical challenges, expeditions, and excursions. Challenge Week allows learners to choose their own adventure, while the Year 12 Residential Trip broadens horizons and creates lasting memories beyond the classroom.",
+    "programs": [
+      {
+        "program_name": "The Duke of Edinburgh’s International Award",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nexus.edu.my/innovative-learning/wider-learning/",
+            "quote": "From Year 9 onwards, learners can take part in The Duke of Edinburgh’s International Award, building resilience, leadership and a spirit of adventure. Through service, skills development, physical challenges and expeditions, learners grow in confidence and independence while making a positive impact on their communities."
+          }
+        ]
+      },
+      {
+        "program_name": "Challenge Week",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "week",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nexus.edu.my/innovative-learning/wider-learning/",
+            "quote": "Challenge Week allows them the freedom to choose their own adventure, fostering independence and resilience."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 12 Residential Trip",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nexus.edu.my/innovative-learning/wider-learning/",
+            "quote": "The Year 12 Residential Trip and other excursions broaden their horizons, building teamwork and creating lasting memories beyond the classroom."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific destinations for trips and expeditions",
+      "Exact duration details for The Duke of Edinburgh’s International Award activities",
+      "Frequency details for The Duke of Edinburgh’s International Award and Year 12 Residential Trip"
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "school_key": "qingdao_amerasia_international_school",
+  "school_name": "Qingdao Amerasia International School",
+  "homepage": "http://qingdaoamerasia.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:34 PM",
+  "tokens_in": 448,
+  "tokens_out": 407,
+  "tokens_total": 855,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "f87c60637bff148a",
+    "pages": [
+      "http://qingdaoamerasia.org/",
+      "http://qingdaoamerasia.org/academics"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Qingdao Amerasia International School (QAIS) offers travel programs that include participation in ISTA festivals worldwide, engaging students in artistic and dramatic activities with peers. The school partners with WildChina Education, a leader in experiential learning travel, emphasizing safety, sustainability, and high-quality excursions.",
+    "programs": [
+      {
+        "program_name": "ISTA Festival Participation",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "various international locations"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://qingdaoamerasia.org/academics",
+            "quote": "QAIS students travel to various ISTA festivals throughout the world to engage with peers while confronting global issues and themes through artistic and dramatic activities..."
+          }
+        ]
+      },
+      {
+        "program_name": "Experiential Learning Excursions with WildChina Education",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Asia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://qingdaoamerasia.org/academics",
+            "quote": "WildChina Education is an award-winning travel company that curates experiential learning programs for the world’s leading institutions... their variety of high-quality excursions has made them Asia’s oldest and most established leader in experiential and creative educational travel."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "various international locations",
+      "Asia"
+    ],
+    "unknowns": [
+      "Specific grade bands for WildChina excursions",
+      "Frequency and duration of trips",
+      "Exact destinations of ISTA festivals and WildChina excursions"
+    ]
+  }
+}

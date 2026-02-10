@@ -1,0 +1,39 @@
+{
+  "school_key": "shanghai_american_school",
+  "school_name": "Shanghai American School",
+  "homepage": "http://www.saschina.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:35 PM",
+  "tokens_in": 502,
+  "tokens_out": 50,
+  "tokens_total": 552,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "2b52eb1e255af945",
+    "pages": [
+      "http://www.saschina.org/student-life",
+      "http://www.saschina.org/student-life/activities",
+      "http://www.saschina.org/",
+      "http://www.saschina.org/academics/middle-school",
+      "http://www.saschina.org/academics/high-school",
+      "https://www.saschina.org/professional-learning-sas",
+      "http://www.saschina.org/academics",
+      "http://www.saschina.org/academics/early-childhood-education",
+      "http://www.saschina.org/academics/elementary-school",
+      "http://www.saschina.org/academics/facilities-and-learning-spaces",
+      "http://www.saschina.org/academics/technology"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "No specific trip programs or destinations were explicitly described in the provided evidence snippets.",
+    "programs": [],
+    "locations_all": [],
+    "unknowns": [
+      "No specific information about trip or travel programs was found in the provided evidence."
+    ]
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "school_key": "isidore_newman_school",
+  "school_name": "Isidore Newman School",
+  "homepage": "https://www.newmanschool.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:30 PM",
+  "tokens_in": 1045,
+  "tokens_out": 973,
+  "tokens_total": 2018,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "7504e9c3022ff877",
+    "pages": [
+      "https://www.newmanschool.org/school-life",
+      "https://www.newmanschool.org/",
+      "https://www.newmanschool.org/academics/middle-school",
+      "https://www.newmanschool.org/academics/middle-school/welcome",
+      "https://www.newmanschool.org/academics/middle-school/curriculum",
+      "https://www.newmanschool.org/academics/middle-school/signature-programs",
+      "https://www.newmanschool.org/academics/upper-school",
+      "https://www.newmanschool.org/academics/upper-school/welcome",
+      "https://www.newmanschool.org/academics/upper-school/curriculum",
+      "https://www.newmanschool.org/academics/upper-school/signature-programs",
+      "https://www.newmanschool.org/academics",
+      "https://www.newmanschool.org/academics/welcome",
+      "https://www.newmanschool.org/academics/green-trees",
+      "https://www.newmanschool.org/academics/green-trees/welcome",
+      "https://www.newmanschool.org/academics/green-trees/philosophy",
+      "https://www.newmanschool.org/academics/green-trees/curriculum",
+      "https://www.newmanschool.org/academics/lower-school",
+      "https://www.newmanschool.org/academics/lower-school/welcome",
+      "https://www.newmanschool.org/academics/lower-school/curriculum",
+      "https://www.newmanschool.org/academics/lower-school/the-newman-way",
+      "https://www.newmanschool.org/academics/libraries"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Isidore Newman School offers a variety of trip and travel programs across middle and upper school grades, including day trips, overnight excursions, and an annual week-long trip for freshmen. Middle school students participate in both day trips to local cultural and historical sites and extended overnight trips. Upper school freshmen take a week-long trip to Washington, D.C. aligned with their government curriculum.",
+    "programs": [
+      {
+        "program_name": "Middle School Overnight Trips",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "3 days for 7th grade, 8 days for 8th grade",
+        "locations": [
+          "Percy Quin State Park, Mississippi",
+          "Camp Kahdalea, North Carolina"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.newmanschool.org/academics/middle-school/signature-programs",
+            "quote": "Each fall both the seventh and eighth grades go on extended overnight trips – the seventh grade to Percy Quin State Park in Mississippi for three days and the eighth grade to Camp Kahdalea in North Carolina for eight…"
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Day Trips",
+        "program_format": "day_trip",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "varies",
+        "duration": "day trips",
+        "locations": [
+          "New Orleans Museum of Art",
+          "National World War II Museum",
+          "New Canal Lighthouse",
+          "Jean Lafitte National Historical Park and Preserve",
+          "Fontainebleau State Park",
+          "Bayou St. John"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.newmanschool.org/academics/middle-school/signature-programs",
+            "quote": "Besides day trips that are unique to particular courses, whole grades and combinations of grades participate in day trips to New Orleans Museum of Art, the National World War II Museum, the New Canal Lighthouse, Jean Lafitte National Historical Park and Preserve, Fontainebleau State Park, and Bayou St. John."
+          }
+        ]
+      },
+      {
+        "program_name": "Freshman Washington Trip",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "Washington, D.C."
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.newmanschool.org/academics/upper-school/signature-programs",
+            "quote": "For over 60 years the Newman freshmen class has travelled annually to Washington, D.C. This one-week experience is meant to coincide with the 9th grade GES (government and economic systems) curriculum."
+          }
+        ]
+      },
+      {
+        "program_name": "Upper School Day Trips",
+        "program_format": "day_trip",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "varies",
+        "duration": "day trips",
+        "locations": [
+          "Monticello",
+          "University of Virginia",
+          "Jamestown",
+          "Williamsburg",
+          "Mount Vernon",
+          "National Cathedral",
+          "United States Naval Academy"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.newmanschool.org/academics/upper-school/signature-programs",
+            "quote": "The trip also includes day trips to Monticello, the University of Virginia, Jamestown, Williamsburg, Mount Vernon, the National Cathedral, and the United States Naval Academy."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Percy Quin State Park, Mississippi",
+      "Camp Kahdalea, North Carolina",
+      "New Orleans Museum of Art",
+      "National World War II Museum",
+      "New Canal Lighthouse",
+      "Jean Lafitte National Historical Park and Preserve",
+      "Fontainebleau State Park",
+      "Bayou St. John",
+      "Washington, D.C.",
+      "Monticello",
+      "University of Virginia",
+      "Jamestown",
+      "Williamsburg",
+      "Mount Vernon",
+      "National Cathedral",
+      "United States Naval Academy"
+    ],
+    "unknowns": []
+  }
+}

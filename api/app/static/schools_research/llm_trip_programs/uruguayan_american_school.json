@@ -1,0 +1,60 @@
+{
+  "school_key": "uruguayan_american_school",
+  "school_name": "Uruguayan American School",
+  "homepage": "http://www.uas.edu.uy/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:40 PM",
+  "tokens_in": 437,
+  "tokens_out": 301,
+  "tokens_total": 738,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "36c2cec39c7b4374",
+    "pages": [
+      "https://www.uas.edu.uy/beyond-the-classroom/",
+      "http://www.uas.edu.uy/beyond-the-classroom/",
+      "https://www.uas.edu.uy/beyond-the-classroom/?lang=es",
+      "http://www.uas.edu.uy/",
+      "https://www.uas.edu.uy/asa_information/",
+      "https://www.uas.edu.uy/wp-content/uploads/2025/07/EC-ES-Family-Curriculum-Guide-1.pdf"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The Outdoor Education Experience program at Uruguayan American School offers students dynamic learning experiences beyond the classroom, focusing on life skills, community service, leadership, problem-solving, and cultural understanding through various trips that challenge them physically, emotionally, and intellectually.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education Experience",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "service_learning",
+          "expedition_outdoor",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.uas.edu.uy/beyond-the-classroom/",
+            "quote": "The Outdoor Education Experience program moves students beyond the borders of the classroom exposing them to new, dynamic learning experiences. Students learn new life skills, participate in community service, develop leadership and problem-solving skills, and/or increase their understanding of themselves and of other cultures. The trips expose students to physical, emotional, and intellectual challenges that make th…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "grade bands for trips",
+      "frequency of trips",
+      "duration of trips",
+      "specific trip locations"
+    ]
+  }
+}

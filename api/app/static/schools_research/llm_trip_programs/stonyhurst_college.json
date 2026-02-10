@@ -1,0 +1,113 @@
+{
+  "school_key": "stonyhurst_college",
+  "school_name": "Stonyhurst College",
+  "homepage": "https://www.stonyhurst.ac.uk/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:37 PM",
+  "tokens_in": 1796,
+  "tokens_out": 735,
+  "tokens_total": 2531,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 14,
+    "prompt_hash": "b27f73b10b145d6c",
+    "pages": [
+      "https://www.stonyhurst.ac.uk/about-us/stonyhurst-experience/summer-school/activities",
+      "https://www.stonyhurst.ac.uk/st-marys-hall-pre-prep/outdoor-learning",
+      "https://www.stonyhurst.ac.uk/",
+      "https://www.stonyhurst.ac.uk/about-us/stonyhurst-experience/summer-school/the-english-course",
+      "https://www.stonyhurst.ac.uk/about-us/stonyhurst-college-historic-collections/learning-through-the-stonyhurst-collections",
+      "https://www.stonyhurst.ac.uk/st-marys-hall-pre-prep/learning",
+      "https://www.stonyhurst.ac.uk/st-marys-hall-pre-prep/learning/virtual-learning",
+      "https://www.stonyhurst.ac.uk/st-marys-hall-prep-school/learning",
+      "https://www.stonyhurst.ac.uk/st-marys-hall-prep-school/learning/virtual-learning",
+      "https://www.stonyhurst.ac.uk/st-marys-hall-prep-school/learning/virtual-learning/wellness-platform",
+      "https://www.stonyhurst.ac.uk/stonyhurst-college/academic-departments/learning-support",
+      "https://www.stonyhurst.ac.uk/stonyhurst-college/academic-departments/figures-and-rudiments-learning",
+      "https://www.stonyhurst.ac.uk/stonyhurst-college/virtual-learning-college",
+      "https://www.stonyhurst.ac.uk/international-language-school/curriculum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Stonyhurst College offers a range of trip and travel programs including a whole school Enrichment Week with day trips and residential trips to European capitals and historical sites, as well as a summer English course with weekly excursions to UK cities, theme parks, and water sports activities.",
+    "programs": [
+      {
+        "program_name": "Enrichment Week",
+        "program_format": "residential and day trips",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week (mid-June)",
+        "locations": [
+          "Barcelona",
+          "Madrid",
+          "Rome",
+          "First World War battlefields of northern France",
+          "Belgium"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.stonyhurst.ac.uk/st-marys-hall-prep-school/learning",
+            "quote": "In mid-June and immediately following the end-of-year assessment week, the whole school embarks upon Enrichment Week. Pupils and staff alike embrace learning opportunities and life skills beyond the traditional confines of the classroom. Prep end Elements pupils embark upon adventures closer to home, with day trips and excursions as well as exciting activities on-site."
+          },
+          {
+            "source_url": "https://www.stonyhurst.ac.uk/stonyhurst-college/academic-departments/figures-and-rudiments-learning",
+            "quote": "Residential trips depart for European capital cities such as Barcelona, Madrid or Rome whilst the children in Figures visit the First World War battlefields of northern France and Belgium."
+          }
+        ]
+      },
+      {
+        "program_name": "Summer English Course",
+        "program_format": "residential",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "two weeks (mid-July)",
+        "locations": [
+          "North West England",
+          "UK cities",
+          "theme parks"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.stonyhurst.ac.uk/about-us/stonyhurst-experience/summer-school/the-english-course",
+            "quote": "Two Weeks – Friday 10th July – Friday 24th July 2026 | £2,750 | Age Range: 10 – 17 years. All teaching and course materials, accommodation, meals and snacks; activities and excursion programme; transfers (on specific arrival/departure days and specific locations in the North West)."
+          },
+          {
+            "source_url": "https://www.stonyhurst.ac.uk/about-us/stonyhurst-experience/summer-school/the-english-course",
+            "quote": "Every pupil also enjoys two off site excursions per week (one half day, one full day) which have previously included: UK city sightseeing and cultural excursions, theme parks, water sports."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Barcelona",
+      "Madrid",
+      "Rome",
+      "First World War battlefields of northern France",
+      "Belgium",
+      "North West England",
+      "UK cities",
+      "theme parks"
+    ],
+    "unknowns": []
+  }
+}

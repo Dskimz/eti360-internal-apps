@@ -1,0 +1,58 @@
+{
+  "school_key": "leipzig_international_school",
+  "school_name": "Leipzig International School",
+  "homepage": "https://www.lis.school/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 354,
+  "tokens_out": 217,
+  "tokens_total": 571,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "3aa7f62044f27ad0",
+    "pages": [
+      "https://www.lis.school/",
+      "https://www.lis.school/learning/",
+      "https://www.lis.school/learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Leipzig International School offers experiential learning opportunities including field trips, visits from community members, and forest walks primarily at the Kindergarten level to encourage natural curiosity and individual development.",
+    "programs": [
+      {
+        "program_name": "Kindergarten Experiential Learning Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "local community",
+          "forest"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.lis.school/learning/",
+            "quote": "Through experiential learning with field trips, visits from community members or forest walks we encourage natural curiosity and enable individual development..."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local community",
+      "forest"
+    ],
+    "unknowns": [
+      "Details on trips for grades beyond Kindergarten",
+      "Specific frequency, duration, or other trip programs"
+    ]
+  }
+}

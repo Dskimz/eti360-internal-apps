@@ -1,0 +1,88 @@
+{
+  "school_key": "the_awty_international_school",
+  "school_name": "The Awty International School",
+  "homepage": "http://www.awty.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:38 PM",
+  "tokens_in": 1070,
+  "tokens_out": 345,
+  "tokens_total": 1415,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "530025ea2d97d5f9",
+    "pages": [
+      "http://www.awty.org/campus-life/student-clubs-activities",
+      "http://www.awty.org/campus-life/awty-plus/activities",
+      "http://www.awty.org/",
+      "http://www.awty.org/campus-life/community-service",
+      "http://www.awty.org/academics/middle-school",
+      "http://www.awty.org/academics/middle-school/curriculum",
+      "http://www.awty.org/academics/upper-school",
+      "http://www.awty.org/academics/upper-school/curriculum",
+      "http://www.awty.org/admissions/apply/earlylearning",
+      "http://www.awty.org/academics",
+      "http://www.awty.org/academics/early-learning-campus",
+      "http://www.awty.org/academics/lower-school",
+      "http://www.awty.org/my-awty/academics/required-summer-reading",
+      "http://www.awty.org/academics/diplomas",
+      "http://www.awty.org/academics/french-accredited-program",
+      "http://www.awty.org/academics/languages",
+      "http://www.awty.org/academics/languages/curriculum-overview",
+      "https://www.awty.org/uploaded/New_Website_2016/Academics/Languages/Languages_-_CEFR.pdf",
+      "http://www.awty.org/academics/languages/selecting-languages",
+      "http://www.awty.org/academics/diplomas/international-baccalaureate",
+      "http://www.awty.org/academics/diplomas/international-baccalaureate/ib-results"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The Awty International School offers numerous field trips and excursions for students across grade levels, including local trips in Houston and its surrounding areas, as well as international travel opportunities. These trips are integrated with academic and extracurricular activities, promoting language interaction and real-life learning experiences.",
+    "programs": [
+      {
+        "program_name": "Field Trips and Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "numerous, regularly offered",
+        "duration": null,
+        "locations": [
+          "Houston",
+          "surrounding areas",
+          "abroad"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.awty.org/academics/french-accredited-program",
+            "quote": "Students go on numerous field trips in Houston, its surroundings areas, and abroad."
+          },
+          {
+            "source_url": "http://www.awty.org/academics/french-accredited-program",
+            "quote": "Cross-cutting activities combining students in both programs, offered regularly, in the form of sporting events, field trips, visits, musical shows, and group projects."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Houston",
+      "surrounding areas",
+      "abroad"
+    ],
+    "unknowns": [
+      "Specific program names for trips",
+      "Exact grade levels for all trips",
+      "Duration of trips",
+      "Frequency details beyond 'numerous' and 'regularly'",
+      "Detailed destinations abroad"
+    ]
+  }
+}

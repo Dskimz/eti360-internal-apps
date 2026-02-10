@@ -1,0 +1,73 @@
+{
+  "school_key": "international_school_of_stuttgart_degerloch_campus",
+  "school_name": "International School of Stuttgart (Degerloch Campus)",
+  "homepage": "http://www.issev.de/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:30 PM",
+  "tokens_in": 346,
+  "tokens_out": 297,
+  "tokens_total": 643,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "c38f7491b1dc990c",
+    "pages": [
+      "http://www.issev.de/",
+      "https://www.issev.de/academics/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The school offers daily trips to nearby athletic centres and excursions that help students understand the world around them, extending learning beyond the classroom.",
+    "programs": [
+      {
+        "program_name": "Daily Trips to Nearby Athletic Centres",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": "daily",
+        "duration": null,
+        "locations": [
+          "nearby athletic centres"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.issev.de/",
+            "quote": "Learning extends beyond the classroom; through play, daily trips to nearby athletic centres..."
+          }
+        ]
+      },
+      {
+        "program_name": "Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.issev.de/",
+            "quote": "Excursions that help students understand the world around them."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "nearby athletic centres"
+    ],
+    "unknowns": [
+      "grade bands for trips and excursions",
+      "duration of trips and excursions",
+      "specific destinations for excursions"
+    ]
+  }
+}

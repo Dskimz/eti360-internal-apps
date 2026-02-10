@@ -1,0 +1,182 @@
+{
+  "school_key": "british_international_school_of_boston",
+  "school_name": "British International School of Boston",
+  "homepage": "https://www.nordangliaeducation.com/bisb-boston",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:24 PM",
+  "tokens_in": 1280,
+  "tokens_out": 933,
+  "tokens_total": 2213,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 9,
+    "prompt_hash": "12de1fc3cfd0e143",
+    "pages": [
+      "https://www.nordangliaeducation.com/bisb-boston",
+      "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences",
+      "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/eca",
+      "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/athletics",
+      "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/model-united-nations",
+      "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/the-duke-of-edinburghs-international-award",
+      "https://www.nordangliaeducation.com/bisb-boston/academic-excellence/high-school-curriculum",
+      "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/tanzania-service-learning-trip",
+      "https://www.nordangliaeducation.com/bisb-boston/news/2026/1/29/top-5-benefits-of-play-based-learning",
+      "https://www.nordangliaeducation.com/bisb-boston/news/2026/1/13/the-impact-of-play-based-learning-in-preschool"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "British International School of Boston offers a variety of trip and travel programs including annual international service expeditions, curriculum-linked field trips, competitive athletic trips, and experiential learning opportunities across grade levels. These trips foster global citizenship, cultural understanding, and team spirit.",
+    "programs": [
+      {
+        "program_name": "Tanzania Service Learning Trip",
+        "program_format": "international service expedition",
+        "trip_types": [
+          "international",
+          "service_learning",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Arusha, Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences",
+            "quote": "Our High Schoolers can go on our annual international service expedition to Arusha, Tanzania. Alongside peers from other Nord Anglia schools, our students deepen their global citizenship when they get to know Arusha’s people, culture, and environment through hands-on service."
+          }
+        ]
+      },
+      {
+        "program_name": "Curriculum-linked Field Trips",
+        "program_format": "day trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "regular",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/eca",
+            "quote": "Children from Nursery to Year 6 enjoy regular field trips which are linked to the curriculum"
+          }
+        ]
+      },
+      {
+        "program_name": "Washington DC Trip",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Washington DC"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/eca",
+            "quote": "Washington DC | Year 7"
+          }
+        ]
+      },
+      {
+        "program_name": "Quebec/Montreal Trip",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Quebec",
+          "Montreal"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/eca",
+            "quote": "Quebec/Montreal | Year 8"
+          }
+        ]
+      },
+      {
+        "program_name": "Boston-Based Day Trips",
+        "program_format": "day trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Boston"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/eca",
+            "quote": "Boston-Based Day Trips | Year 7 - 12"
+          }
+        ]
+      },
+      {
+        "program_name": "Ski Trip Canada Cup",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Canada"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisb-boston/outstanding-experiences/eca",
+            "quote": "Ski Trip Canada Cup | Year 7 - 13"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Arusha, Tanzania",
+      "Washington DC",
+      "Quebec",
+      "Montreal",
+      "Boston",
+      "Canada"
+    ],
+    "unknowns": [
+      "Exact duration of trips",
+      "Frequency of trips other than Tanzania service expedition",
+      "Specific program formats for some trips"
+    ]
+  }
+}

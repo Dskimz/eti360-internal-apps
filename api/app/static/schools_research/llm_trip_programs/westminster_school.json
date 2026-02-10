@@ -1,0 +1,227 @@
+{
+  "school_key": "westminster_school",
+  "school_name": "Westminster School",
+  "homepage": "http://www.westminster.org.uk/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:41 PM",
+  "tokens_in": 1525,
+  "tokens_out": 1271,
+  "tokens_total": 2796,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 9,
+    "prompt_hash": "b3982e87c6a48a68",
+    "pages": [
+      "https://www.westminster.org.uk/school-life/",
+      "https://www.westminster.org.uk/school-life/sixth-form/",
+      "https://www.westminster.org.uk/school-life/watch-westminster/",
+      "https://www.westminster.org.uk/school-life/the-school-day/",
+      "https://www.westminster.org.uk/school-life/food/",
+      "https://www.westminster.org.uk/school-life/the-abbey/",
+      "https://www.westminster.org.uk/school-life/pupil-welfare/",
+      "https://www.westminster.org.uk/school-life/boarding/",
+      "https://www.westminster.org.uk/school-life/the-houses/",
+      "https://www.westminster.org.uk/co-curriculum/activities/",
+      "https://www.westminster.org.uk/co-curriculum/expeditions-and-exchanges/",
+      "http://www.westminster.org.uk/",
+      "https://www.westminster.org.uk/academic-life/curriculum-overview/",
+      "https://www.westminster.org.uk/academic-life/learning-development/",
+      "https://www.westminster.org.uk/co-curriculum/",
+      "https://www.westminster.org.uk/co-curriculum/art/",
+      "https://www.westminster.org.uk/co-curriculum/drama/",
+      "https://www.westminster.org.uk/co-curriculum/music/",
+      "https://www.westminster.org.uk/co-curriculum/sport/",
+      "https://www.westminster.org.uk/co-curriculum/societies/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Westminster School offers a wide range of cultural, leisure, and expedition trips including language exchanges, outdoor expeditions, and university scouting trips. Trips cover domestic and international locations and cater to various year groups with some longstanding annual programs.",
+    "programs": [
+      {
+        "program_name": "Greek Trip for Classics Enthusiasts",
+        "program_format": "annual",
+        "trip_types": [
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual (Easter)",
+        "duration": "not specified",
+        "locations": [
+          "Greece"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.westminster.org.uk/co-curriculum/expeditions-and-exchanges/",
+            "quote": "Some of the School’s expeditions have been running for many years now, such as the longstanding Greek trip for Classics enthusiasts, which takes place at Easter."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 12 US University Scouting Trip",
+        "program_format": "annual",
+        "trip_types": [
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "not specified",
+        "locations": [
+          "United States"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.westminster.org.uk/co-curriculum/expeditions-and-exchanges/",
+            "quote": "Each year, Year 12 pupils are offered the chance to travel to the States to scout out US university options."
+          }
+        ]
+      },
+      {
+        "program_name": "Lower School Expeditions (LSEs)",
+        "program_format": "biannual",
+        "trip_types": [
+          "domestic",
+          "international",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "twice a year",
+        "duration": "not specified",
+        "locations": [
+          "UK",
+          "Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.westminster.org.uk/co-curriculum/expeditions-and-exchanges/",
+            "quote": "Twice a year, the School runs Lower School Expeditions (LSEs), for pupils in Years 9, 10 and 11. Recent LSEs have involved travel the UK and Europe."
+          }
+        ]
+      },
+      {
+        "program_name": "Language Exchange Programs",
+        "program_format": "not specified",
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "not specified",
+        "duration": "one week",
+        "locations": [
+          "France",
+          "Spain",
+          "Germany",
+          "Chile",
+          "China",
+          "Berlin",
+          "Paris",
+          "Riga"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.westminster.org.uk/co-curriculum/expeditions-and-exchanges/",
+            "quote": "Westminster has offered an exchange of pupils with schools in France, Spain, Germany, Chile and China... Our European exchanges with schools in Berlin, Paris and Riga are open pupils in Year 11, and allow language-learners to spend one week with a host family."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 9 Outdoor Activity Trip to Alston",
+        "program_format": "annual",
+        "trip_types": [
+          "domestic",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "four days",
+        "locations": [
+          "Alston, Cumbria, UK",
+          "Northern Pennines"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.westminster.org.uk/co-curriculum/expeditions-and-exchanges/",
+            "quote": "All Year 9 boys visit Alston for a four-day stay in house groups, together with their housemaster and another member of house staff."
+          }
+        ]
+      },
+      {
+        "program_name": "Cultural and Leisure Trips",
+        "program_format": "not specified",
+        "trip_types": [
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "not specified"
+        ],
+        "frequency": "approximately 60 expeditions per year",
+        "duration": "not specified",
+        "locations": [
+          "France",
+          "Spain",
+          "Germany",
+          "Russia",
+          "Cuba",
+          "Florence",
+          "Venice",
+          "French Alps",
+          "Jasper",
+          "Vermont"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.westminster.org.uk/co-curriculum/expeditions-and-exchanges/",
+            "quote": "Westminster offers an extensive variety of both cultural and leisure trips and in an average year the school mounts approximately 60 expeditions. Linguists are well catered for by visits to France, Spain, Germany, Russia and Cuba; art historians have visited Florence and Venice to study the works of the Old Masters; skiers have experienced the slopes in the French Alps, Jasper and Vermont."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Greece",
+      "United States",
+      "UK",
+      "Europe",
+      "France",
+      "Spain",
+      "Germany",
+      "Chile",
+      "China",
+      "Berlin",
+      "Paris",
+      "Riga",
+      "Alston, Cumbria, UK",
+      "Northern Pennines",
+      "Russia",
+      "Cuba",
+      "Florence",
+      "Venice",
+      "French Alps",
+      "Jasper",
+      "Vermont"
+    ],
+    "unknowns": [
+      "Exact duration of most trips except Year 9 Alston trip and Year 11 exchange week",
+      "Specific grade bands for some cultural and leisure trips",
+      "Frequency details for language exchanges and cultural/leisure trips"
+    ]
+  }
+}

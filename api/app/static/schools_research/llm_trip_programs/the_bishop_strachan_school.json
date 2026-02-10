@@ -1,0 +1,119 @@
+{
+  "school_key": "the_bishop_strachan_school",
+  "school_name": "The Bishop Strachan School",
+  "homepage": "http://www.bss.on.ca/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:38 PM",
+  "tokens_in": 1116,
+  "tokens_out": 666,
+  "tokens_total": 1782,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 7,
+    "prompt_hash": "81b03791a1d4cdb9",
+    "pages": [
+      "http://www.bss.on.ca/academics/beyond-the-classroom",
+      "http://www.bss.on.ca/academics/beyond-the-classroom/global-learning-and-experiences",
+      "http://www.bss.on.ca/academics/beyond-the-classroom/outdoor-education",
+      "http://www.bss.on.ca/",
+      "http://www.bss.on.ca/academics",
+      "http://www.bss.on.ca/academics/junior-school",
+      "http://www.bss.on.ca/academics/junior-school/after-school-care",
+      "http://www.bss.on.ca/academics/middle-and-senior-school",
+      "http://www.bss.on.ca/academics/middle-and-senior-school/grades-7-and-8",
+      "http://www.bss.on.ca/academics/middle-and-senior-school/grades-9-to-12",
+      "http://www.bss.on.ca/academics/middle-and-senior-school/advanced-placement"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The Bishop Strachan School offers a range of trip and travel programs including reciprocal and language immersion exchanges, outdoor education with wilderness expeditions, and participation in the Duke of Edinburgh’s International Award involving physical activities, outdoor expeditions, and community service. These programs span multiple grade levels and include both local and international experiences.",
+    "programs": [
+      {
+        "program_name": "Reciprocal and Language Immersion Exchanges",
+        "program_format": "exchange",
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "France"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bss.on.ca/academics/beyond-the-classroom/global-learning-and-experiences",
+            "quote": "We maintain reciprocal exchange partnerships, as well as language immersion exchanges with Ermitage International School in France."
+          }
+        ]
+      },
+      {
+        "program_name": "Outdoor and Environmental Education",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "regular",
+        "duration": "varied (day hikes to overnight wilderness expeditions)",
+        "locations": [
+          "nearby ravine",
+          "camp",
+          "wilderness areas"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bss.on.ca/academics/beyond-the-classroom/outdoor-education",
+            "quote": "Whether it’s a hike in a nearby ravine, pitching a tent at camp or an overnight wilderness expedition, the Outdoor and Environmental Education program introduces students to the wonders of the natural world."
+          },
+          {
+            "source_url": "http://www.bss.on.ca/academics/beyond-the-classroom/outdoor-education",
+            "quote": "Rain or shine, students in the Middle and Senior School participate in regular outdoor activities and experiences as part of the curriculum."
+          }
+        ]
+      },
+      {
+        "program_name": "Duke of Edinburgh’s International Award",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.bss.on.ca/academics/beyond-the-classroom/outdoor-education",
+            "quote": "The Duke of Edinburgh’s International Award (Duke of Ed) challenges students in Grades 9 to 12 to foster positive lifestyle habits and skills through physical activities, outdoor expeditions and service to the community."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "France",
+      "nearby ravine",
+      "camp",
+      "wilderness areas"
+    ],
+    "unknowns": [
+      "Frequency and duration details for exchange programs",
+      "Specific locations and durations for Duke of Edinburgh expeditions"
+    ]
+  }
+}

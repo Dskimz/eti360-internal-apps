@@ -1,0 +1,122 @@
+{
+  "school_key": "ransom_everglades_school",
+  "school_name": "Ransom Everglades School",
+  "homepage": "http://www.ransomeverglades.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:34 PM",
+  "tokens_in": 1550,
+  "tokens_out": 666,
+  "tokens_total": 2216,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 13,
+    "prompt_hash": "fadb13a7f0936586",
+    "pages": [
+      "http://www.ransomeverglades.org/student-life",
+      "http://www.ransomeverglades.org/student-life/arts",
+      "http://www.ransomeverglades.org/student-life/athletics",
+      "http://www.ransomeverglades.org/student-life/clubs-and-activities",
+      "http://www.ransomeverglades.org/student-life/explorer-externship-program",
+      "http://www.ransomeverglades.org/student-life/summer-programs",
+      "http://www.ransomeverglades.org/",
+      "http://www.ransomeverglades.org/academics",
+      "http://www.ransomeverglades.org/academics/curriculum",
+      "http://www.ransomeverglades.org/academics/signature-programs",
+      "http://www.ransomeverglades.org/academics/college-counseling",
+      "http://www.ransomeverglades.org/academics/holzman-center-of-applied-ethics",
+      "http://www.ransomeverglades.org/academics/stem-center-and-la-brisa"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Ransom Everglades School offers a range of trip and travel programs including immersive multi-day expeditions requiring applications, one-day waypoint experiences, a five-day freshman Everglades expedition, and summer camp field trips to local adventure parks and snorkeling sites.",
+    "programs": [
+      {
+        "program_name": "Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": "multi-day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.ransomeverglades.org/student-life/explorer-externship-program",
+            "quote": "Expeditions – longer, immersive experiences that require a student application"
+          }
+        ]
+      },
+      {
+        "program_name": "Waypoints",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": "one day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.ransomeverglades.org/student-life/explorer-externship-program",
+            "quote": "Waypoints – one-day opportunities students can sign up for directly"
+          }
+        ]
+      },
+      {
+        "program_name": "Everglades Experience",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "five days, four nights",
+        "locations": [
+          "Ten Thousand Islands in the Everglades"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ransomeverglades.org/student-life/clubs-and-activities",
+            "quote": "For more than 30 years, freshmen at Ransom Everglades have journeyed into the Ten Thousand Islands in the Everglades for a five-day, four-night adventure"
+          }
+        ]
+      },
+      {
+        "program_name": "Camp by the Bay Summer Program",
+        "program_format": "summer camp",
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [],
+        "frequency": "per session",
+        "duration": "one day per field trip",
+        "locations": [
+          "John Pennekamp State Park",
+          "Urban Air Adventure Park"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ransomeverglades.org/student-life/summer-programs",
+            "quote": "campers will embark on one exciting field trip per session. Session 1: Snorkeling Adventure at John Pennekamp State Park and Urban Air Adventure Park"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Ten Thousand Islands in the Everglades",
+      "John Pennekamp State Park",
+      "Urban Air Adventure Park"
+    ],
+    "unknowns": [
+      "Specific grade bands for Expeditions and Waypoints",
+      "Frequency and duration details for Expeditions and Waypoints"
+    ]
+  }
+}

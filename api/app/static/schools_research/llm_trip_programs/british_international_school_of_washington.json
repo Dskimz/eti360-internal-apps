@@ -1,0 +1,154 @@
+{
+  "school_key": "british_international_school_of_washington",
+  "school_name": "British International School of Washington",
+  "homepage": "https://www.nordangliaeducation.com/bisw-washington",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:24 PM",
+  "tokens_in": 1225,
+  "tokens_out": 1071,
+  "tokens_total": 2296,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 9,
+    "prompt_hash": "c8fd1b5900f320cb",
+    "pages": [
+      "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences/extracurricular-activities",
+      "https://www.nordangliaeducation.com/bisw-washington/news/2025/12/01/healthy-habits-and-outdoor-adventures-your-child-will-love-at-our-school",
+      "https://www.nordangliaeducation.com/bisw-washington",
+      "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences",
+      "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences/social-purpose"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British International School of Washington offers a variety of trip and travel programs including regular educational excursions in Washington, DC, extended overnight residential trips for different grade levels, service trips both locally and internationally, and participation in the Global Classroom Annual Expedition to Tanzania. These trips support academic learning, social development, community service, and global citizenship.",
+    "programs": [
+      {
+        "program_name": "Educational Excursions in Washington, DC",
+        "program_format": "day trips",
+        "trip_types": [
+          "day_trip",
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "regularly throughout the school year",
+        "duration": "morning, afternoon, or full-day",
+        "locations": [
+          "Washington, DC"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences",
+            "quote": "We take field trips that complement and support in-class lessons and ensure students benefit from our proximity to DC's impressive sites."
+          },
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisw-washington",
+            "quote": "We can frequently take inspiring morning, afternoon, or full-day trips to amazing sites in the city (like world-class museums or parks), and can easily get involved with community service activities, too."
+          },
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences/extracurricular-activities",
+            "quote": "The British International School of Washington makes use of the rich cultural opportunities offered in our capital city. For example, we organize educational excursions regularly throughout the school year to enhance learning experiences in the classroom."
+          }
+        ]
+      },
+      {
+        "program_name": "Residential Trips",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "not specified",
+        "duration": "extended overnight",
+        "locations": [
+          "Delaware",
+          "Maryland",
+          "Blue Ridge Mountains"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences/extracurricular-activities",
+            "quote": "Year 2 pupils have stayed overnight in Delaware to enrich their unit of work “We’re Going on Holiday”. Years 7, 8, and 9 have visited the premiere educational North Bay Adventure Camp in Maryland, while Years 10 and 11 have taken trips to Camp Horizons in the heart of the Blue Ridge Mountains."
+          }
+        ]
+      },
+      {
+        "program_name": "Service Trips",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "not specified",
+        "duration": "not specified",
+        "locations": [
+          "Washington, DC",
+          "international communities"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences",
+            "quote": "Local service trips to DC-area charitable organizations help students see the positive impact of their actions right here in Washington, DC. Similarly, service trips abroad help BISW students connect with and aid international communities."
+          },
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences/social-purpose",
+            "quote": "Our senior students helped to build construction projects in local communities. They also learned about sustainable development and the environment, and as a result, they developed their global citizenship."
+          }
+        ]
+      },
+      {
+        "program_name": "Global Classroom Annual Expedition",
+        "program_format": "international expedition",
+        "trip_types": [
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "not specified",
+        "locations": [
+          "Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/bisw-washington/outstanding-experiences/extracurricular-activities",
+            "quote": "The Global Classroom Annual Expedition to Tanzania brings students from around the world together for a face to face experience."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Washington, DC",
+      "Delaware",
+      "Maryland",
+      "Blue Ridge Mountains",
+      "Tanzania",
+      "international communities"
+    ],
+    "unknowns": [
+      "Exact frequency and duration of residential trips beyond 'extended overnight'",
+      "Exact grade bands for service trips (implied MS and HS but not explicitly stated)",
+      "Exact duration of the Global Classroom Annual Expedition"
+    ]
+  }
+}

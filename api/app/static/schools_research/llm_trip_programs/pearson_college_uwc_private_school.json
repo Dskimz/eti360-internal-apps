@@ -1,0 +1,56 @@
+{
+  "school_key": "pearson_college_uwc_private_school",
+  "school_name": "Pearson College UWC (Private School)",
+  "homepage": "http://www.pearsoncollege.ca/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:34 PM",
+  "tokens_in": 511,
+  "tokens_out": 287,
+  "tokens_total": 798,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "11262567fd6deadf",
+    "pages": [
+      "https://www.pearsoncollege.ca/experience/student-life/",
+      "http://www.pearsoncollege.ca/experience/student-life/",
+      "http://www.pearsoncollege.ca/",
+      "https://www.pearsoncollege.ca/experience/experiential-learning/",
+      "http://www.pearsoncollege.ca/experiential-learning/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Pearson College UWC offers experiential off-campus projects once per term, lasting one week each. These projects enable students to develop skills related to their activities and explore opportunities such as humanitarian service, creative expression, and outdoor challenges.",
+    "programs": [
+      {
+        "program_name": "Off-Campus Experiential Projects",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "once per term",
+        "duration": "one week",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.pearsoncollege.ca/experience/experiential-learning/",
+            "quote": "Once per term, Pearson College UWC facilitates students in designing, planning and carrying out off-campus projects for one week. The projects allow you to develop your skills and knowledge related to one of your activities in the first term and explore other opportunities such as humanitarian service, creative expression, and outdoor challenges in the second term."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific locations of the off-campus projects",
+      "Exact grade levels within high school",
+      "Whether there are day trips or overnight residential components"
+    ]
+  }
+}

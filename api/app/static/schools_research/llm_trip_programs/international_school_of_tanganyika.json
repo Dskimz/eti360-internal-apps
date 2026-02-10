@@ -1,0 +1,72 @@
+{
+  "school_key": "international_school_of_tanganyika",
+  "school_name": "International School Of Tanganyika",
+  "homepage": "https://www.istafrica.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:30 PM",
+  "tokens_in": 687,
+  "tokens_out": 272,
+  "tokens_total": 959,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "e7a4f8f374b36bd3",
+    "pages": [
+      "https://www.istafrica.com/co-curricular/after-school-activities",
+      "https://www.istafrica.com/student-life/health-clinic",
+      "https://www.istafrica.com/student-life/uniform-information",
+      "https://www.istafrica.com/student-life/bus-information",
+      "https://www.istafrica.com/student-life/canteen",
+      "https://www.istafrica.com/co-curricular/service-learning-cas",
+      "https://www.istafrica.com/",
+      "https://www.istafrica.com/learning",
+      "https://www.istafrica.com/learning/early-childhood-programme",
+      "https://www.istafrica.com/learning/primary-years-programme",
+      "https://www.istafrica.com/learning/middle-years-programme",
+      "https://www.istafrica.com/learning/diploma-programme",
+      "https://www.istafrica.com/learning/student-services",
+      "https://www.istafrica.com/learning/student-services/life-centered-education",
+      "https://www.istafrica.com/learning/counceling",
+      "https://www.istafrica.com/learning/library"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The International School of Tanganyika offers the Extended Studies Programme (ESP) for secondary students in grades 6 through 11. These trips are typically five-day overnight or residential trips in Tanzania, designed to extend the curriculum into outdoor and cultural settings with a focus on service and other educational objectives.",
+    "programs": [
+      {
+        "program_name": "Extended Studies Programme (ESP)",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "five days",
+        "locations": [
+          "Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.istafrica.com/co-curricular/after-school-activities",
+            "quote": "The Extended Studies Programme (ESP) is designed to extend the IST curriculum to an interesting and unfamiliar outdoor/cultural setting in Tanzania. All Secondary students in grades 6 through 11 are required to participate in ESP trips. Typically, ESP trips are five-day overnight or residential trips."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Tanzania"
+    ],
+    "unknowns": [
+      "program_format",
+      "frequency"
+    ]
+  }
+}

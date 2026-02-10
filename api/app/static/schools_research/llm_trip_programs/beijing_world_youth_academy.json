@@ -1,0 +1,56 @@
+{
+  "school_key": "beijing_world_youth_academy",
+  "school_name": "Beijing World Youth Academy",
+  "homepage": "https://www.ibwya.net/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:23 PM",
+  "tokens_in": 535,
+  "tokens_out": 233,
+  "tokens_total": 768,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "4e4ade3d7320b3b2",
+    "pages": [
+      "https://www.ibwya.net/after-school-activities/",
+      "https://www.ibwya.net/category/school-trips/",
+      "https://www.ibwya.net/category/clubsactivities/",
+      "https://www.ibwya.net/discover-the-joy-of-learning-beyond-the-classroom/",
+      "https://www.ibwya.net/",
+      "https://www.ibwya.net/class-without-walls-learning-beyond-boundaries/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Beijing World Youth Academy offers school trips including a Survival Day trip designed to encourage students to reflect on knowledge and survival skills.",
+    "programs": [
+      {
+        "program_name": "Survival Day trip",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.ibwya.net/category/school-trips/",
+            "quote": "Theory of Knowledge is a subject that encourages students to reflect on what they know—and how they know it. But it also requires them to consider what they don’t know, and this is one of the key objectives behind our Survival Day trip."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "grade bands for Survival Day trip",
+      "frequency of trips",
+      "duration of trips",
+      "specific locations for trips"
+    ]
+  }
+}

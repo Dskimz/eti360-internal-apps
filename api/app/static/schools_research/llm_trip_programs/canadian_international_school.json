@@ -1,0 +1,112 @@
+{
+  "school_key": "canadian_international_school",
+  "school_name": "Canadian International School",
+  "homepage": "http://www.canadianinternationalschool.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 614,
+  "tokens_out": 508,
+  "tokens_total": 1122,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "d60412c19d942afd",
+    "pages": [
+      "http://www.canadianinternationalschool.com/student-life/beyond-the-classroom/athletics-activities",
+      "http://www.canadianinternationalschool.com/",
+      "http://www.canadianinternationalschool.com/learning/middle-school",
+      "http://www.canadianinternationalschool.com/learning/high-school",
+      "http://www.canadianinternationalschool.com/learning/high-school/igcse-programme-bangalore",
+      "http://www.canadianinternationalschool.com/learning/high-school/ib-diploma-programme-bangalore",
+      "http://www.canadianinternationalschool.com/learning/high-school/college-guidance",
+      "http://www.canadianinternationalschool.com/about-us/shared-understanding-of-high-quality-learning",
+      "http://www.canadianinternationalschool.com/learning",
+      "http://www.canadianinternationalschool.com/learning/learning-the-cis-way",
+      "http://www.canadianinternationalschool.com/learning/elementary-school"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Canadian International School offers various trip and travel programs including IB Retreats, CAS excursions, experiential learning days, and athletics competitions both domestically and internationally. Students participate in trips to destinations such as Bangkok and South Korea for sports events, and engage in real-world experiential learning opportunities.",
+    "programs": [
+      {
+        "program_name": "IB Retreats & CAS excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.canadianinternationalschool.com/learning/high-school",
+            "quote": "IB Retreats & CAS excursions"
+          }
+        ]
+      },
+      {
+        "program_name": "Experiential Learning Days",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.canadianinternationalschool.com/learning/high-school",
+            "quote": "Experiential Learning Days offering real-world experiences"
+          }
+        ]
+      },
+      {
+        "program_name": "Athletics Competitions",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Bangkok",
+          "South Korea",
+          "India"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.canadianinternationalschool.com/student-life/beyond-the-classroom/athletics-activities",
+            "quote": "Our student-athletes have travelled to Bangkok for a swimming competition and qualified for a competition in South Korea in early 2020. As our athletics program grows, CIS will continue to look for opportunities within India and abroad."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Bangkok",
+      "South Korea",
+      "India"
+    ],
+    "unknowns": [
+      "frequency of trips",
+      "duration of trips",
+      "specific grade bands for IB Retreats & CAS excursions and Experiential Learning Days"
+    ]
+  }
+}

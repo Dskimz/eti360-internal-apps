@@ -1,0 +1,110 @@
+{
+  "school_key": "dulwich_college_seoul",
+  "school_name": "Dulwich College Seoul",
+  "homepage": "https://seoul.dulwich.org/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:26 PM",
+  "tokens_in": 1716,
+  "tokens_out": 594,
+  "tokens_total": 2310,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 12,
+    "prompt_hash": "1e8d0f0d78aac7e6",
+    "pages": [
+      "https://seoul.dulwich.org/holistic-curriculum/co-curricular-activities",
+      "https://seoul.dulwich.org/holistic-curriculum/co-curricular-activities/events-and-trips",
+      "https://seoul.dulwich.org/",
+      "https://seoul.dulwich.org/holistic-curriculum/ducks-ages-3-to-7",
+      "https://seoul.dulwich.org/holistic-curriculum/junior-school-ages-7-to-11",
+      "https://seoul.dulwich.org/holistic-curriculum/senior-school-ages-11-to-18",
+      "https://seoul.dulwich.org/holistic-curriculum/internationalbaccalaureate",
+      "https://seoul.dulwich.org/holistic-curriculum/mandarin",
+      "https://seoul.dulwich.org/holistic-curriculum/stem-se21",
+      "https://seoul.dulwich.org/holistic-curriculum/visual-performing-arts",
+      "https://seoul.dulwich.org/holistic-curriculum/sports",
+      "https://seoul.dulwich.org/holistic-curriculum/ignite-switzerland-programme",
+      "https://seoul.dulwich.org/holistic-curriculum/worldwise-events",
+      "https://seoul.dulwich.org/how-we-teach-and-learn/holistic-learning-anywhere-dcsl",
+      "https://seoul.dulwich.org/how-we-teach-and-learn/learning-principles-and-innovation"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Dulwich College Seoul offers students opportunities to participate in domestic and international field trips to experience different cultures and learning environments beyond the classroom. The Ignite: Switzerland programme provides Year 9 students with a unique outdoor education experience including weekend expeditions, termly one-week trips to European countries, and local excursions.",
+    "programs": [
+      {
+        "program_name": "General Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://seoul.dulwich.org/holistic-curriculum/co-curricular-activities/events-and-trips",
+            "quote": "students have opportunities to participate in field trips to domestic and international destinations."
+          }
+        ]
+      },
+      {
+        "program_name": "Ignite: Switzerland Programme",
+        "program_format": "termly with weekend expeditions and one-week trips",
+        "trip_types": [
+          "expedition_outdoor",
+          "overnight_residential",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "termly",
+        "duration": "one week trips plus weekend expeditions",
+        "locations": [
+          "Switzerland",
+          "Germany",
+          "Austria",
+          "local environment"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://seoul.dulwich.org/holistic-curriculum/ignite-switzerland-programme",
+            "quote": "Each term of Ignite has a one-week trip away planned to either Switzerland, Germany or Austria."
+          },
+          {
+            "source_url": "https://seoul.dulwich.org/holistic-curriculum/ignite-switzerland-programme",
+            "quote": "Weekend Expeditions: Expeditions are an integral part of every student's life at Ignite: Switzerland."
+          },
+          {
+            "source_url": "https://seoul.dulwich.org/holistic-curriculum/ignite-switzerland-programme",
+            "quote": "Our extensive excursion programme offers a fantastic opportunity for our students to gain a better insight into their local environment."
+          },
+          {
+            "source_url": "https://seoul.dulwich.org/holistic-curriculum/ignite-switzerland-programme",
+            "quote": "Ignite: Switzerland is a programme for the curious, passionate, and brave! It is a unique educational opportunity exclusive to Year 9 Dulwich College International students."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Switzerland",
+      "Germany",
+      "Austria",
+      "local environment"
+    ],
+    "unknowns": []
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "school_key": "baylor_school",
+  "school_name": "Baylor School",
+  "homepage": "https://www.baylorschool.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:23 PM",
+  "tokens_in": 1473,
+  "tokens_out": 1032,
+  "tokens_total": 2505,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 10,
+    "prompt_hash": "cc903b7ef551ebdf",
+    "pages": [
+      "https://www.baylorschool.org/student-life",
+      "https://www.baylorschool.org/student-life/student-clubs-more",
+      "https://www.baylorschool.org/student-life/community-service",
+      "https://www.baylorschool.org/student-life/walkabout-outdoor-program",
+      "https://www.baylorschool.org/student-life/after-school-program",
+      "https://www.baylorschool.org/student-life/favorite-places",
+      "https://www.baylorschool.org/student-life/quadpod-podcast",
+      "https://www.baylorschool.org/student-life/religion",
+      "https://www.baylorschool.org/academics/travel-opportunities",
+      "https://www.baylorschool.org/",
+      "https://www.baylorschool.org/academics/middle-school",
+      "https://www.baylorschool.org/academics/upper-school",
+      "https://www.baylorschool.org/academics/faculty-profiles",
+      "https://www.baylorschool.org/academics",
+      "https://www.baylorschool.org/academics/the-baylor-experience",
+      "https://www.baylorschool.org/academics/curriculum-clone",
+      "https://www.baylorschool.org/academics/college-counseling",
+      "https://www.baylorschool.org/academics/learning-center-support",
+      "https://www.baylorschool.org/academics/library-academic-research",
+      "https://www.baylorschool.org/academics/commitment-to-faculty"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Baylor School offers a variety of domestic and international travel programs designed to enrich students' educational experiences through outdoor activities, cultural immersion, leadership development, and community service. Trips are organized by grade level and include day trips, overnight residential trips, and international travel opportunities.",
+    "programs": [
+      {
+        "program_name": "Walkabout Outdoor Program",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "year-round",
+        "duration": "varies",
+        "locations": [
+          "Tennessee River",
+          "Prentice Cooper State Forest",
+          "Panama",
+          "India"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.baylorschool.org/student-life/walkabout-outdoor-program",
+            "quote": "Baylor's Walkabout program connects students to the environment virtually every day of the year and is offered to students in grades 6-12. A typical afternoon might be spent paddle boarding on the Tennessee River or trail running in Prentice Cooper State Forest. Trips abroad to Panama and India are an annual tradition."
+          }
+        ]
+      },
+      {
+        "program_name": "David M. Abshire Civic Leadership Trip",
+        "program_format": "experiential course",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "Washington D.C."
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.baylorschool.org/academics/travel-opportunities",
+            "quote": "The David M. Abshire Civic Leadership trip is an intensive week-long experiential course of study in Washington D.C. with an emphasis on national leadership, ethics, entrepreneurship and service."
+          }
+        ]
+      },
+      {
+        "program_name": "Sixth Grade Outdoor Trip",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "two days, one night",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.baylorschool.org/academics/travel-opportunities",
+            "quote": "At the beginning of their sixth grade year, students enjoy a two-day, one-night outdoor trip with classmates and teachers."
+          }
+        ]
+      },
+      {
+        "program_name": "Seventh Grade Day Trip",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "one day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.baylorschool.org/academics/middle-school",
+            "quote": "Every year the seventh grade takes a day trip in the fall to enjoy time outdoors with each other and their teachers."
+          }
+        ]
+      },
+      {
+        "program_name": "Art Study Abroad Trip",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "varies",
+        "locations": [
+          "Florence, Italy"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.baylorschool.org/academics/travel-opportunities",
+            "quote": "Since the first trip in 2001 to the Florence Academy in Italy, several groups of Baylor students have traveled abroad to study art and immerse themselves in other cultures."
+          }
+        ]
+      },
+      {
+        "program_name": "Community Service Trip to Jamaica",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "spring break",
+        "locations": [
+          "Kingston, Jamaica"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.baylorschool.org/academics/travel-opportunities",
+            "quote": "Student leaders involved in Baylor’s Community Service program travel to Kingston, Jamaica during spring break where they work in an early childhood center and the squatter community of Ferry."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Tennessee River",
+      "Prentice Cooper State Forest",
+      "Panama",
+      "India",
+      "Washington D.C.",
+      "Florence, Italy",
+      "Kingston, Jamaica"
+    ],
+    "unknowns": []
+  }
+}

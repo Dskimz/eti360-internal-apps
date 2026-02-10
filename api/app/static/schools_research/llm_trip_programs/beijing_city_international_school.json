@@ -1,0 +1,74 @@
+{
+  "school_key": "beijing_city_international_school",
+  "school_name": "Beijing City International School",
+  "homepage": "http://www.bcis.cn/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:23 PM",
+  "tokens_in": 827,
+  "tokens_out": 231,
+  "tokens_total": 1058,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "35ff7bd31e4b11e6",
+    "pages": [
+      "http://www.bcis.cn/activities",
+      "http://www.bcis.cn/cn/activities",
+      "http://www.bcis.cn/activities/eas",
+      "http://www.bcis.cn/activities/avenir",
+      "http://www.bcis.cn/activities/bcis-cas1",
+      "http://www.bcis.cn/",
+      "http://www.bcis.cn/community/services/facilities",
+      "http://www.bcis.cn/community/services/health-service",
+      "http://www.bcis.cn/community/services/food-service",
+      "http://www.bcis.cn/community/services/school-bus-service",
+      "http://www.bcis.cn/academics",
+      "http://www.bcis.cn/academics/early-childhood-center",
+      "http://www.bcis.cn/academics/courtyard-kindergarten",
+      "http://www.bcis.cn/academics/elementary-schools",
+      "http://www.bcis.cn/academics/secondary-schools",
+      "http://www.bcis.cn/academics/student-support-services",
+      "http://www.bcis.cn/academics/secondary-schools/ideate-program",
+      "http://www.bcis.cn/academics/university-guidance",
+      "http://www.bcis.cn/academics/library",
+      "http://www.bcis.cn/academics/online-blended-and-in-person-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Beijing City International School organizes an annual Week Without Walls program where Elementary and Secondary students participate in various off-campus activities and trips across China to experience the local culture and environment.",
+    "programs": [
+      {
+        "program_name": "Week Without Walls",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "China"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bcis.cn/activities/eas",
+            "quote": "Week Without Walls (WWW) is a very special feature in the BCIS calendar. Each year, students from the Elementary and Secondary Schools take part in various activities and trips off campus to directly experience the culture and environment of our host country, China."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "China"
+    ],
+    "unknowns": []
+  }
+}

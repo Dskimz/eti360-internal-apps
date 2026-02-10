@@ -1,0 +1,85 @@
+{
+  "school_key": "gems_wellington_international_school",
+  "school_name": "GEMS Wellington International School",
+  "homepage": "http://www.wellingtoninternationalschool.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:27 PM",
+  "tokens_in": 854,
+  "tokens_out": 432,
+  "tokens_total": 1286,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "fa0013177e87d47f",
+    "pages": [
+      "http://www.wellingtoninternationalschool.com/Student-Life/CAS-Creativity-Activity-and-Service",
+      "http://www.wellingtoninternationalschool.com/",
+      "http://www.wellingtoninternationalschool.com/Curriculum/Middle-School",
+      "http://www.wellingtoninternationalschool.com/Curriculum/Upper-School",
+      "http://www.wellingtoninternationalschool.com/Curriculum",
+      "http://www.wellingtoninternationalschool.com/Curriculum/Learning-Overview",
+      "http://www.wellingtoninternationalschool.com/Curriculum/Lower-School",
+      "http://www.wellingtoninternationalschool.com/Curriculum/IB-Diploma",
+      "http://www.wellingtoninternationalschool.com/Curriculum/IB-Diploma/IB-Programme-Overview",
+      "http://www.wellingtoninternationalschool.com/Curriculum/IB-Diploma/The-Core-Elements",
+      "http://www.wellingtoninternationalschool.com/Curriculum/IB-Diploma/The-IB-Programme-Advantage"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "GEMS Wellington International School offers a holistic educational approach that includes a wide range of extracurricular activities such as sports, nature trips, arts and crafts, and exploratory excursions. The IB Diploma programme incorporates activities including expeditions and camping trips as part of the Creativity, Activity, Service (CAS) core elements, promoting physical exertion, teamwork, and community service.",
+    "programs": [
+      {
+        "program_name": "Creativity, Activity, Service (CAS) Activities",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.wellingtoninternationalschool.com/Curriculum/IB-Diploma/The-Core-Elements",
+            "quote": "Activity - activities can involve team sports, individual sports, expeditions, camping trips or participation in activities requiring physical exertion. Service - activities are predominantly defined as service to a community and should focus on doing things with others,…"
+          }
+        ]
+      },
+      {
+        "program_name": "Exploratory Excursions and Nature Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.wellingtoninternationalschool.com/Curriculum",
+            "quote": "These include sports, nature trips, arts and crafts and exploratory excursions."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Program frequency",
+      "Program duration",
+      "Specific trip destinations",
+      "Program format details"
+    ]
+  }
+}

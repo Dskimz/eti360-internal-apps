@@ -1,0 +1,39 @@
+{
+  "school_key": "ivy_collegiate_academy",
+  "school_name": "Ivy Collegiate Academy",
+  "homepage": "https://ica.ivyjhs.tc.edu.tw/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 873,
+  "tokens_out": 50,
+  "tokens_total": 923,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "688ba62b2409cefa",
+    "pages": [
+      "https://ica.ivyjhs.tc.edu.tw/activities-athletics/",
+      "https://ica.ivyjhs.tc.edu.tw/activities-athletics/athletic-program/",
+      "https://ica.ivyjhs.tc.edu.tw/",
+      "https://ica.ivyjhs.tc.edu.tw/about-ica/school-wide-learning-outcomes/",
+      "https://ica.ivyjhs.tc.edu.tw/about-ica/experiential-learning/",
+      "https://ica.ivyjhs.tc.edu.tw/academics/",
+      "https://ica.ivyjhs.tc.edu.tw/academics/curriculum/",
+      "https://ica.ivyjhs.tc.edu.tw/academics/ica-philosophies/",
+      "https://ica.ivyjhs.tc.edu.tw/academics/advising/",
+      "https://ica.ivyjhs.tc.edu.tw/academics/college-counseling/",
+      "https://ica.ivyjhs.tc.edu.tw/academics/daily-schedule/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "No specific trip programs or destinations were explicitly described in the provided evidence snippets.",
+    "programs": [],
+    "locations_all": [],
+    "unknowns": [
+      "No explicit information on school trip or travel programs found in the provided evidence."
+    ]
+  }
+}

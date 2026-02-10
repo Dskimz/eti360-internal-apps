@@ -1,0 +1,82 @@
+{
+  "school_key": "yongsan_international_school_of_seoul",
+  "school_name": "Yongsan International School of Seoul",
+  "homepage": "https://www.yisseoul.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:41 PM",
+  "tokens_in": 446,
+  "tokens_out": 392,
+  "tokens_total": 838,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "6e650e8427514363",
+    "pages": [
+      "https://www.yisseoul.org/student-life",
+      "https://www.yisseoul.org/student-life/clubs-activities",
+      "https://www.yisseoul.org/",
+      "https://www.yisseoul.org/academics"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Yongsan International School of Seoul offers various service-learning and immersion travel programs for middle and high school students, including local and international service trips and educational outreach projects.",
+    "programs": [
+      {
+        "program_name": "Middle School Week Without Walls and Immersion Programs",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.yisseoul.org/academics",
+            "quote": "the middle school Week Without Walls and Immersion programs"
+          },
+          {
+            "source_url": "https://www.yisseoul.org/academics",
+            "quote": "Middle school students engage in service-learning through the CARES and Immersion programs, learning the importance of practicing stewardship by serving people both locally and abroad."
+          }
+        ]
+      },
+      {
+        "program_name": "High School Guardian Outreach and Education (GOES) Program",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.yisseoul.org/academics",
+            "quote": "the high school Guardian Outreach and Education (GOES) program"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Exact trip durations",
+      "Specific destinations for trips",
+      "Frequency details beyond annual implication",
+      "Program formats (e.g., day trip, overnight)"
+    ]
+  }
+}

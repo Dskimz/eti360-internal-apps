@@ -1,0 +1,82 @@
+{
+  "school_key": "jakarta_intercultural_school",
+  "school_name": "Jakarta Intercultural School",
+  "homepage": "http://www.jisedu.or.id/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 605,
+  "tokens_out": 353,
+  "tokens_total": 958,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "035183f6c353ffa5",
+    "pages": [
+      "http://www.jisedu.or.id/",
+      "http://www.jisedu.or.id/academics/middle-school",
+      "http://www.jisedu.or.id/academics/high-school",
+      "http://www.jisedu.or.id/academics/middle-school/jis-studio",
+      "http://www.jisedu.or.id/academics",
+      "http://www.jisedu.or.id/academics/early-years",
+      "http://www.jisedu.or.id/academics/elementary-school",
+      "http://www.jisedu.or.id/academics/ib-ap-pathways",
+      "http://www.jisedu.or.id/academics/student-support-services",
+      "http://www.jisedu.or.id/academics/service-learning",
+      "http://www.jisedu.or.id/academics/student-support-services/jis-learning-center"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Jakarta Intercultural School's Middle School program includes off-campus experiences and field trips designed to build community, identity, and relationships among students. These trips are hands-on and aim to strengthen student involvement and belonging.",
+    "programs": [
+      {
+        "program_name": "Middle School Off-Campus Experiences",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.jisedu.or.id/academics/middle-school",
+            "quote": "the entire Middle School engages in off-campus experiences to help students strengthen relationships, build their identities, and develop a sense of belonging"
+          }
+        ]
+      },
+      {
+        "program_name": "JIS Studio Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.jisedu.or.id/academics/middle-school/jis-studio",
+            "quote": "the curriculum is a lot more hands-on, so we get more field trips and cool activities"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "trip frequency",
+      "trip duration",
+      "specific trip locations",
+      "program names beyond general descriptors",
+      "trip types other than day trips"
+    ]
+  }
+}

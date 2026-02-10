@@ -1,0 +1,55 @@
+{
+  "school_key": "trinity_international_school",
+  "school_name": "Trinity International School",
+  "homepage": "http://www.trinity.ac.th/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:39 PM",
+  "tokens_in": 321,
+  "tokens_out": 236,
+  "tokens_total": 557,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "6f7c66e5308701b7",
+    "pages": [
+      "http://www.trinity.ac.th/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Trinity International School organizes field trips for early grades such as K1-K2, including visits to local destinations like Playmondo at CentralWorld.",
+    "programs": [
+      {
+        "program_name": "K1-K2 Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Playmondo, CentralWorld"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.trinity.ac.th/",
+            "quote": "Happy Friday! K1-K2 is going on a field trip to Playmondo, CentralWorld Have an amazing time and enjoy every moment!"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Playmondo, CentralWorld"
+    ],
+    "unknowns": [
+      "Details on trips for grades beyond K1-K2",
+      "Information on overnight, international, expedition, service learning, or exchange programs",
+      "Frequency and duration of trips"
+    ]
+  }
+}

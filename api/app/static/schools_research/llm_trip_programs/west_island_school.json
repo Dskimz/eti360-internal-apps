@@ -1,0 +1,59 @@
+{
+  "school_key": "west_island_school",
+  "school_name": "West Island School",
+  "homepage": "http://www.wis.edu.hk/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:40 PM",
+  "tokens_in": 701,
+  "tokens_out": 222,
+  "tokens_total": 923,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "62fd801e6f98fdd1",
+    "pages": [
+      "http://www.wis.edu.hk/",
+      "http://www.wis.edu.hk/en/outstanding_experiences/",
+      "http://www.wis.edu.hk/en/outstanding_experiences/dynasties/",
+      "http://www.wis.edu.hk/en/outstanding_experiences/horizons_week/",
+      "http://www.wis.edu.hk/en/outstanding_experiences/CAS/",
+      "http://www.wis.edu.hk/en/outstanding_experiences/sports/",
+      "http://www.wis.edu.hk/en/outstanding_experiences/creative_arts/",
+      "http://www.wis.edu.hk/en/outstanding_experiences/student_leadership/",
+      "http://www.wis.edu.hk/en/outstanding_education/curriculum/",
+      "http://www.wis.edu.hk/en/outstanding_experiences/interdisciplinary_learning/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "West Island School offers field trips as part of its Creative Arts faculty to deepen students' understanding and appreciation of the arts. These trips complement hands-on learning and creative expression beyond the classroom.",
+    "programs": [
+      {
+        "program_name": "Creative Arts Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.wis.edu.hk/en/outstanding_experiences/creative_arts/",
+            "quote": "Students engage in hands-on learning, creative expression, and field trips that deepen their understanding and appreciation of the arts."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific grade bands for trips",
+      "Exact trip durations",
+      "Trip locations",
+      "Other trip programs beyond Creative Arts field trips"
+    ]
+  }
+}

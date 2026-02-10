@@ -1,0 +1,151 @@
+{
+  "school_key": "yew_chung_international_school_of_shanghai",
+  "school_name": "Yew Chung International School of Shanghai",
+  "homepage": "http://www.ycis-sh.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:41 PM",
+  "tokens_in": 1498,
+  "tokens_out": 994,
+  "tokens_total": 2492,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 11,
+    "prompt_hash": "31aac651d60724ea",
+    "pages": [
+      "http://www.ycis-sh.com/en/campus-life/co-curricular-activities",
+      "http://www.ycis-sh.com/sc/campus-life/co-curricular-activities",
+      "http://www.ycis-sh.com/",
+      "http://www.ycis-sh.com/en/campus-life/school-services",
+      "http://www.ycis-sh.com/sc/campus-life/school-services",
+      "http://www.ycis-sh.com/en/academics",
+      "http://www.ycis-sh.com/en/academics/early-childhood",
+      "http://www.ycis-sh.com/en/academics/careers-and-university-guidance-office",
+      "http://www.ycis-sh.com/en/academics/primary",
+      "http://www.ycis-sh.com/en/academics/secondary"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "YCIS Shanghai offers a range of educational trips and excursions integrated into the curriculum across grade levels. Primary students (Years 1-3) take field trips around Shanghai to cultural sites, parks, museums, and farms to use their Chinese language skills. Upper Primary students (Years 5-6) participate in educational trips and overnight camps to develop independence and collaboration. Middle School students (Years 7-9) engage in the Education Outside of the Classroom (EOTC) program, traveling to key cultural regions in China such as Xi'an, Shandong, and Fujian. High School students (Years 10-11) undertake educational and service trips within China, including visits to rural primary schools supported by the school's charity program for service and volunteer work.",
+    "programs": [
+      {
+        "program_name": "Primary Field Trips",
+        "program_format": "day trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "throughout the school year",
+        "duration": "day",
+        "locations": [
+          "Shanghai"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ycis-sh.com/en/academics/primary",
+            "quote": "for the students in Years 1-3, their education extends beyond the classroom to integrate their learning and use their Chinese language skills on field trips around Shanghai."
+          },
+          {
+            "source_url": "http://www.ycis-sh.com/en/academics/primary",
+            "quote": "From large Shanghai parks to museums, and Chinese cultural sites to farms, these field trips are integrated into the broader YCIS curriculum."
+          }
+        ]
+      },
+      {
+        "program_name": "Upper Primary Educational Trips and Overnight Camps",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "throughout the school year",
+        "duration": "overnight",
+        "locations": [
+          "Shanghai"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ycis-sh.com/en/academics/primary",
+            "quote": "Our Year 5 and 6 students also have the chance to develop independence and collaboration skills outside of the classroom during overnight camps throughout the school year."
+          }
+        ]
+      },
+      {
+        "program_name": "Education Outside of the Classroom (EOTC)",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "regularly scheduled",
+        "duration": null,
+        "locations": [
+          "Xi'an",
+          "Shandong",
+          "Fujian"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ycis-sh.com/en/academics/secondary",
+            "quote": "YCIS students in Years 7-9 travel to key cultural areas in China through our Education Outside of the Classroom (EOTC) programme."
+          },
+          {
+            "source_url": "http://www.ycis-sh.com/en/academics/secondary",
+            "quote": "Recent locations including Xi'an, Shandong, and Fujian."
+          }
+        ]
+      },
+      {
+        "program_name": "High School Educational and Service Trips",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "rural villages in China"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ycis-sh.com/en/academics/secondary",
+            "quote": "IGCSE students have an abundance of community service opportunities and take educational and service trips within China."
+          },
+          {
+            "source_url": "http://www.ycis-sh.com/en/academics/secondary",
+            "quote": "Many of our students embark on a visit to one of our Seeds of Hope Schools - local Primary schools located in small, rural villages in regions throughout China which are supported by the YCIS charity programme - in order to complete service and volunteer."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Shanghai",
+      "Xi'an",
+      "Shandong",
+      "Fujian",
+      "rural villages in China"
+    ],
+    "unknowns": [
+      "Exact duration of EOTC trips",
+      "Frequency and duration details of High School service trips",
+      "Specific names of overnight camp locations for Upper Primary"
+    ]
+  }
+}

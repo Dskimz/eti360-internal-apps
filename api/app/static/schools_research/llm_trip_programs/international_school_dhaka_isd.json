@@ -1,0 +1,91 @@
+{
+  "school_key": "international_school_dhaka_isd",
+  "school_name": "International School Dhaka (ISD)",
+  "homepage": "https://www.isdbd.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 866,
+  "tokens_out": 447,
+  "tokens_total": 1313,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "48192abab409764a",
+    "pages": [
+      "https://www.isdbd.org/school-life",
+      "https://www.isdbd.org/",
+      "https://www.isdbd.org/learning",
+      "https://www.isdbd.org/learning/our-curriculum",
+      "https://www.isdbd.org/learning/early-years",
+      "https://www.isdbd.org/learning/primary-school",
+      "https://www.isdbd.org/learning/secondary-school",
+      "https://www.isdbd.org/learning/ib-diploma",
+      "https://www.isdbd.org/learning/college-counseling",
+      "https://www.isdbd.org/learning/international-partnerships",
+      "https://www.isdbd.org/learning/learning-at-isd"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "International School Dhaka offers a variety of travel and trip programs primarily for secondary students, including participation in the Duke of Edinburgh’s International Award Adventurous Journey in Bangladesh. Students also engage in co-curricular activities that involve travel within Bangladesh.",
+    "programs": [
+      {
+        "program_name": "Duke of Edinburgh Adventurous Journey",
+        "program_format": "expedition",
+        "trip_types": [
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "multi-day",
+        "locations": [
+          "Nazimgarh Wilderness, Sylhet, Bangladesh"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.isdbd.org/learning/secondary-school",
+            "quote": "On January 30, 2025, twenty ISD students set off on the Duke of Edinburgh Adventurous Journey in the breathtaking Nazimgarh Wilderness, Sylhet. This pivotal expedition is part of The Duke of Edinburgh’s International Award program, fostering self-reliance, teamwork, and resilience as part…"
+          }
+        ]
+      },
+      {
+        "program_name": "Co-curricular travel activities",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "day_trip"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "within Bangladesh"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.isdbd.org/learning/secondary-school",
+            "quote": "We have a rich and varied co-curricular activities program where some of the teams and clubs travel within Bangladesh."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Nazimgarh Wilderness, Sylhet, Bangladesh",
+      "within Bangladesh"
+    ],
+    "unknowns": [
+      "Specific frequency and duration details for co-curricular travel activities",
+      "Details on any trips or travel programs for Primary or Early Years students",
+      "Information on international trips or exchanges"
+    ]
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "school_key": "garden_international_school",
+  "school_name": "Garden International School",
+  "homepage": "Rayong",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:27 PM",
+  "tokens_in": 766,
+  "tokens_out": 392,
+  "tokens_total": 1158,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "eb6f41386fee9f94",
+    "pages": [
+      "https://www.gardenschool.edu.my/",
+      "https://www.gardenschool.edu.my/our-school/services-and-facilities/",
+      "https://www.gardenschool.edu.my/learning/secondary/student-achievements/",
+      "https://www.gardenschool.edu.my/learning/gis-learning-culture/",
+      "https://www.gardenschool.edu.my/learning/secondary/sixth-form/university-destinations/",
+      "https://www.gardenschool.edu.my/learning/secondary/sixth-form/thrive-internship-programme/",
+      "https://www.gardenschool.edu.my/learning/wider-learning/",
+      "https://www.gardenschool.edu.my/about-gis/learning-community/",
+      "https://www.gardenschool.edu.my/learning/wellbeing-and-support/",
+      "https://www.gardenschool.edu.my/learning/early-years/",
+      "https://www.gardenschool.edu.my/learning/primary/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Garden International School offers annual residential camps for students from Year 3 to Year 10 to develop teamwork and confidence through various activities. Additionally, secondary students participate in an annual Discovery Week involving travel across Malaysia for sustainable community work linked to core charities.",
+    "programs": [
+      {
+        "program_name": "Annual Residential Camps",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "not specified",
+        "locations": [
+          "Malaysia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.gardenschool.edu.my/learning/wider-learning/",
+            "quote": "Annual residential camps run from Year 3 to Year 10 and offer students the opportunity to build teamwork skills and confidence through a wide range of fun and challenging activities."
+          }
+        ]
+      },
+      {
+        "program_name": "Discovery Week",
+        "program_format": "travel and service learning",
+        "trip_types": [
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "not specified",
+        "locations": [
+          "Malaysia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.gardenschool.edu.my/learning/wider-learning/",
+            "quote": "Our annual ‘Discovery Week’ sees GIS Secondary students travelling across Malaysia every year to take part in sustainable community work which is linked to our five core charities."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Malaysia"
+    ],
+    "unknowns": [
+      "Exact duration of trips",
+      "Specific destinations within Malaysia",
+      "Details on international trips if any"
+    ]
+  }
+}

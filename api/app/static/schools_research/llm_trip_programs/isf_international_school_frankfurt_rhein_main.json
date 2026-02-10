@@ -1,0 +1,108 @@
+{
+  "school_key": "isf_international_school_frankfurt_rhein_main",
+  "school_name": "ISF International School Frankfurt Rhein-Main",
+  "homepage": "https://www.isf.sabis.net/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:30 PM",
+  "tokens_in": 820,
+  "tokens_out": 511,
+  "tokens_total": 1331,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "3deb5a7eba2e5c01",
+    "pages": [
+      "https://www.isf.sabis.net/student-life/slo",
+      "https://www.isf.sabis.net/student-life/activities",
+      "https://www.isf.sabis.net/student-life/sport",
+      "https://www.isf.sabis.net/student-life/music",
+      "https://www.isf.sabis.net/student-life/theater",
+      "https://www.isf.sabis.net/student-life/visual-arts",
+      "https://www.isf.sabis.net/student-life/events-and-trips",
+      "https://www.isf.sabis.net/student-life/summer-camps",
+      "https://www.isf.sabis.net/student-life/community-service-projects",
+      "https://www.isf.sabis.net/",
+      "https://www.isf.sabis.net/studying-at-isf/student-support-services"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "ISF International School Frankfurt Rhein-Main offers various trip and travel programs including competitive debating trips within Germany and internationally, sports competitions across Germany, Europe, and internationally every two years, and community service projects involving travel for charity work.",
+    "programs": [
+      {
+        "program_name": "Debating Society Trips",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Germany",
+          "Thailand"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.isf.sabis.net/student-life/events-and-trips",
+            "quote": "Debating Society members travel around Germany to compete in debates. One ISF student was selected as a member on the German National Debate Team and competed in the world championships held in Thailand in 2014."
+          }
+        ]
+      },
+      {
+        "program_name": "GISST Sports Competitions",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": "Every two years (international selection)",
+        "duration": null,
+        "locations": [
+          "Germany",
+          "Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.isf.sabis.net/student-life/sport",
+            "quote": "In GISST, ISF students compete actively in Germany and Europe. Every two years a selection of ISF Sportverein athletes compete internationally."
+          }
+        ]
+      },
+      {
+        "program_name": "Habitat for Humanity Community Service Trips",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.isf.sabis.net/student-life/community-service-projects",
+            "quote": "ISF students raise money to buy building materials, make a contribution to the charity, and pay for their own travel and accommodation for Habitat for Humanity projects."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Germany",
+      "Thailand",
+      "Europe"
+    ],
+    "unknowns": [
+      "grade bands for trips",
+      "duration of trips",
+      "exact locations for Habitat for Humanity projects",
+      "frequency of debating trips"
+    ]
+  }
+}

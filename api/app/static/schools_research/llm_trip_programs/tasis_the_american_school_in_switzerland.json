@@ -1,0 +1,89 @@
+{
+  "school_key": "tasis_the_american_school_in_switzerland",
+  "school_name": "TASIS The American School In Switzerland",
+  "homepage": "https://tasis.ch/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:37 PM",
+  "tokens_in": 849,
+  "tokens_out": 401,
+  "tokens_total": 1250,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "00f8c04d0841205d",
+    "pages": [
+      "https://tasis.ch/",
+      "https://tasis.ch/community/service",
+      "https://tasis.ch/academics/middle-school",
+      "https://tasis.ch/academics/middle-school/middle-school-course-offerings",
+      "https://tasis.ch/academics",
+      "https://tasis.ch/academics/hs",
+      "https://tasis.ch/academics/hs/academic-profile",
+      "https://tasis.ch/academics/hs/course-offerings",
+      "https://tasis.ch/academics/hs/graduation-requirements",
+      "https://tasis.ch/academics/hs/postgraduate-program",
+      "https://tasis.ch/academics/hs/tss"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "TASIS offers multiple travel programs including the Opsahl Global Service Program with service trips to Kenya and Nepal. Students engage in service learning and academic travel involving international trips focused on community assistance and cultural immersion.",
+    "programs": [
+      {
+        "program_name": "Opsahl Global Service Program",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "semesterly participation required",
+        "duration": "approximately two weeks",
+        "locations": [
+          "Muhuru Bay, Kenya"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://tasis.ch/community/service",
+            "quote": "After examining issues of universal education and gender equality, students spend February Academic Travel getting to know the community of Muhuru Bay, Kenya."
+          },
+          {
+            "source_url": "https://tasis.ch/",
+            "quote": "As part of the pioneering Opsahl Global Service Program, 19 High School students and four faculty chaperones traveled to Muhuru Bay, Kenya, in February."
+          }
+        ]
+      },
+      {
+        "program_name": "Opsahl Global Service Program",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual (Spring Break)",
+        "duration": "two weeks",
+        "locations": [
+          "Nepal"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://tasis.ch/community/service",
+            "quote": "TASIS students ... raise funds and travel to Nepal for two weeks during Spring Break to help develop infrastructure for the Tserok Tibetan refugee camp."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Muhuru Bay, Kenya",
+      "Nepal"
+    ],
+    "unknowns": []
+  }
+}

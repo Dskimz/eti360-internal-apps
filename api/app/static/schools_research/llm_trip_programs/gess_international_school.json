@@ -1,0 +1,81 @@
+{
+  "school_key": "gess_international_school",
+  "school_name": "GESS - International School",
+  "homepage": "https://www.gess.edu.sg/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:27 PM",
+  "tokens_in": 742,
+  "tokens_out": 390,
+  "tokens_total": 1132,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "7b932b4b5c6116f5",
+    "pages": [
+      "https://www.gess.edu.sg/en/learning/outdoor-education",
+      "https://www.gess.edu.sg/",
+      "https://www.gess.edu.sg/en/learning/ib-programme-singapore/middle-school-ib-programme",
+      "https://www.gess.edu.sg/en/learning/ib-programme-singapore/lower-high-school-ib-programme",
+      "https://www.gess.edu.sg/en/learning/ib-programme-singapore/upper-high-school-ib-programme",
+      "https://www.gess.edu.sg/en/learning",
+      "https://www.gess.edu.sg/en/learning/ib-programme-singapore",
+      "https://www.gess.edu.sg/en/learning/ib-programme-singapore/international-preschool-in-singapore",
+      "https://www.gess.edu.sg/en/learning/ib-programme-singapore/primary-school-ib-programme",
+      "https://www.gess.edu.sg/en/learning/german-curriculum",
+      "https://www.gess.edu.sg/en/learning/german-curriculum/german-preschool-in-singapore"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "GESS offers a variety of experiential learning trips and excursions across grade levels, including outdoor education, cultural immersion, and visits to museums and science centres. Primary school students participate in regular excursions to local educational and cultural sites.",
+    "programs": [
+      {
+        "program_name": "Primary School Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "regular",
+        "duration": "day",
+        "locations": [
+          "Science Centre",
+          "Philatelic Museum",
+          "museums",
+          "science centres",
+          "historical sites",
+          "cultural institutions",
+          "exhibitions"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.gess.edu.sg/en/learning/outdoor-education",
+            "quote": "Apart from outdoor education, students also regularly go on excursions that provide experiential learning and cultural immersion. These include trips to museums, science centres, historical sites, cultural institutions, exhibitions, and more."
+          },
+          {
+            "source_url": "https://www.gess.edu.sg/en/learning/outdoor-education",
+            "quote": "Grade 1: Science Centre and Philatelic Museum"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Science Centre",
+      "Philatelic Museum",
+      "museums",
+      "science centres",
+      "historical sites",
+      "cultural institutions",
+      "exhibitions"
+    ],
+    "unknowns": [
+      "Details on outdoor education program formats, grade bands beyond primary, frequency, duration, and specific locations other than those listed",
+      "Information on trips for middle school and high school students",
+      "Any international, overnight residential, expedition, service learning, or exchange programs"
+    ]
+  }
+}

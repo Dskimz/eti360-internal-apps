@@ -1,0 +1,162 @@
+{
+  "school_key": "st_stephen_s_international_school",
+  "school_name": "St. Stephen’s International School",
+  "homepage": "http://www.sis.edu/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:36 PM",
+  "tokens_in": 755,
+  "tokens_out": 904,
+  "tokens_total": 1659,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "34377c7e4e4ca3f3",
+    "pages": [
+      "http://www.sis.edu/khaoyai/student-enrichment/clubs-and-activities",
+      "http://www.sis.edu/khaoyai/school-life/trips",
+      "http://www.sis.edu/",
+      "http://www.sis.edu/khaoyai/student-enrichment/community-service",
+      "http://www.sis.edu/khaoyai/student-enrichment/military-service",
+      "http://www.sis.edu/khaoyai/about-khao-yai/our-learning",
+      "http://www.sis.edu/khaoyai/curriculum/early-years-foundation-stage-0",
+      "http://www.sis.edu/khaoyai/curriculum/primary-years",
+      "http://www.sis.edu/khaoyai/primary/international-primary-curriculum",
+      "http://www.sis.edu/khaoyai/curriculum/secondary-years",
+      "http://www.sis.edu/khaoyai/curriculum/welcome-sixth-form"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "St. Stephen’s International School organizes trips aligned with curriculum topics and subjects across primary and secondary levels, including residential trips for Years 3 to 13 lasting up to a week. Trips include academic, cultural, competitive sports, and community service components.",
+    "programs": [
+      {
+        "program_name": "Primary School Curriculum Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.sis.edu/khaoyai/school-life/trips",
+            "quote": "In the primary school trips will often relate to an IPC topic being studied and will take place as an entry point or exit point to this study."
+          }
+        ]
+      },
+      {
+        "program_name": "Secondary School Subject-Related Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Khao Yai National Park",
+          "local orphanage"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.sis.edu/khaoyai/school-life/trips",
+            "quote": "In the secondary school some trips relate to specific subjects, for example Year 10 Geography coursework or the Year 7 Science / History trip to Khao Yai National Park or PSHE trips to venues such as a local orphanage."
+          }
+        ]
+      },
+      {
+        "program_name": "PE Department Competitive Trips",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Bangkok campus",
+          "other schools"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.sis.edu/khaoyai/school-life/trips",
+            "quote": "Our PE Department arranges a range of trips where students can participate in competitions against other schools. This includes joint trips with our Bangkok campus to FOBISIA competitions."
+          }
+        ]
+      },
+      {
+        "program_name": "Residential Trips",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "up to a week",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.sis.edu/khaoyai/school-life/trips",
+            "quote": "All students in Years 3 to 13 spend up to a week of school time on a residential trip, which will usually be led by a team including our Head of Outdoor Education and the appropriate form tutors."
+          }
+        ]
+      },
+      {
+        "program_name": "Community Service as Part of Residential Trips",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "up to a week",
+        "locations": [
+          "local School for the Blind"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.sis.edu/khaoyai/student-enrichment/community-service",
+            "quote": "The Key Stage 4 and Key Stage 5 students usually visit the school every December as part of their residential trip and take part in some community activities."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Khao Yai National Park",
+      "local orphanage",
+      "Bangkok campus",
+      "other schools",
+      "local School for the Blind"
+    ],
+    "unknowns": [
+      "Exact frequency of primary and secondary subject-related trips",
+      "Exact duration of primary and secondary subject-related trips",
+      "Specific locations for residential trips besides community service venue"
+    ]
+  }
+}

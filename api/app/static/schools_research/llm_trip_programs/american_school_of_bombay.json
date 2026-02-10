@@ -1,0 +1,39 @@
+{
+  "school_key": "american_school_of_bombay",
+  "school_name": "American School of Bombay",
+  "homepage": "http://www.asbindia.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:20 PM",
+  "tokens_in": 472,
+  "tokens_out": 50,
+  "tokens_total": 522,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "35f0b3c7f8220060",
+    "pages": [
+      "http://www.asbindia.org/beyond-the-classroom/co-curricular-programs",
+      "http://www.asbindia.org/beyond-the-classroom/solve-at-asb",
+      "http://www.asbindia.org/beyond-the-classroom/athletics",
+      "http://www.asbindia.org/beyond-the-classroom/community-and-social-responsibility",
+      "http://www.asbindia.org/beyond-the-classroom/action-leadership",
+      "http://www.asbindia.org/",
+      "http://www.asbindia.org/curriculum-learning/middle-school/ms-at-asb",
+      "http://www.asbindia.org/curriculum-learning/educational-philosophy",
+      "http://www.asbindia.org/curriculum-learning/social-emotional-ethical-learning",
+      "http://www.asbindia.org/curriculum-learning/elementary-school/es-at-asb",
+      "http://www.asbindia.org/curriculum-learning/elementary-school/es-curriculum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "No specific trip programs or destinations were explicitly described in the provided evidence snippets.",
+    "programs": [],
+    "locations_all": [],
+    "unknowns": [
+      "No evidence found about the school's trip or travel programs in the provided snippets."
+    ]
+  }
+}

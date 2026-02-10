@@ -1,0 +1,58 @@
+{
+  "school_key": "sha_tin_college",
+  "school_name": "Sha Tin College",
+  "homepage": "http://www.shatincollege.edu.hk/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:35 PM",
+  "tokens_in": 545,
+  "tokens_out": 287,
+  "tokens_total": 832,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "98e8d18e34e62cb5",
+    "pages": [
+      "http://www.shatincollege.edu.hk/en/outstanding_experiences/activities_programme/",
+      "http://www.shatincollege.edu.hk/",
+      "http://www.shatincollege.edu.hk/en/outstanding_experiences/",
+      "http://www.shatincollege.edu.hk/en/outstanding_experiences/explorer_week/",
+      "http://www.shatincollege.edu.hk/en/outstanding_experiences/our_houses/",
+      "http://www.shatincollege.edu.hk/en/outstanding_experiences/student_leadership/",
+      "http://www.shatincollege.edu.hk/en/outstanding_experiences/student_support_and_wellbeing/",
+      "http://www.shatincollege.edu.hk/en/outstanding_education/learning_environment/",
+      "http://www.shatincollege.edu.hk/en/outstanding_education/curriculum/",
+      "http://www.shatincollege.edu.hk/en/outstanding_experiences/experiential_learning/",
+      "http://www.shatincollege.edu.hk/en/outstanding_experiences/service_learning/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Sha Tin College offers an experiential learning program called Explorer Week, where regular lessons are suspended for five days to allow students to participate in a variety of activities outside the classroom. This program emphasizes learning beyond the traditional timetable.",
+    "programs": [
+      {
+        "program_name": "Explorer Week",
+        "program_format": null,
+        "trip_types": [],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": "five days",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.shatincollege.edu.hk/en/outstanding_experiences/explorer_week/",
+            "quote": "Explorer Week is one of the highlights of Experiential Learning at Sha Tin College. It is an opportunity to stop our normal routines and value the learning experience that can be made outside of the classroom. During Explorer Week, lessons are suspended for five days and students have the opportunity to take part in a broad range of activities that are not normally available through the regular timetable."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific trip types (day trip, overnight, international, etc.)",
+      "Grade bands involved in trips",
+      "Frequency of trips",
+      "Specific destinations or locations for trips"
+    ]
+  }
+}

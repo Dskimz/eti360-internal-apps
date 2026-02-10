@@ -1,0 +1,116 @@
+{
+  "school_key": "uwc_east_africa_moshi_campus",
+  "school_name": "UWC East Africa — Moshi Campus",
+  "homepage": "https://www.uwcea.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:40 PM",
+  "tokens_in": 892,
+  "tokens_out": 693,
+  "tokens_total": 1585,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "ad3c1a70fbb299e6",
+    "pages": [
+      "https://www.uwcea.org/outdoor-pursuits/",
+      "https://www.uwcea.org/",
+      "https://www.uwcea.org/service/",
+      "https://www.uwcea.org/learning/",
+      "https://www.uwcea.org/learning-support/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "UWC East Africa offers a variety of outdoor and service-oriented trip programs focusing on safety, skill development, and community engagement. Programs include cross-country bike excursions in remote Tanzanian landscapes, snorkeling and marine activities at reefs, and community service days for secondary students.",
+    "programs": [
+      {
+        "program_name": "Reefs Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "service_learning",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "coral reefs",
+          "mangroves",
+          "beach"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwcea.org/outdoor-pursuits/",
+            "quote": "The Reefs trips are weather dependent, and the activities are tide dependent. Schedules are adjusted continuously, so students are encouraged to show adaptability. In groups, students rotate between various activities like mangroves and coral reefs snorkeling excursions, beach clean-ups, kayaking and paddle boarding, recreational dives, service dives, and more."
+          }
+        ]
+      },
+      {
+        "program_name": "Cross-country Bike Excursions",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "remote areas in Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwcea.org/outdoor-pursuits/",
+            "quote": "Purpose: Cross-country style bike excursions in remote areas. We are looking for locations populated by wildlife and offering outstanding views of the diverse Tanzanian landscapes. We avoid main roads as much as possible for safety reasons."
+          },
+          {
+            "source_url": "https://www.uwcea.org/outdoor-pursuits/",
+            "quote": "Students learn the fundamentals of group excursions in order to maximise safety and fun; signals, techniques, road safety, going uphill and downhill, etc. They will also learn the basics of mechanics in order to ﬁx their own bikes when needed."
+          }
+        ]
+      },
+      {
+        "program_name": "Community and Service Days",
+        "program_format": null,
+        "trip_types": [
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "at least one per academic year",
+        "duration": null,
+        "locations": [
+          "local community"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwcea.org/service/",
+            "quote": "At UWC East Africa, younger students in the Secondary are involved in at least one Community and Service Day per academic year and they are encouraged to participate in other school-initiated activities."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "coral reefs",
+      "mangroves",
+      "beach",
+      "remote areas in Tanzania",
+      "local community"
+    ],
+    "unknowns": [
+      "Program frequency for Reefs Trips and Cross-country Bike Excursions",
+      "Program duration for all trips"
+    ]
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "school_key": "american_school_of_warsaw",
+  "school_name": "American School of Warsaw",
+  "homepage": "http://www.aswarsaw.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:22 PM",
+  "tokens_in": 807,
+  "tokens_out": 429,
+  "tokens_total": 1236,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "f254fb2d534be5f2",
+    "pages": [
+      "http://www.aswarsaw.org/",
+      "http://www.aswarsaw.org/learning/middle-school",
+      "http://www.aswarsaw.org/learning/high-school",
+      "http://www.aswarsaw.org/learning/high-school/ib-diploma-programme",
+      "http://www.aswarsaw.org/learning/high-school/ib-dp-results",
+      "http://www.aswarsaw.org/learning/high-school/graduation-requirements",
+      "http://www.aswarsaw.org/learning/high-school/counseling",
+      "http://www.aswarsaw.org/learning/high-school/university-admittance",
+      "http://www.aswarsaw.org/learning/learning-at-asw",
+      "http://www.aswarsaw.org/learning/curriculum",
+      "http://www.aswarsaw.org/learning/service-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American School of Warsaw offers service-learning trips primarily as day trips for middle and high school students, engaging them with local NGOs and community institutions to foster empathy, service, and active participation.",
+    "programs": [
+      {
+        "program_name": "7th Grade Service-Learning Trip",
+        "program_format": "day trip",
+        "trip_types": [
+          "day_trip",
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "1 day",
+        "locations": [
+          "Warsaw"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aswarsaw.org/learning/service-learning",
+            "quote": "Groups of enthusiastic 7th graders from the American School of Warsaw embarked on a remarkable journey through the vibrant world of nine Warsaw's Non-Governmental Organizations (NGOs). This wasn't your typical field trip; it was a day of discovery, service, and empathy."
+          }
+        ]
+      },
+      {
+        "program_name": "9th Grade Service-Learning Expedition",
+        "program_format": "day trip",
+        "trip_types": [
+          "day_trip",
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "1 day",
+        "locations": [
+          "Warsaw"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aswarsaw.org/learning/service-learning",
+            "quote": "On April 5 groups of 9th graders embarked on unique expeditions. These were journeys into the heart of their community, where they actively engaged with four inspiring institutions."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Warsaw"
+    ],
+    "unknowns": [
+      "Details on other trip programs, including overnight, international, or expedition trips",
+      "Frequency and duration specifics beyond the single-day service trips",
+      "Any exchange programs or trips for other grade bands"
+    ]
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "school_key": "tfs_canada_s_international_school",
+  "school_name": "TFS - Canada's International School",
+  "homepage": "http://www.tfs.ca/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:38 PM",
+  "tokens_in": 932,
+  "tokens_out": 960,
+  "tokens_total": 1892,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 8,
+    "prompt_hash": "acc6b85a52e4f3df",
+    "pages": [
+      "http://www.tfs.ca/all-round-development/trips-and-exchanges",
+      "http://www.tfs.ca/international-perspective/international-trips-and-exchanges",
+      "http://www.tfs.ca/",
+      "http://www.tfs.ca/academic-ambition/the-learning-forum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "TFS - Canada's International School offers a variety of international and domestic trips and exchanges designed to develop students' international perspective, language skills, intercultural competencies, and leadership. These include language immersion trips, reciprocal exchange programs, cultural tours, and service projects spanning multiple grade levels.",
+    "programs": [
+      {
+        "program_name": "France Exchange Program",
+        "program_format": "reciprocal exchange",
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Paris, France"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.tfs.ca/international-perspective/international-trips-and-exchanges",
+            "quote": "We have the unique opportunity for individual students to take part in a reciprocal exchange program with one of our partner schools in France: Lycée Montaigne in Paris. Our ultimate goal is to be able to offer each student at TFS the opportunity to take part in an exchange at least once between Grade 6 and Level V."
+          }
+        ]
+      },
+      {
+        "program_name": "Spain Cultural Exchange Trip",
+        "program_format": "exchange and cultural trip",
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual (March)",
+        "duration": "one week",
+        "locations": [
+          "Barcelona, Spain"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.tfs.ca/international-perspective/international-trips-and-exchanges",
+            "quote": "In March, our Grade 10 (Level III) students will have the opportunity to spend a week in the beautiful city of Barcelona and discover what the Spanish culture has to offer. This trip is part of an exchange program with Bon Soleil, a French school from the region."
+          }
+        ]
+      },
+      {
+        "program_name": "Switzerland Language Immersion Trip",
+        "program_format": "language immersion",
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Switzerland"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.tfs.ca/international-perspective/international-trips-and-exchanges",
+            "quote": "This trip offers a language immersion experience to students in Grade 7. Exchange school Institute Florimont, like TFS, follows both the French national curriculum and the International Baccalaureate programs."
+          }
+        ]
+      },
+      {
+        "program_name": "Peru Service Project",
+        "program_format": "service learning",
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Peru"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.tfs.ca/international-perspective/international-trips-and-exchanges",
+            "quote": "Whether it’s a language immersion trip to Switzerland, a service project in Peru, or a classical, musical tour of Italy, students will have opportunities to hone their language skills, make lasting friendships with their peers from TFS and their hosts abroad and develop intercultural competencies and their leadership skills."
+          }
+        ]
+      },
+      {
+        "program_name": "Italy Classical Musical Tour",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Italy"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.tfs.ca/international-perspective/international-trips-and-exchanges",
+            "quote": "Whether it’s a language immersion trip to Switzerland, a service project in Peru, or a classical, musical tour of Italy, students will have opportunities to hone their language skills, make lasting friendships with their peers from TFS and their hosts abroad and develop intercultural competencies and their leadership skills."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Paris, France",
+      "Barcelona, Spain",
+      "Switzerland",
+      "Peru",
+      "Italy"
+    ],
+    "unknowns": [
+      "Exact frequency and duration of France exchange program",
+      "Exact frequency and duration of Switzerland language immersion trip",
+      "Grade bands for Peru service project and Italy musical tour"
+    ]
+  }
+}

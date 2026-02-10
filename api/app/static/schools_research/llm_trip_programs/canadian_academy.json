@@ -1,0 +1,87 @@
+{
+  "school_key": "canadian_academy",
+  "school_name": "Canadian Academy",
+  "homepage": "https://www.canacad.ac.jp/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:20 PM",
+  "tokens_in": 796,
+  "tokens_out": 357,
+  "tokens_total": 1153,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "5219de683ae76371",
+    "pages": [
+      "https://www.canacad.ac.jp/experiencing",
+      "https://www.canacad.ac.jp/experiencing/athletics",
+      "https://www.canacad.ac.jp/experiencing/the-arts",
+      "https://www.canacad.ac.jp/experiencing/after-school-activities",
+      "https://www.canacad.ac.jp/experiencing/cultural-experiences",
+      "https://www.canacad.ac.jp/experiencing/trips-travel",
+      "https://www.canacad.ac.jp/experiencing/service-learning",
+      "https://www.canacad.ac.jp/",
+      "https://www.canacad.ac.jp/learning",
+      "https://www.canacad.ac.jp/learning/early-childhood",
+      "https://www.canacad.ac.jp/learning/elementary"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Canadian Academy offers a range of school trips from local day trips to international excursions, designed to enrich learning and broaden horizons. High School students have opportunities to travel overseas for athletic competitions through APAC.",
+    "programs": [
+      {
+        "program_name": "General Trips & Travel",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.canacad.ac.jp/experiencing",
+            "quote": "School trips are an exciting part of life at Canadian Academy. From local day trips to international excursions, all travel opportunities are purposefully designed to enrich learning and broaden horizons!"
+          }
+        ]
+      },
+      {
+        "program_name": "High School Athletics Travel",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "seasonal",
+        "duration": null,
+        "locations": [
+          "Asia Pacific region"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.canacad.ac.jp/experiencing/athletics",
+            "quote": "High School students also have the unique opportunity to travel overseas to compete with other international schools during APAC (the Asian Pacific Activities Conference)."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Asia Pacific region"
+    ],
+    "unknowns": [
+      "frequency and duration of general trips",
+      "specific destinations for general trips"
+    ]
+  }
+}

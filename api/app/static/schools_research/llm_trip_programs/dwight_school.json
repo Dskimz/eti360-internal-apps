@@ -1,0 +1,110 @@
+{
+  "school_key": "dwight_school",
+  "school_name": "Dwight School",
+  "homepage": "https://www.dwight.edu/newyork",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:27 PM",
+  "tokens_in": 991,
+  "tokens_out": 493,
+  "tokens_total": 1484,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "afd03e5d43af196b",
+    "pages": [
+      "https://www.dwight.edu/newyork/student-life",
+      "https://www.dwight.edu/newyork/student-life/athletics",
+      "https://www.dwight.edu/newyork/student-life/aquatics-athletic-center-programs",
+      "https://www.dwight.edu/newyork/student-life/community-service",
+      "https://www.dwight.edu/newyork/student-life/dress-code",
+      "https://www.dwight.edu/newyork/student-life/internships",
+      "https://www.dwight.edu/newyork/student-life/trips-exchanges",
+      "https://www.dwight.edu/newyork",
+      "https://www.dwight.edu/newyork/academics/middle-school",
+      "https://www.dwight.edu/newyork/academics/upper-school",
+      "https://www.dwight.edu/newyork/academics",
+      "https://www.dwight.edu/newyork/academics/innovation",
+      "https://www.dwight.edu/newyork/academics/curriculum-guide",
+      "https://www.dwight.edu/newyork/academics/early-childhood",
+      "https://www.dwight.edu/newyork/academics/childcare",
+      "https://www.dwight.edu/newyork/academics/preschool",
+      "https://www.dwight.edu/newyork/academics/lower-school",
+      "https://www.dwight.edu/newyork/academics/college-counseling",
+      "https://www.dwight.edu/newyork/academics/languages",
+      "https://www.dwight.edu/newyork/academics/arts",
+      "https://www.dwight.edu/newyork/academics/quest-learning-support"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Dwight School offers various trips and exchanges as part of its student life programs, including field trips for language practice and performing arts opportunities in iconic NYC venues.",
+    "programs": [
+      {
+        "program_name": "Language Field Trips",
+        "program_format": "day trip",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "day",
+        "locations": [
+          "Central Park Zoo, New York City"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.dwight.edu/newyork/academics/languages",
+            "quote": "Taking a field trip to the Central Park Zoo to learn about the animals through reading and listening, and to practice speaking skills by sharing their knowledge with other zoo visitors"
+          }
+        ]
+      },
+      {
+        "program_name": "Performing Arts Trips",
+        "program_format": "multiple events",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "throughout the year",
+        "duration": "varies",
+        "locations": [
+          "Carnegie Hall",
+          "Symphony Space",
+          "Jazz at Lincoln Center",
+          "Five Angels Theater",
+          "Other off-Broadway theaters in New York City"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.dwight.edu/newyork/academics/arts",
+            "quote": "Dwight students also perform in iconic NYC spaces throughout the year, which has included Carnegie Hall, Symphony Space, Jazz at Lincoln Center, Five Angels Theater, and other off-Broadway theaters."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Central Park Zoo, New York City",
+      "Carnegie Hall",
+      "Symphony Space",
+      "Jazz at Lincoln Center",
+      "Five Angels Theater",
+      "Other off-Broadway theaters in New York City"
+    ],
+    "unknowns": [
+      "Details on overnight residential trips",
+      "International trips or exchanges",
+      "Service learning or expedition/outdoor trips",
+      "Grade bands for some trips",
+      "Frequency and duration specifics for some programs"
+    ]
+  }
+}

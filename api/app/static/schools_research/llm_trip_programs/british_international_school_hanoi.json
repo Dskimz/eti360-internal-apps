@@ -1,0 +1,59 @@
+{
+  "school_key": "british_international_school_hanoi",
+  "school_name": "British International School Hanoi",
+  "homepage": "https://www.nordangliaeducation.com/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:20 PM",
+  "tokens_in": 648,
+  "tokens_out": 296,
+  "tokens_total": 944,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "d5e841bde2eeeb09",
+    "pages": [
+      "https://www.nordangliaeducation.com/",
+      "https://www.nordangliaeducation.com/outstanding-experiences",
+      "https://www.nordangliaeducation.com/outstanding-experiences/social-purpose",
+      "https://www.nordangliaeducation.com/approach-to-learning",
+      "https://www.nordangliaeducation.com/our-schools/learning-environments"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "British International School Hanoi, as part of the Nord Anglia Education network, offers transformative expedition programs designed to broaden students' perspectives through exposure to different cultures, people, and ideas. These include global, regional, and local opportunities that foster resilience, leadership, and lifelong friendships. A notable program involves service learning expeditions to Arusha, Tanzania, where students engage in development projects with local charities.",
+    "programs": [
+      {
+        "program_name": "Arusha Service Learning Expedition",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Arusha, Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/outstanding-experiences/social-purpose",
+            "quote": "Each year, about 2,000 Nord Anglia students travel to our Arusha camp in the foothills of Mount Kilimanjaro, Tanzania. They work with local charities on development projects, including building and extending schools."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Arusha, Tanzania"
+    ],
+    "unknowns": [
+      "grade bands for the Arusha expedition",
+      "duration of the trips",
+      "other specific trip programs or locations"
+    ]
+  }
+}

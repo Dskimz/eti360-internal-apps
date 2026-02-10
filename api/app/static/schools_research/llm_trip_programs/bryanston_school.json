@@ -1,0 +1,61 @@
+{
+  "school_key": "bryanston_school",
+  "school_name": "Bryanston School",
+  "homepage": "https://www.bryanston.co.uk/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 482,
+  "tokens_out": 236,
+  "tokens_total": 718,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "8b5aa7e4ce808b0b",
+    "pages": [
+      "https://www.bryanston.co.uk/prep-school-dorset/school-life/",
+      "https://www.bryanston.co.uk/school-life/",
+      "https://www.bryanston.co.uk/school-life/boarding/",
+      "https://www.bryanston.co.uk/school-life/day-pupils/",
+      "https://www.bryanston.co.uk/school-life/health-wellbeing/",
+      "https://www.bryanston.co.uk/school-life/co-curricular/",
+      "https://www.bryanston.co.uk/school-life/outdoor-education/",
+      "https://www.bryanston.co.uk/school-life/digital/",
+      "https://www.bryanston.co.uk/school-life/entrepreneurship/",
+      "https://www.bryanston.co.uk/",
+      "https://www.bryanston.co.uk/admissions/shortstayexperiences/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Bryanston School offers a range of outdoor education and expedition programs designed to build confidence, curiosity, and resilience among pupils.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education and Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.bryanston.co.uk/school-life/outdoor-education/",
+            "quote": "From Forest School to expeditions and leadership, outdoor learning builds confidence, curiosity, and resilience in every Bryanston pupil"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific grade bands involved in trips",
+      "Frequency of trips",
+      "Duration of trips",
+      "Exact locations/destinations of trips",
+      "Other types of trips such as day trips, international, service learning, or exchanges"
+    ]
+  }
+}

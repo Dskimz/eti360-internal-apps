@@ -1,0 +1,93 @@
+{
+  "school_key": "international_school_eindhoven",
+  "school_name": "International School Eindhoven",
+  "homepage": "http://www.isecampus.nl/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 1081,
+  "tokens_out": 387,
+  "tokens_total": 1468,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "fbc3f2450fc016c5",
+    "pages": [
+      "https://www.isecampus.nl/school-life/",
+      "https://www.isecampus.nl/school-life/daily-lesson-schedules/",
+      "https://www.isecampus.nl/school-life/holiday-and-study-days/",
+      "https://www.isecampus.nl/school-life/ise-library/",
+      "https://www.isecampus.nl/school-life/technology-at-the-ise/",
+      "https://www.isecampus.nl/school-life/afterschool-activities/",
+      "https://www.isecampus.nl/school-life/afterschool-activities/primary/",
+      "https://www.isecampus.nl/school-life/afterschool-activities/secondary/",
+      "https://www.isecampus.nl/school-life/student-councils/",
+      "https://www.isecampus.nl/school-life/how-to-get-to-our-school/",
+      "http://www.isecampus.nl/",
+      "https://www.isecampus.nl/our-school/our-team/leaders-for-learning-curriculum/",
+      "https://www.isecampus.nl/our-school/our-team/learning-for-learning-student-team/",
+      "https://www.isecampus.nl/our-school/our-team/leaders-for-learning-secondary-staffing/",
+      "https://www.isecampus.nl/curriculum/",
+      "https://www.isecampus.nl/curriculum/primary-international/",
+      "https://www.isecampus.nl/curriculum/primary-dutch-bilingual/",
+      "https://www.isecampus.nl/curriculum/secondary/",
+      "https://www.isecampus.nl/curriculum/secondary/middle-years-programme/",
+      "https://www.isecampus.nl/curriculum/secondary/diploma-programme/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "International School Eindhoven offers various trip programs including an overnight trip for primary students in group 6 and overnight school camps for secondary students organized per year group. These trips support extracurricular activities and experiential learning.",
+    "programs": [
+      {
+        "program_name": "Primary Overnight Trip",
+        "program_format": "overnight",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.isecampus.nl/school-life/",
+            "quote": "Every year, students from group 6 get a chance to go on an overnight trip."
+          }
+        ]
+      },
+      {
+        "program_name": "Secondary Overnight School Camps",
+        "program_format": "overnight",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.isecampus.nl/school-life/",
+            "quote": "Throughout the year, there are various extracurricular activities arranged for the secondary students to participate in, some of which might be located off campus, including overnight school camps per year group."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific destinations or locations for the trips",
+      "Exact duration beyond 'overnight' for trips",
+      "Frequency details beyond 'annual' for primary and secondary trips",
+      "Whether trips include international, expedition/outdoor, service learning, or exchange types"
+    ]
+  }
+}

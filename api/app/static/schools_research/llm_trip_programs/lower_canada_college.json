@@ -1,0 +1,91 @@
+{
+  "school_key": "lower_canada_college",
+  "school_name": "Lower Canada College",
+  "homepage": "http://www.lcc.ca/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 1085,
+  "tokens_out": 404,
+  "tokens_total": 1489,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 7,
+    "prompt_hash": "59825abd9b1a2e8b",
+    "pages": [
+      "http://www.lcc.ca/student-life",
+      "http://www.lcc.ca/student-life/trips",
+      "http://www.lcc.ca/",
+      "http://www.lcc.ca/academics/middle-school-7-8",
+      "http://www.lcc.ca/academics",
+      "http://www.lcc.ca/academics/junior-school-k-6",
+      "http://www.lcc.ca/academics/senior-school-9-11",
+      "http://www.lcc.ca/academics/pre-university-12",
+      "http://www.lcc.ca/academics/library",
+      "http://www.lcc.ca/academics/learning-support",
+      "http://www.lcc.ca/academics/collegeuniversity-advising"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Lower Canada College offers a variety of educational trips including local day excursions to museums, hydroelectric dams, and charitable organizations, as well as overnight trips. The Pre-University program includes a trip to the Huntsman Marine Science Centre in New Brunswick.",
+    "programs": [
+      {
+        "program_name": "Field Trips & Activities",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "local museums",
+          "hydroelectric dams",
+          "local charitable organizations"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.lcc.ca/student-life/trips",
+            "quote": "Some school trips are local day excursions to museums, Hydroelectric dams and local charitable organizations. LCC students also have the opportunity to enjoy overnight trips."
+          }
+        ]
+      },
+      {
+        "program_name": "Pre-University Program Trip",
+        "program_format": null,
+        "trip_types": [
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "start of the year",
+        "locations": [
+          "New Brunswick, Huntsman Marine Science Centre"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.lcc.ca/academics/pre-university-12",
+            "quote": "The opportunities offered in the diverse courses make the program unique, such as starting the year off in New Brunswick at the Huntsman Marine Science Centre."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local museums",
+      "hydroelectric dams",
+      "local charitable organizations",
+      "New Brunswick, Huntsman Marine Science Centre"
+    ],
+    "unknowns": []
+  }
+}

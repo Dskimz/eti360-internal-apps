@@ -1,0 +1,88 @@
+{
+  "school_key": "st_stephen_s_school",
+  "school_name": "St. Stephen's School",
+  "homepage": "https://sssrome.it/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:36 PM",
+  "tokens_in": 568,
+  "tokens_out": 366,
+  "tokens_total": 934,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "e3dfc7e0c54575d3",
+    "pages": [
+      "https://sssrome.it/student-life/student-life",
+      "https://sssrome.it/student-life/sports-and-clubs",
+      "https://sssrome.it/student-life/about/st-stephens-school-directory",
+      "https://sssrome.it/student-life/alumni/alumni-mentors",
+      "https://sssrome.it/",
+      "https://sssrome.it/teaching-learning/teaching-and-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "St. Stephen's School offers cultural exchange programs and outdoor excursions as part of its student life activities, including a Guatemala cultural exchange and environmental outdoor activities.",
+    "programs": [
+      {
+        "program_name": "Guatemala Club Cultural Exchange",
+        "program_format": null,
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Guatemala"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://sssrome.it/student-life/sports-and-clubs",
+            "quote": "Cultural exchange in Spanish between students from St. Stephen’s and students from Colegio Americano del Sur, in Guatemala. Aside from earning CAS credits, the club can also earn academic credits for students in Spanish 3 and 4."
+          }
+        ]
+      },
+      {
+        "program_name": "GEO Club Outdoor Excursions",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "school gardens",
+          "local environment"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://sssrome.it/student-life/sports-and-clubs",
+            "quote": "Students learn about gardening, manage the school gardens, organize clean-ups and environmental activities and outdoor excursions and activities."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Guatemala",
+      "school gardens",
+      "local environment"
+    ],
+    "unknowns": [
+      "program_format",
+      "frequency",
+      "duration"
+    ]
+  }
+}

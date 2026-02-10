@@ -1,0 +1,93 @@
+{
+  "school_key": "the_american_international_school_of_muscat_taism",
+  "school_name": "The American International School of Muscat (TAISM)",
+  "homepage": "http://www.taism.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:38 PM",
+  "tokens_in": 533,
+  "tokens_out": 431,
+  "tokens_total": 964,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "11a9d0fa460a64fb",
+    "pages": [
+      "http://www.taism.com/middle-school/activities",
+      "http://www.taism.com/high-school/activities",
+      "http://www.taism.com/elementary-school/activities",
+      "http://www.taism.com/middle-school/services",
+      "http://www.taism.com/",
+      "http://www.taism.com/early-childhood/services",
+      "http://www.taism.com/middle-school/curriculum",
+      "http://www.taism.com/high-school/academics",
+      "http://www.taism.com/community/learning-taism",
+      "http://www.taism.com/early-childhood/curriculum",
+      "http://www.taism.com/elementary-school/curriculum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "TAISM organizes field trips and off-campus excursions for various grade levels, utilizing contracted bus transportation within the Muscat Capital Area. Elementary students can also participate in external activity programs, some of which may involve off-campus locations.",
+    "programs": [
+      {
+        "program_name": "Field Trips and Off-Campus Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Muscat Capital Area"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.taism.com/middle-school/services",
+            "quote": "TAISM offers a contracted bus service to selected areas of the Muscat Capital Area. These buses offer transportation to and from school and are used for field trips and off-campus excursions."
+          }
+        ]
+      },
+      {
+        "program_name": "External Activity Programs",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "On campus",
+          "Off campus"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.taism.com/elementary-school/activities",
+            "quote": "Elementary students have the opportunity to participate in activities organized by external providers, at an additional charge. Currently, we offer ESG soccer, Little Gym Academy, Al Oula Fencing Academy, and programs from Ghala Golf Course. These programs are available both on and off campus."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Muscat Capital Area",
+      "On campus",
+      "Off campus"
+    ],
+    "unknowns": [
+      "Specific frequency of trips",
+      "Duration of trips",
+      "Details on overnight, international, expedition, service learning, or exchange trips"
+    ]
+  }
+}

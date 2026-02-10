@@ -1,0 +1,91 @@
+{
+  "school_key": "uwc_south_east_asia_east_campus",
+  "school_name": "UWC South East Asia (East Campus)",
+  "homepage": "https://www.uwcsea.edu.sg/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:21 PM",
+  "tokens_in": 2817,
+  "tokens_out": 668,
+  "tokens_total": 3485,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 20,
+    "prompt_hash": "dc524a15adc42df5",
+    "pages": [
+      "https://www.uwcsea.edu.sg/community/events/uwcsea-forum/partnerships/coming-of-age-in-the-natural-world-the-role-of-outdoor-experiences-in-a-sustainable-holistic-education",
+      "https://www.uwcsea.edu.sg/learning/activities/home-language-programme",
+      "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+      "https://www.uwcsea.edu.sg/learning/activities",
+      "https://www.uwcsea.edu.sg/",
+      "https://www.uwcsea.edu.sg/about/guiding-statements/learning-principles",
+      "https://www.uwcsea.edu.sg/learning/pse/safe-behaviours-curriculum",
+      "https://www.uwcsea.edu.sg/about/our-big-ideas/reimagining-learning",
+      "https://www.uwcsea.edu.sg/learning",
+      "https://www.uwcsea.edu.sg/learning/academics",
+      "https://www.uwcsea.edu.sg/learning/academics/language-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "UWCSEA South East Asia (East Campus) offers a comprehensive Outdoor Education program featuring a range of expeditions and trips designed to foster resilience, social bonding, connection with nature, and psychological well-being. Trips vary by grade level and include local and international destinations with a focus on sustainability and ecological awareness.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education Expeditions",
+        "program_format": "expeditions and trips",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual or as scheduled per grade",
+        "duration": "3 to 6 days depending on grade",
+        "locations": [
+          "Desaru, Malaysia",
+          "Pulau Sibu, Malaysia",
+          "Port Dickson, Malaysia",
+          "Tioman Island, Malaysia",
+          "Khao Yai National Park, Thailand",
+          "Japan",
+          "Wales",
+          "Ladakh",
+          "Australia",
+          "Nepal",
+          "Singapore (local trips)"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 3: Three-day trip to Desaru, Malaysia; Grade 4: Four-day trip to Pulau Sibu in Malaysia; Grade 5: Five-day trip to Port Dickson, Malaysia; Grade 6: Five-day trip to Tioman Island in Malaysia; Grade 7: Five-day trip to Tioman, Malaysia; Grade 8: Six-day trip to Khao Yai National Park, Thailand; Grade 9 and 10: Students join at least one of over 20 expeditions from trekking in Japan, Wales or Ladakh, to Tall Ship Sailing or Mountain Biking in Australia or even White Water kayaking in Nepal; Grade 11: Project Week—independently planned trips by small groups of students"
+          },
+          {
+            "source_url": "https://www.uwcsea.edu.sg/community/events/uwcsea-forum/partnerships/coming-of-age-in-the-natural-world-the-role-of-outdoor-experiences-in-a-sustainable-holistic-education",
+            "quote": "The logistical challenges of maintaining an effective Outdoor Education programme during the COVID-19 pandemic, and the necessity of initiating local Singapore trips, have coincided with UWCSEA’s increased focus on deeply understanding and mitigating of the ecological consequences of travelling far and wide to experience the outdoors."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Desaru, Malaysia",
+      "Pulau Sibu, Malaysia",
+      "Port Dickson, Malaysia",
+      "Tioman Island, Malaysia",
+      "Khao Yai National Park, Thailand",
+      "Japan",
+      "Wales",
+      "Ladakh",
+      "Australia",
+      "Nepal",
+      "Singapore"
+    ],
+    "unknowns": []
+  }
+}

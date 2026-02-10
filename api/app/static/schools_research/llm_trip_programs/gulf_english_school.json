@@ -1,0 +1,85 @@
+{
+  "school_key": "gulf_english_school",
+  "school_name": "Gulf English School",
+  "homepage": "https://www.gulfenglishschool.sch.qa/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:28 PM",
+  "tokens_in": 616,
+  "tokens_out": 398,
+  "tokens_total": 1014,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "f912ec749253d3cd",
+    "pages": [
+      "https://www.gulfenglishschool.sch.qa/school-life/extra-curricular",
+      "https://www.gulfenglishschool.sch.qa/school-life/international-local-trips",
+      "https://www.gulfenglishschool.sch.qa/school-life/school-programmes/student-council",
+      "https://www.gulfenglishschool.sch.qa/school-life/school-programmes/model-united-nations-mun",
+      "https://www.gulfenglishschool.sch.qa/school-life/school-programmes/duke-of-edinburgh-dofe",
+      "https://www.gulfenglishschool.sch.qa/school-life/the-ges-curriculum",
+      "https://www.gulfenglishschool.sch.qa/school-life/service-learning",
+      "https://www.gulfenglishschool.sch.qa/",
+      "https://www.gulfenglishschool.sch.qa/student-services/student-wellbeing",
+      "https://www.gulfenglishschool.sch.qa/student-services/inclusion",
+      "https://www.gulfenglishschool.sch.qa/about-ges/teaching-and-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Gulf English School offers a variety of international and local trips to enrich student experiences beyond the classroom. The Model United Nations (MUN) program includes participation in conferences around Qatar and opportunities abroad. The school also organizes international and local trips for students.",
+    "programs": [
+      {
+        "program_name": "International and Local Trips",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "domestic",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.gulfenglishschool.sch.qa/school-life/international-local-trips",
+            "quote": "At our school, we offer a variety of international and local trips that provide students with enriching experiences beyond the classroom."
+          }
+        ]
+      },
+      {
+        "program_name": "Model United Nations (MUN)",
+        "program_format": "weekly meetings and conference participation",
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": "weekly meetings; conference attendance as scheduled",
+        "duration": null,
+        "locations": [
+          "Qatar",
+          "abroad"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.gulfenglishschool.sch.qa/school-life/school-programmes/model-united-nations-mun",
+            "quote": "We then send our most promising delegates to conferences around Qatar, such as the prestigious THIMUN by Qatar Foundation, as well as looking for opportunities abroad for our young diplomats."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Qatar",
+      "abroad"
+    ],
+    "unknowns": [
+      "grade bands for trips",
+      "frequency and duration of international and local trips"
+    ]
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "school_key": "stamford_american_school_hong_kong",
+  "school_name": "Stamford American School Hong Kong",
+  "homepage": "https://www.sais.edu.hk/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:37 PM",
+  "tokens_in": 1152,
+  "tokens_out": 629,
+  "tokens_total": 1781,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 7,
+    "prompt_hash": "3cbf4d9a286b0135",
+    "pages": [
+      "https://www.sais.edu.hk/school-life/co-curricular-activities/",
+      "https://www.sais.edu.hk/school-life/calendar/",
+      "https://www.sais.edu.hk/school-life/school-bus/",
+      "https://www.sais.edu.hk/school-life/uniform/",
+      "https://www.sais.edu.hk/curriculum/outdoor-education/",
+      "https://www.sais.edu.hk/",
+      "https://www.sais.edu.hk/curriculum/middle-school/",
+      "https://www.sais.edu.hk/curriculum/high-school/",
+      "https://www.sais.edu.hk/curriculum/curriculum-overview/",
+      "https://www.sais.edu.hk/curriculum/elementary/",
+      "https://www.sais.edu.hk/curriculum/elementary/learning-lab/",
+      "https://www.sais.edu.hk/curriculum/bilingual-program/",
+      "https://www.sais.edu.hk/curriculum/cornerstones-program/",
+      "https://www.sais.edu.hk/curriculum/graduation-pathways/",
+      "https://www.sais.edu.hk/curriculum/steminn/",
+      "https://www.sais.edu.hk/curriculum/language-programs/",
+      "https://www.sais.edu.hk/curriculum/english-support-programs-eal/",
+      "https://www.sais.edu.hk/curriculum/physical-education-and-health/",
+      "https://www.sais.edu.hk/curriculum/arts-program/",
+      "https://www.sais.edu.hk/curriculum/nurturing-global-minds/",
+      "https://www.sais.edu.hk/curriculum/social-emotional-program/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Stamford American School Hong Kong offers a comprehensive outdoor education program starting from Pre-Primary through high school. Younger students participate in half-day local excursions each semester, while older students engage in overnight local excursions from Grade 3 and have international trip options from Grade 9 onwards. Activities include visits to ecological parks, beaches, mountain trails, hiking, water sports, and leadership development.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education Program for Pre-Primary to Grade 2",
+        "program_format": "half-day excursions",
+        "trip_types": [
+          "day_trip",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "each semester",
+        "duration": "half-day",
+        "locations": [
+          "local ecological parks",
+          "beaches",
+          "mountain trails"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.sais.edu.hk/curriculum/outdoor-education/",
+            "quote": "Students in Pre-Primary to Grade 2 participate in our outdoor education program excursions each semester. These half-day excursions include visits to local ecological parks, beaches, and mountain trails where students learn a deeper appreciation for nature as well as participate in a variety of planned activities such as science scavenger hunts, wildlife/nature cataloging and interactive games."
+          }
+        ]
+      },
+      {
+        "program_name": "Outdoor Education Overnight Excursions",
+        "program_format": "overnight excursions",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "not specified",
+        "duration": "not specified",
+        "locations": [
+          "local areas"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.sais.edu.hk/curriculum/outdoor-education/",
+            "quote": "From Grade 3, students will have overnight excursions locally."
+          }
+        ]
+      },
+      {
+        "program_name": "International Outdoor Education Trips",
+        "program_format": "overnight excursions",
+        "trip_types": [
+          "overnight_residential",
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "not specified",
+        "duration": "not specified",
+        "locations": [
+          "international destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.sais.edu.hk/curriculum/outdoor-education/",
+            "quote": "International options from Grade 9+."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local ecological parks",
+      "beaches",
+      "mountain trails",
+      "local areas",
+      "international destinations"
+    ],
+    "unknowns": [
+      "Specific frequency and duration details for overnight and international trips",
+      "Exact international destinations",
+      "Names of specific programs or trip titles"
+    ]
+  }
+}

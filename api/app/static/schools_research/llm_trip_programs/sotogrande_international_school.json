@@ -1,0 +1,105 @@
+{
+  "school_key": "sotogrande_international_school",
+  "school_name": "Sotogrande International School",
+  "homepage": "http://www.sis.ac/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:36 PM",
+  "tokens_in": 715,
+  "tokens_out": 560,
+  "tokens_total": 1275,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "3a9636f04aeae580",
+    "pages": [
+      "http://www.sis.ac/school-life/summer-camps",
+      "http://www.sis.ac/school-life/extracurricular-activities",
+      "http://www.sis.ac/school-life/calendar",
+      "http://www.sis.ac/school-life/bus-routes",
+      "http://www.sis.ac/school-life/school-uniform",
+      "http://www.sis.ac/school-life/food-nutrition",
+      "http://www.sis.ac/school-life/parent-community",
+      "http://www.sis.ac/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Sotogrande International School offers a variety of trip and travel programs including extensive international exchange programmes, international summer camps with day and residential options, and overseas projects. These programs provide cultural immersion, language practice, and opportunities for personal development through sports, academics, and excursions.",
+    "programs": [
+      {
+        "program_name": "International Exchange Programmes",
+        "program_format": null,
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.sis.ac/",
+            "quote": "students participate in extensive exchange programmes, enriching international summer camps and unforgettable overseas projects as part of a global student community."
+          }
+        ]
+      },
+      {
+        "program_name": "International Summer Camp Programme",
+        "program_format": "day and residential",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "local/coastal area"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.sis.ac/school-life/summer-camps",
+            "quote": "Children aged 8–16 can choose from day or residential summer camp options, enjoying a vibrant international summer camp programme offering expert sports coaching, coastal and wind sports, alongside a strong academic curriculum including STEAM, language learning (English and Spanish), and public speaking."
+          },
+          {
+            "source_url": "http://www.sis.ac/school-life/summer-camps",
+            "quote": "Campers will immerse themselves in local culture and enjoy spending time with their new friends making long-lasting memories."
+          }
+        ]
+      },
+      {
+        "program_name": "Overseas Projects",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.sis.ac/",
+            "quote": "unforgettable overseas projects as part of a global student community."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local/coastal area"
+    ],
+    "unknowns": [
+      "Specific grade bands for exchange programmes and overseas projects",
+      "Frequency and duration of trips and projects",
+      "Exact international destinations for exchange programmes and overseas projects"
+    ]
+  }
+}

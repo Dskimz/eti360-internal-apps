@@ -1,0 +1,97 @@
+{
+  "school_key": "cayman_international_school",
+  "school_name": "Cayman International School",
+  "homepage": "http://www.cis.ky/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 909,
+  "tokens_out": 459,
+  "tokens_total": 1368,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "525f6fa6fea2a534",
+    "pages": [
+      "http://www.cis.ky/student-life",
+      "http://www.cis.ky/student-life/handbooks-student-portal",
+      "http://www.cis.ky/student-life/activities-clubs-after-school-care",
+      "http://www.cis.ky/student-life/uniforms",
+      "http://www.cis.ky/student-life/school-supply-list",
+      "http://www.cis.ky/student-life/athletics",
+      "http://www.cis.ky/student-life/fine-arts",
+      "http://www.cis.ky/",
+      "http://www.cis.ky/academics/middle-school/welcome-to-the-middle-school",
+      "http://www.cis.ky/academics/middle-school/middle-school-learning",
+      "http://www.cis.ky/academics/high-school",
+      "http://www.cis.ky/academics/high-school/welcome-to-high-school",
+      "http://www.cis.ky/academics/high-school/academic-excellence-personal-growth",
+      "http://www.cis.ky/academics/high-school/high-school-learning-overview",
+      "http://www.cis.ky/academics/high-school/ib-programme-overview",
+      "http://www.cis.ky/academics/academic-overview",
+      "http://www.cis.ky/academics/early-childhood/welcome-to-early-childhood",
+      "http://www.cis.ky/academics/early-childhood/early-childhood-learning",
+      "http://www.cis.ky/academics/elementary-school",
+      "http://www.cis.ky/academics/elementary-school/welcome-to-the-elementary-school",
+      "http://www.cis.ky/academics/elementary-school/elementary-school-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Cayman International School offers an immersive Week Without Walls program for high school students involving international travel with cultural, service, and educational components. For students not traveling internationally, local service and experiential opportunities are provided to engage with the community and environment.",
+    "programs": [
+      {
+        "program_name": "Week Without Walls",
+        "program_format": "immersive educational travel",
+        "trip_types": [
+          "international",
+          "service_learning",
+          "exchange"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "various international destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.cis.ky/academics/high-school/high-school-learning-overview",
+            "quote": "Week Without Walls is an immersive educational experience where students travel with teachers and guides to explore a new country’s culture, history, and natural beauty. During the week, students volunteer with local organizations, engage with families, and visit iconic sites, fostering a deep connection with the destination and its people."
+          }
+        ]
+      },
+      {
+        "program_name": "Local Service and Experiential Opportunities",
+        "program_format": "local service and work experience",
+        "trip_types": [
+          "day_trip",
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "variable",
+        "locations": [
+          "Cayman Islands"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.cis.ky/academics/high-school/high-school-learning-overview",
+            "quote": "For students who don’t travel off-island during Week Without Walls, there are enriching local opportunities to develop skills, serve the community, and explore Cayman’s natural beauty. Students can engage in service by volunteering at the Humane Society or gain hands-on work experience with esteemed local organizations, including Health City, Deloitte, PwC, Art Nest, and CUC."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "various international destinations",
+      "Cayman Islands"
+    ],
+    "unknowns": []
+  }
+}

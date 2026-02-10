@@ -1,0 +1,74 @@
+{
+  "school_key": "international_school_bangkok",
+  "school_name": "International School Bangkok",
+  "homepage": "https://www.isb.ac.th/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 1212,
+  "tokens_out": 285,
+  "tokens_total": 1497,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 7,
+    "prompt_hash": "88e5465be9fc5488",
+    "pages": [
+      "https://www.isb.ac.th/student-life",
+      "https://www.isb.ac.th/student-life/library",
+      "https://www.isb.ac.th/student-life/food",
+      "https://www.isb.ac.th/student-life/transportation",
+      "https://www.isb.ac.th/student-life/school-opening-hours-campus-access",
+      "https://www.isb.ac.th/student-life/health-services",
+      "https://www.isb.ac.th/arts-activities-athletics",
+      "https://www.isb.ac.th/arts-activities-athletics/arts",
+      "https://www.isb.ac.th/arts-activities-athletics/activities",
+      "https://www.isb.ac.th/",
+      "https://www.isb.ac.th/curriculum-academics-learning/middle-school",
+      "https://www.isb.ac.th/curriculum-academics-learning/high-school",
+      "https://www.isb.ac.th/curriculum-academics-learning",
+      "https://www.isb.ac.th/curriculum-academics-learning/the-isb-curriculum",
+      "https://www.isb.ac.th/curriculum-academics-learning/elementary-school",
+      "https://www.isb.ac.th/curriculum-academics-learning/university-counseling",
+      "https://www.isb.ac.th/curriculum-academics-learning/counseling-services",
+      "https://www.isb.ac.th/curriculum-academics-learning/student-services",
+      "https://www.isb.ac.th/curriculum-academics-learning/summer-school",
+      "https://www.isb.ac.th/curriculum-academics-learning/environmental-wilderness-campus",
+      "https://www.isb.ac.th/careers/living-and-learning-in-thailand"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "International School Bangkok offers outdoor education expeditions at its Environmental Wilderness Campus, providing 3-day, 2-night scenario-based challenges designed to develop problem-solving and cooperation skills in a safe environment.",
+    "programs": [
+      {
+        "program_name": "Environmental Wilderness Campus Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": "3 days and 2 nights",
+        "locations": [
+          "Environmental Wilderness Campus"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.isb.ac.th/curriculum-academics-learning/environmental-wilderness-campus",
+            "quote": "Each expedition is 3 days and 2 nights and will be hosted at the EWC. The expedition is unique in the scenario-based challenges that it poses to students, challenging them to solve problems and to step out of their comfort zone in an atmosphere of safety and cooperation."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Environmental Wilderness Campus"
+    ],
+    "unknowns": [
+      "grade bands for expeditions",
+      "frequency of expeditions",
+      "other trip programs or destinations"
+    ]
+  }
+}

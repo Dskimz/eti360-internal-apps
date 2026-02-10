@@ -1,0 +1,117 @@
+{
+  "school_key": "united_nations_international_school_of_hanoi",
+  "school_name": "United Nations International School of Hanoi",
+  "homepage": "https://www.unishanoi.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "60",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:39 PM",
+  "tokens_in": 518,
+  "tokens_out": 517,
+  "tokens_total": 1035,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "e1aa43ed8efd8083",
+    "pages": [
+      "https://www.unishanoi.org/academics/elementary-school/lower-elementary-school/welcome/special-events-and-school-trips",
+      "https://www.unishanoi.org/academics/trips-and-expeditions",
+      "https://www.unishanoi.org/",
+      "https://www.unishanoi.org/academics",
+      "https://www.unishanoi.org/academics/the-ib-programmes",
+      "https://www.unishanoi.org/academics/elementary-school",
+      "https://www.unishanoi.org/academics/elementary-school/lower-elementary-school",
+      "https://www.unishanoi.org/academics/elementary-school/lower-elementary-school/welcome",
+      "https://www.unishanoi.org/academics/elementary-school/lower-elementary-school/welcome/the-early-childhood-centre-ecc",
+      "https://www.unishanoi.org/academics/elementary-school/lower-elementary-school/welcome/our-learning-approach-and-support",
+      "https://www.unishanoi.org/academics/elementary-school/lower-elementary-school/welcome/lower-elementary-experience"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "United Nations International School of Hanoi offers a variety of trips and expeditions for different grade levels, including day trips, overnight residential trips, and international travel. These trips support experiential learning and community engagement across elementary, middle, and high school levels.",
+    "programs": [
+      {
+        "program_name": "Elementary School Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Vietnam"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.unishanoi.org/academics/elementary-school/lower-elementary-school/welcome/special-events-and-school-trips",
+            "quote": "Elementary school organizes special events and school trips within Vietnam to support learning."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Trips and Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Vietnam"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.unishanoi.org/academics/trips-and-expeditions",
+            "quote": "Middle school students participate in overnight residential trips and expeditions within Vietnam focusing on outdoor education."
+          }
+        ]
+      },
+      {
+        "program_name": "High School Trips and International Travel",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "international",
+          "service_learning",
+          "exchange"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Vietnam",
+          "International"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.unishanoi.org/academics/trips-and-expeditions",
+            "quote": "High school students engage in international trips, service learning projects, and exchange programs."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Vietnam",
+      "International"
+    ],
+    "unknowns": [
+      "Specific frequency of trips",
+      "Exact duration of trips",
+      "Detailed destinations for international trips",
+      "Names of specific programs or trips"
+    ]
+  }
+}

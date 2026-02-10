@@ -1,0 +1,69 @@
+{
+  "school_key": "british_school_quito",
+  "school_name": "British School Quito",
+  "homepage": "https://britishschoolquito.edu.ec/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 835,
+  "tokens_out": 341,
+  "tokens_total": 1176,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "6bfee8c8a6d015ac",
+    "pages": [
+      "https://britishschoolquito.edu.ec/our-school/co-curricular-activities",
+      "https://britishschoolquito.edu.ec/school-life",
+      "https://britishschoolquito.edu.ec/school-life/school-calendar-timings",
+      "https://britishschoolquito.edu.ec/school-life/school-essentials",
+      "https://britishschoolquito.edu.ec/school-life/school-policies-procedures",
+      "https://britishschoolquito.edu.ec/school-life/duke-of-edinburgh-award",
+      "https://britishschoolquito.edu.ec/school-life/house-system",
+      "https://britishschoolquito.edu.ec/es/our-school-2/extracurricular-activities",
+      "https://britishschoolquito.edu.ec/es/school-life/school-calendar-timings",
+      "https://britishschoolquito.edu.ec/es/school-life/información-escolar-esencial",
+      "https://britishschoolquito.edu.ec/es/school-life/school-policies-reports",
+      "https://britishschoolquito.edu.ec/es/school-life/duke-of-edinburgh-award",
+      "https://britishschoolquito.edu.ec/es/school-life/house-system",
+      "https://britishschoolquito.edu.ec/",
+      "https://britishschoolquito.edu.ec/our-school/the-curriculum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British School Quito leverages its location in one of the most beautiful areas of Ecuador to organize off-site learning activities and school trips, which are considered a valuable part of the student experience. Parents must give permission for all outings, and some trips may incur a small cost. Additionally, the school offers the Duke of Edinburgh Award program starting in Year 10, which includes structured training and expedition preparation.",
+    "programs": [
+      {
+        "program_name": "Duke of Edinburgh Award",
+        "program_format": "structured training and expedition",
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual or per award level",
+        "duration": null,
+        "locations": [
+          "Ecuador"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://britishschoolquito.edu.ec/school-life/duke-of-edinburgh-award",
+            "quote": "At BSQ, students typically begin their journey with the Bronze Award in Year 10. As part of their preparation, they take part in structured training sessions during Wednesday Enrichment time, as well as completing independent tasks. These sessions cover essential topics such as setting up tents, using camping stoves, first aid, health and safety, nutrition, environmental care, teamwork, and navigation."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Ecuador"
+    ],
+    "unknowns": [
+      "Specific destinations for general school trips",
+      "Duration and frequency of general school trips",
+      "Other trip programs besides Duke of Edinburgh Award"
+    ]
+  }
+}

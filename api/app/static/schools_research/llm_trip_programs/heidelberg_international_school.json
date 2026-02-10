@@ -1,0 +1,100 @@
+{
+  "school_key": "heidelberg_international_school",
+  "school_name": "Heidelberg International School",
+  "homepage": "https://www.hischool.de/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:28 PM",
+  "tokens_in": 633,
+  "tokens_out": 497,
+  "tokens_total": 1130,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "602871a6192dd2d6",
+    "pages": [
+      "https://www.hischool.de/school-life/",
+      "https://www.hischool.de/",
+      "https://www.hischool.de/curriculum/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Heidelberg International School offers a range of overnight field trips and service learning trips primarily within Germany for Grades 3-10, and international service learning trips for Grade 11 students. These trips occur annually and include educational and community service components.",
+    "programs": [
+      {
+        "program_name": "Extended Field Trips",
+        "program_format": "overnight",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "every school year",
+        "duration": "overnight",
+        "locations": [
+          "Germany"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.hischool.de/school-life/",
+            "quote": "Students in Grade 3-5 take part in overnight field trips to destinations in Germany every school year."
+          }
+        ]
+      },
+      {
+        "program_name": "Week Without Walls",
+        "program_format": "overnight",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "every school year",
+        "duration": "overnight",
+        "locations": [
+          "Germany"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.hischool.de/school-life/",
+            "quote": "Students in Grade 6-10 take part in overnight field trips to destinations in Germany every school year."
+          }
+        ]
+      },
+      {
+        "program_name": "Habitat for Humanity Service Learning Trip",
+        "program_format": "overnight",
+        "trip_types": [
+          "overnight_residential",
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "planned/future trips",
+        "duration": "overnight",
+        "locations": [
+          "Warsaw, Poland"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.hischool.de/school-life/",
+            "quote": "In 2018 the first group of 9 Grade 11 CAS students travelled to Warsaw, Poland to assist in the building of much needed housing. Further trips are planned to develop this relationship."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Germany",
+      "Warsaw, Poland"
+    ],
+    "unknowns": []
+  }
+}

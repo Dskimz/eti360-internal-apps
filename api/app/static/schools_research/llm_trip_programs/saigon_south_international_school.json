@@ -1,0 +1,104 @@
+{
+  "school_key": "saigon_south_international_school",
+  "school_name": "Saigon South International School",
+  "homepage": "http://www.ssis.edu.vn/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:35 PM",
+  "tokens_in": 850,
+  "tokens_out": 454,
+  "tokens_total": 1304,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "f24d6e21e5a13c93",
+    "pages": [
+      "http://www.ssis.edu.vn/student-life",
+      "http://www.ssis.edu.vn/student-life/ssis-stories",
+      "http://www.ssis.edu.vn/student-life/arts",
+      "http://www.ssis.edu.vn/student-life/athletics",
+      "http://www.ssis.edu.vn/student-life/after-school-activities",
+      "http://www.ssis.edu.vn/student-life/health-wellness",
+      "http://www.ssis.edu.vn/student-life/school-calendar",
+      "http://www.ssis.edu.vn/student-life/safeguarding",
+      "https://www.ssis.edu.vn/student-life/post-details/~board/es/post/how-observation-shapes-art-and-environmental-learning-in-grades-2-and-3",
+      "http://www.ssis.edu.vn/",
+      "http://www.ssis.edu.vn/academics/middle-school",
+      "http://www.ssis.edu.vn/academics/high-school",
+      "https://www.ssis.edu.vn/academics/middle-school",
+      "https://www.ssis.edu.vn/academics/high-school",
+      "http://www.ssis.edu.vn/academics",
+      "http://www.ssis.edu.vn/academics/elementary-school",
+      "http://www.ssis.edu.vn/academics/student-support-services",
+      "http://www.ssis.edu.vn/academics/teaching-and-learning",
+      "http://www.ssis.edu.vn/academics/university-counseling",
+      "https://www.ssis.edu.vn/academics/elementary-school"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Saigon South International School offers multiple trip and travel programs primarily focused on athletics and cultural exchanges for middle and high school students. These include participation in regional athletic and cultural exchanges through memberships in the Mekong River International Schools Association (MRISA) and the South East Asia Student Activities Conference (SEASAC), involving countries such as Thailand, Cambodia, Laos, and Vietnam.",
+    "programs": [
+      {
+        "program_name": "MRISA Athletic and Cultural Exchanges",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "domestic",
+          "exchange"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Thailand",
+          "Cambodia",
+          "Laos",
+          "Vietnam"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ssis.edu.vn/student-life/athletics",
+            "quote": "A founding member of the Mekong River International Schools Association (MRISA), SSIS provides multiple opportunities for middle and high school Dragons athletes to participate in regional athletic and cultural exchanges in Thailand, Cambodia, Laos, and Vietnam."
+          }
+        ]
+      },
+      {
+        "program_name": "SEASAC Athletic and Cultural Exchanges",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "exchange"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.ssis.edu.vn/student-life/athletics",
+            "quote": "We are also proud to be the only school in Vietnam to be a member of the South East Asia Student Activities Conference (SEASAC). SEASAC hosts 24 e…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Thailand",
+      "Cambodia",
+      "Laos",
+      "Vietnam"
+    ],
+    "unknowns": [
+      "Program formats for MRISA and SEASAC exchanges",
+      "Frequency and duration of trips",
+      "Specific trip types beyond athletic and cultural exchanges"
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "school_key": "marlborough_college_malaysia",
+  "school_name": "Marlborough College Malaysia",
+  "homepage": "http://www.marlboroughcollegemalaysia.org/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 579,
+  "tokens_out": 349,
+  "tokens_total": 928,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "f9a5e6aa9e0e81fa",
+    "pages": [
+      "https://www.marlboroughcollegemalaysia.org/college-life/activities-and-trips/",
+      "http://www.marlboroughcollegemalaysia.org/",
+      "https://www.marlboroughcollegemalaysia.org/academic/curriculum/",
+      "https://www.marlboroughcollegemalaysia.org/academic/learning-enrichement/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Marlborough College Malaysia offers an exchange programme with Marlborough College UK and its linked schools in the United States, China, Swaziland, and Singapore, fostering international connections and cultural exchange. The school emphasizes teamwork and broadening horizons through various activities including outdoor activities, but specific trip formats, durations, and grade bands are not detailed in the provided evidence.",
+    "programs": [
+      {
+        "program_name": "Exchange Programme",
+        "program_format": null,
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "United States",
+          "China",
+          "Swaziland",
+          "Singapore",
+          "United Kingdom"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.marlboroughcollegemalaysia.org/",
+            "quote": "Marlborough College, UK has already forged close links with leading schools in the United States, China, Swaziland and Singapore: these links are also open to us in Malaysia. Marlborough College Malaysia adds value to the experience of the pupils in Marlborough College, UK, and this is reciprocated. We are delighted that an exchange programme is already underway."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "United States",
+      "China",
+      "Swaziland",
+      "Singapore",
+      "United Kingdom"
+    ],
+    "unknowns": [
+      "Specific grade bands participating in the exchange programme",
+      "Frequency and duration of trips",
+      "Details on other trip types such as day trips, overnight residentials, expeditions, or service learning"
+    ]
+  }
+}

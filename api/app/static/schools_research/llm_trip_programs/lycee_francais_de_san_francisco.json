@@ -1,0 +1,118 @@
+{
+  "school_key": "lycee_francais_de_san_francisco",
+  "school_name": "Lycee Francais de San Francisco",
+  "homepage": "https://www.lelycee.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 1470,
+  "tokens_out": 837,
+  "tokens_total": 2307,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 12,
+    "prompt_hash": "e7e7e1058f9058f4",
+    "pages": [
+      "https://www.lelycee.org/",
+      "https://www.lelycee.org/on-campus/services",
+      "https://www.lelycee.org/learning/maternelle",
+      "https://www.lelycee.org/on-campus/global-learning",
+      "https://www.lelycee.org/learning/inquire",
+      "https://www.lelycee.org/learning/happy-play",
+      "https://www.lelycee.org/learning/la-petite-ecole",
+      "https://www.lelycee.org/learning/the-curriculum",
+      "https://www.lelycee.org/learning/open-houses",
+      "https://www.lelycee.org/learning/bilingual-education",
+      "https://www.lelycee.org/french-track/elementary-french-curriculum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Lycee Francais de San Francisco offers a Global Learning program that provides educational travel experiences from Primary school through High School. These trips align with curricular themes such as History & Geography, Science & Technology, Languages & Culture, Sports, and Service Learning. Trips include day and overnight experiences designed to foster student engagement, confidence, and language skills through immersion and hands-on activities.",
+    "programs": [
+      {
+        "program_name": "Global Learning Program",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic",
+          "expedition_outdoor",
+          "service_learning",
+          "exchange"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "varied by grade",
+        "duration": "varied by trip, examples include four-day trips and week-long trips",
+        "locations": [
+          "Coloma, Gold Country, California",
+          "Germany (Freiburg, Stuttgart, Tuttlingen)",
+          "New Orleans, Louisiana",
+          "Happy Valley, Santa Cruz, California"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.lelycee.org/on-campus/global-learning",
+            "quote": "Global Learning is a program of educational travels that from Primary school to Lycée High, allows students to enjoy the incredible power of bilingual education outside the classroom as teachers translate classroom learning into a rich variety of travel experiences."
+          },
+          {
+            "source_url": "https://www.lelycee.org/on-campus/global-learning",
+            "quote": "In Grade 3, our students head out for a four-day experience designed to deepen their understanding of the world around them."
+          },
+          {
+            "source_url": "https://www.lelycee.org/on-campus/global-learning",
+            "quote": "Destination : Coloma, Gold Country - An enriching overnight field trip to Coloma allows our students to explore the historic Gold Rush and deepen their connection to this pivotal chapter in California’s history."
+          },
+          {
+            "source_url": "https://www.lelycee.org/on-campus/global-learning",
+            "quote": "Destination : Germany - Our German-language students stay with host families to discover the southwest region of Germany through full cultural immersion."
+          },
+          {
+            "source_url": "https://www.lelycee.org/on-campus/global-learning",
+            "quote": "Destination : New Orleans, Louisiana - The trip to New Orleans offers our Gr 7 students a rich and immersive introduction to the history and culture of Louisiana."
+          },
+          {
+            "source_url": "https://www.lelycee.org/on-campus/global-learning",
+            "quote": "Destination : Happy Valley , Santa Cruz (CA) - All Grade 2 students travel to Santa Cruz for a few days immersed in nature at the Happy Valley Center."
+          }
+        ]
+      },
+      {
+        "program_name": "Maternelle Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "selected weeks",
+        "duration": "day trips",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.lelycee.org/learning/maternelle",
+            "quote": "Selected weeks include field trips or lunch from our new Cantine!"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Coloma, Gold Country, California",
+      "Germany (Freiburg, Stuttgart, Tuttlingen)",
+      "New Orleans, Louisiana",
+      "Happy Valley, Santa Cruz, California"
+    ],
+    "unknowns": [
+      "Exact frequency of trips per grade beyond examples",
+      "Specific duration details for all trips except some examples",
+      "Names of specific programs beyond Global Learning and Maternelle field trips"
+    ]
+  }
+}

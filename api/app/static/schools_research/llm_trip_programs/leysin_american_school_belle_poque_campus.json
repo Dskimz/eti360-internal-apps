@@ -1,0 +1,79 @@
+{
+  "school_key": "leysin_american_school_belle_poque_campus",
+  "school_name": "Leysin American School Belle Époque Campus",
+  "homepage": "http://www.las.ch/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 588,
+  "tokens_out": 370,
+  "tokens_total": 958,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "da11a4f7af05451b",
+    "pages": [
+      "http://www.las.ch/lifestyle/outdoor-programs",
+      "http://www.las.ch/",
+      "http://www.las.ch/learning",
+      "http://www.las.ch/learning/ib-program",
+      "http://www.las.ch/learning/changemakers-innovation-creativity-and-entrepreneurship",
+      "http://www.las.ch/learning/ap-at-las",
+      "http://www.las.ch/learning/english-language-acquisition",
+      "http://www.las.ch/learning/learning-resources",
+      "http://www.las.ch/learning/university-advising"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Leysin American School offers outdoor and cultural travel programs integrated with its boarding school experience in the Swiss Alps. Students engage in alpine activities and have opportunities for ski terms and cultural travel.",
+    "programs": [
+      {
+        "program_name": "Alpine Institute",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Swiss Alps"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.las.ch/lifestyle/outdoor-programs",
+            "quote": "The Alps are our classroom and playground. After school, students can head outside to climb, hike, or mountain bike right in our own alpine region—or try something new, like ice climbing, snowshoeing, or via ferrata. Our Alpine Institute also include…"
+          }
+        ]
+      },
+      {
+        "program_name": "Ski Term and Cultural Travel",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.las.ch/lifestyle/outdoor-programs",
+            "quote": "Students enjoy extracurricular activities in sports, arts, drama, and music, and are able to take part in a ski term and cultural travel."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Swiss Alps"
+    ],
+    "unknowns": [
+      "Grade bands for programs",
+      "Frequency and duration of trips",
+      "Specific destinations for cultural travel"
+    ]
+  }
+}

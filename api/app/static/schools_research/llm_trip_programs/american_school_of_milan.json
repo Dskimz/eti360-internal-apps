@@ -1,0 +1,117 @@
+{
+  "school_key": "american_school_of_milan",
+  "school_name": "American School of Milan",
+  "homepage": "https://www.asmilan.org/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:20 PM",
+  "tokens_in": 754,
+  "tokens_out": 562,
+  "tokens_total": 1316,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "cc4a7f251cbe68f8",
+    "pages": [
+      "https://www.asmilan.org/student-life/",
+      "https://www.asmilan.org/student-life/music-and-art/",
+      "https://www.asmilan.org/student-life/athletics/",
+      "https://www.asmilan.org/student-life/trips-at-asm/",
+      "https://www.asmilan.org/student-life/campus/performing-arts-center/",
+      "https://www.asmilan.org/student-life/after-school-activities/",
+      "https://www.asmilan.org/student-life/model-united-nations/",
+      "https://www.asmilan.org/student-life/campus/",
+      "https://www.asmilan.org/school-life/student-services/",
+      "https://www.asmilan.org/",
+      "https://www.asmilan.org/curricula/student-services/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American School of Milan offers thoughtfully curated trip programs that extend learning beyond the classroom, fostering curiosity, connections, and global citizenship. Trips range from day field trips to immersive week-long experiences and outdoor expeditions, tailored to different age groups and designed to reinforce school values.",
+    "programs": [
+      {
+        "program_name": "October Field Trips",
+        "program_format": "day_trip|null",
+        "trip_types": [
+          "day_trip",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "day",
+        "locations": [
+          "historic cities of Italy",
+          "cultural landscapes of Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asmilan.org/student-life/trips-at-asm/",
+            "quote": "Each October, ASM students embark on thoughtfully curated field trips that blend learning and adventure. These experiences bring classroom lessons to life while strengthening friendships and teamwork. From the historic cities of Italy to the cultural landscapes of Europe..."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Week-Long Field Experiences",
+        "program_format": "overnight_residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "week-long",
+        "locations": [
+          "Italy",
+          "Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.asmilan.org/student-life/trips-at-asm/",
+            "quote": "From Middle School’s immersive week-long field experiences across Italy and Europe..."
+          }
+        ]
+      },
+      {
+        "program_name": "Upper School Outdoor Expeditions and Global Service Trips",
+        "program_format": "expedition_outdoor",
+        "trip_types": [
+          "expedition_outdoor",
+          "service_learning",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "variable",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.asmilan.org/student-life/trips-at-asm/",
+            "quote": "Upper School’s outdoor expeditions and global service trips..."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "historic cities of Italy",
+      "cultural landscapes of Europe",
+      "Italy",
+      "Europe"
+    ],
+    "unknowns": [
+      "Specific locations for Upper School expeditions and service trips",
+      "Exact duration and frequency details for Upper School trips"
+    ]
+  }
+}

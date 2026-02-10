@@ -1,0 +1,64 @@
+{
+  "school_key": "american_international_school_of_zagreb",
+  "school_name": "American International School of Zagreb",
+  "homepage": "http://www.aisz.hr/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:21 PM",
+  "tokens_in": 519,
+  "tokens_out": 304,
+  "tokens_total": 823,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "a5f3952be2a08033",
+    "pages": [
+      "http://www.aisz.hr/academics/outdoor-education-guide/",
+      "http://www.aisz.hr/",
+      "http://www.aisz.hr/student-experience/food-services/",
+      "http://www.aisz.hr/academics/upper-school/",
+      "http://www.aisz.hr/academics/upper-school/middle-school/",
+      "http://www.aisz.hr/academics/upper-school/high-school/",
+      "http://www.aisz.hr/academics/overview/",
+      "http://www.aisz.hr/academics/lower-school/",
+      "http://www.aisz.hr/academics/ib-diploma-program/",
+      "http://www.aisz.hr/academics/aisz-bridges-program/",
+      "http://www.aisz.hr/academics/student-support-services/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American International School of Zagreb offers a comprehensive Outdoor Education Program that includes expeditionary and non-expeditionary environmental education, outdoor skills, and personal and character development. A key component is the extended Unity Trips for Grades 4 and 5, Middle School, and High School, occurring annually within a specified week in September.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education Program - Unity Trips",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "within the week September 9-15",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.aisz.hr/academics/outdoor-education-guide/",
+            "quote": "A large aspect of our Outdoor Education Program is our extended Unity Trips for G4&5, MS & HS and which will occur for each grade within the week September 9-15."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific destinations for the Unity Trips",
+      "Exact duration per grade trip within the week",
+      "Other trip programs beyond the Unity Trips"
+    ]
+  }
+}

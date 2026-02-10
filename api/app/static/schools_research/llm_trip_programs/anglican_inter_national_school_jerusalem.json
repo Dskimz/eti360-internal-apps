@@ -1,0 +1,62 @@
+{
+  "school_key": "anglican_inter_national_school_jerusalem",
+  "school_name": "Anglican Inter­national School Jerusalem",
+  "homepage": "http://www.aisj.co.il/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:23 PM",
+  "tokens_in": 736,
+  "tokens_out": 229,
+  "tokens_total": 965,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "72238c88b805adf2",
+    "pages": [
+      "http://www.aisj.co.il/student-life",
+      "http://www.aisj.co.il/student-life/elementary",
+      "http://www.aisj.co.il/student-life/elementary/early-years",
+      "http://www.aisj.co.il/student-life/elementary/primary",
+      "http://www.aisj.co.il/student-life/secondary",
+      "http://www.aisj.co.il/student-life/secondary/middle-years",
+      "http://www.aisj.co.il/student-life/secondary/middle-years/language-and-literature",
+      "http://www.aisj.co.il/student-life/secondary/middle-years/language-acquisition",
+      "http://www.aisj.co.il/student-life/secondary/middle-years/individuals-in-society",
+      "http://www.aisj.co.il/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The school offers a progressive residential 'Explore Israel' trip program starting with one-day trips for younger children and extending to three-day trips for Primary Year 6 students, providing experiential learning opportunities tied to the curriculum.",
+    "programs": [
+      {
+        "program_name": "Explore Israel Trips",
+        "program_format": "residential",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "not specified",
+        "duration": "1 to 3 days",
+        "locations": [
+          "Israel"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aisj.co.il/student-life/elementary/primary",
+            "quote": "Over the past few years we have developed our residential ‘Explore Israel’ trips, starting with one-day trips for the youngest children, building up to 3 days for PY6."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Israel"
+    ],
+    "unknowns": []
+  }
+}

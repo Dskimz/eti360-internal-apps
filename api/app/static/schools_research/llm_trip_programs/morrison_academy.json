@@ -1,0 +1,74 @@
+{
+  "school_key": "morrison_academy",
+  "school_name": "Morrison Academy",
+  "homepage": "http://taichung.ma.org.tw/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 692,
+  "tokens_out": 291,
+  "tokens_total": 983,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "f117020304c8a700",
+    "pages": [
+      "https://taichung.ma.org.tw/student-life-page/high-school-sports/",
+      "https://taichung.ma.org.tw/student-life-page",
+      "https://taichung.ma.org.tw/student-life-page/clubs/",
+      "https://taichung.ma.org.tw/student-life-page/missions-and-service-trips/",
+      "https://taichung.ma.org.tw/student-life-page/spiritual-life-week/",
+      "http://taichung.ma.org.tw/",
+      "https://taichung.ma.org.tw/academics/middle-school/overview/",
+      "https://taichung.ma.org.tw/academics/middle-school/middle-school-curriculum/",
+      "https://taichung.ma.org.tw/academics/middle-school/csl-overview/",
+      "https://taichung.ma.org.tw/academics/high-school/overview/",
+      "https://taichung.ma.org.tw/academics/high-school/high-school-curriculum/",
+      "https://taichung.ma.org.tw/academics/high-school/school-profile/",
+      "https://taichung.ma.org.tw/academics/high-school/schedule/",
+      "https://taichung.ma.org.tw/academics/high-school/engage-program/",
+      "https://taichung.ma.org.tw/academics/elementary-school/",
+      "https://taichung.ma.org.tw/academics/counseling-center/ap-testing-information/",
+      "https://taichung.ma.org.tw/academics/counseling-center/",
+      "https://taichung.ma.org.tw/academics/library/",
+      "https://taichung.ma.org.tw/academics/makerspace/",
+      "https://taichung.ma.org.tw/academics/arts/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Morrison Academy offers travel programs integrated with academic units, such as a 9th grade Biology trip to South Taiwan focusing on ecological exploration including snorkeling and overnight stay at the National Museum of Marine Biology Aquarium.",
+    "programs": [
+      {
+        "program_name": "9th Grade Biology Ecology Unit Trip",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": "at least one night",
+        "locations": [
+          "South Taiwan",
+          "National Museum of Marine Biology Aquarium"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://taichung.ma.org.tw/academics/high-school/engage-program/",
+            "quote": "As part of their Ecology Unit, Morrison’s 9th grade Biology students will have the opportunity to travel to South Taiwan to explore several of Taiwan’s aquatic and terrestrial ecosystems. They will snorkel in a coral reef area, and participate in several tours at the National Museum of Marine Biology Aquarium (NMMBA) - spending one night in the Penguin Exhibit area."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "South Taiwan",
+      "National Museum of Marine Biology Aquarium"
+    ],
+    "unknowns": []
+  }
+}

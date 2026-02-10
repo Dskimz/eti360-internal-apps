@@ -1,0 +1,113 @@
+{
+  "school_key": "chinese_international_school",
+  "school_name": "Chinese International School",
+  "homepage": "https://www.cis.edu.hk/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 840,
+  "tokens_out": 509,
+  "tokens_total": 1349,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "63cc4ae025a513f3",
+    "pages": [
+      "https://www.cis.edu.hk/student-life/overview",
+      "https://www.cis.edu.hk/student-life/co-curricular",
+      "https://www.cis.edu.hk/student-life/arts",
+      "https://www.cis.edu.hk/student-life/sports",
+      "https://www.cis.edu.hk/student-life/homerooms-advisory",
+      "https://www.cis.edu.hk/student-life/leadership-opportunities",
+      "https://www.cis.edu.hk/",
+      "https://www.cis.edu.hk/academics/overview",
+      "https://www.cis.edu.hk/academics/primary/primary-programme",
+      "https://www.cis.edu.hk/academics/secondary/overview",
+      "https://www.cis.edu.hk/academics/cis-hangzhou/overview"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "CIS offers experiential learning through travel to help students understand diverse perspectives and engage across cultures. Trips include camps for primary students, cultural immersion in Taipei for Year 6, and a Year 10 program in Hangzhou.",
+    "programs": [
+      {
+        "program_name": "Primary Camp",
+        "program_format": "overnight_residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "multi-day",
+        "locations": [
+          "Hong Kong"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.cis.edu.hk/academics/primary/primary-programme",
+            "quote": "In Year 4-6, camp provides an opportunity for exploration, character development, hands-on learning, and fun."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 6 Taipei Trip",
+        "program_format": "international",
+        "trip_types": [
+          "international",
+          "cultural_immersion"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "short-term",
+        "locations": [
+          "Taipei"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.cis.edu.hk/academics/primary/primary-programme",
+            "quote": "In Year 6, students have the opportunity to travel to Taipei to be immersed in a Chinese-speaking environment and experience a different culture."
+          }
+        ]
+      },
+      {
+        "program_name": "Year 10 Hangzhou Programme",
+        "program_format": "international",
+        "trip_types": [
+          "international",
+          "cultural_immersion",
+          "experiential_learning"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "short-term",
+        "locations": [
+          "Hangzhou"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.cis.edu.hk/",
+            "quote": "CIS learning from the Y10 Hangzhou programme to school field trips."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Hong Kong",
+      "Taipei",
+      "Hangzhou"
+    ],
+    "unknowns": [
+      "Exact duration of trips",
+      "Frequency details beyond annual",
+      "Details of other school field trips"
+    ]
+  }
+}

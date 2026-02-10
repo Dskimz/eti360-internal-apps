@@ -1,0 +1,86 @@
+{
+  "school_key": "nexus_international_school_singapore",
+  "school_name": "Nexus International School (Singapore)",
+  "homepage": "http://www.nexus.edu.sg/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:33 PM",
+  "tokens_in": 725,
+  "tokens_out": 472,
+  "tokens_total": 1197,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "f107af2b355225cd",
+    "pages": [
+      "http://www.nexus.edu.sg/co-curricular-activities/",
+      "http://www.nexus.edu.sg/school-trips/",
+      "https://www.nexus.edu.sg/research-thoughts/how-cas-trips-shape-global-citizens-at-nexus/",
+      "http://www.nexus.edu.sg/",
+      "https://www.nexus.edu.sg/services/",
+      "https://www.nexus.edu.sg/innovative-learning/",
+      "https://www.nexus.edu.sg/service-learning/",
+      "http://www.nexus.edu.sg/virtual-tour/learning-hub-makerspace",
+      "https://www.nexus.edu.sg/research-thoughts/innovation-through-digital-learning-and-entrepreneurship/",
+      "https://www.nexus.edu.sg/research-thoughts/10-benefits-of-studying-the-international-baccalaureate-ib-curriculum/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Nexus International School (Singapore) offers immersive and transformative school trips that integrate service, cultural exchange, and real-life learning experiences. These trips include residential service projects as part of the IB Diploma Programme's CAS component, focusing on community engagement, conservation, and cultural understanding.",
+    "programs": [
+      {
+        "program_name": "Indonesia: Community, Culture and Conservation",
+        "program_format": "residential",
+        "trip_types": [
+          "international",
+          "service_learning",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "one week",
+        "locations": [
+          "Bintan, Indonesia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nexus.edu.sg/research-thoughts/how-cas-trips-shape-global-citizens-at-nexus/",
+            "quote": "In Bintan, Indonesia, learners were greeted by tropical rain and warm smiles—an apt beginning to a week filled with meaningful service and joyful cultural exchange. The group worked alongside families to install Safe Water Gardens, painted homes, cooked meals, and supported local crafts."
+          }
+        ]
+      },
+      {
+        "program_name": "IBDP CAS Residential Service Projects",
+        "program_format": "residential",
+        "trip_types": [
+          "service_learning",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nexus.edu.sg/research-thoughts/how-cas-trips-shape-global-citizens-at-nexus/",
+            "quote": "In Year 12, learners at Nexus engage in transformative service projects as part of the Creativity, Activity, Service (CAS) component of the International Baccalaureate Diploma Programme (IBDP). These residential trips are more than just school excursions."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Bintan, Indonesia"
+    ],
+    "unknowns": [
+      "Frequency of trips",
+      "Exact duration of IBDP CAS residential trips",
+      "Other trip programs or grade bands served"
+    ]
+  }
+}

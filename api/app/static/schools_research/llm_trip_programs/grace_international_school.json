@@ -1,0 +1,109 @@
+{
+  "school_key": "grace_international_school",
+  "school_name": "Grace International School",
+  "homepage": "https://gisthailand.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:27 PM",
+  "tokens_in": 907,
+  "tokens_out": 472,
+  "tokens_total": 1379,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "a1c51576a50bbcbe",
+    "pages": [
+      "https://gisthailand.org/student-life/",
+      "https://gisthailand.org/student-life/athletics/",
+      "https://gisthailand.org/student-life/extracurricular-activities/",
+      "https://gisthailand.org/",
+      "https://gisthailand.org/academics/middle-school/",
+      "https://gisthailand.org/academics/high-school/",
+      "https://gisthailand.org/academics/",
+      "https://gisthailand.org/academics/elementary-school/",
+      "https://gisthailand.org/academics/educational-support/",
+      "https://gisthailand.org/academics/tesol/",
+      "https://gisthailand.org/academics/grace-connect/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Grace International School offers grade-specific field trips related to areas of study, opportunities for students to travel for sports competitions, and service-oriented travel to isolated places as part of their spiritual and community engagement activities.",
+    "programs": [
+      {
+        "program_name": "Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "Usually by grade",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://gisthailand.org/academics/elementary-school/",
+            "quote": "FIELD TRIPS - Usually by grade and related to specific areas of study"
+          }
+        ]
+      },
+      {
+        "program_name": "Sports Travel",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://gisthailand.org/student-life/",
+            "quote": "I have so many opportunities to get involved in all kinds of activities such as traveling to other places to compete in sports"
+          }
+        ]
+      },
+      {
+        "program_name": "Service Travel",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "isolated places"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://gisthailand.org/student-life/",
+            "quote": "traveling to isolated places to spend time with people and use my blessings to bless them"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "isolated places"
+    ],
+    "unknowns": [
+      "Specific destinations for field trips and sports travel",
+      "Exact frequency and duration of trips",
+      "Whether trips are domestic or international beyond sports travel",
+      "Details on any expedition, exchange, or overnight residential trips"
+    ]
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "school_key": "canadian_bilingual_school",
+  "school_name": "Canadian Bilingual School",
+  "homepage": "https://www.cbskuwait.com/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 1291,
+  "tokens_out": 818,
+  "tokens_total": 2109,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 10,
+    "prompt_hash": "8aed6099131c33ab",
+    "pages": [
+      "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+      "https://www.cbskuwait.com/",
+      "https://www.cbskuwait.com/cbs-kuwait-library/",
+      "https://www.cbskuwait.com/multi-purpose-hall-cbs-kuwait/",
+      "https://www.cbskuwait.com/cbs-sports/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Canadian Bilingual School organizes various day trips for students across different grade levels, focusing on educational, community service, and cultural experiences within Kuwait. Trips include visits to local landmarks, factories, and community service activities.",
+    "programs": [
+      {
+        "program_name": "Field Trips",
+        "program_format": "day_trip",
+        "trip_types": [
+          "day_trip",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "ES",
+          "HS"
+        ],
+        "frequency": "occasional",
+        "duration": "day",
+        "locations": [
+          "Kuwait Zoo",
+          "Boulevard",
+          "Jarir Bookstore",
+          "ASCC",
+          "KDD factory",
+          "My Gym",
+          "Engineering for Kids",
+          "Kuwait International Fairgrounds",
+          "KFAS",
+          "Grand Mosque",
+          "Beach"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "Grade 1 students explored wildlife and enjoyed the field trip to the Kuwait Zoo, December 2019"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "JK students paid a visit to the Boulevard and Jarir Bookstore for the field trip, December 2019"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "Grade 11 students completed an enlightening field trip to ASCC, December 2019"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "Grade 4 students went on an enjoyable field trip to KDD factory, November 2019"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "SK students had the chance to explore My Gym and stretch some muscles in the field trip, October 2019"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "Grade 1 students went on an enriching field trip to Engineering for Kids, October 2019"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "Grade 12 students field trip to Tech Expo at Kuwait International Fairgrounds, February 2020"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "Grade 3 & 4 students explored technology from the field trip to KFAS, February 2020"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "Grade 1 students paid a holy visit to Grand Mosque for a field trip, February 2020"
+          },
+          {
+            "source_url": "https://www.cbskuwait.com/field-trips-cbs-kuwait/",
+            "quote": "Grade 11-12 students engaged in a Beach-Cleaning Trip for the community, December 2019"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Kuwait Zoo",
+      "Boulevard",
+      "Jarir Bookstore",
+      "ASCC",
+      "KDD factory",
+      "My Gym",
+      "Engineering for Kids",
+      "Kuwait International Fairgrounds",
+      "KFAS",
+      "Grand Mosque",
+      "Beach"
+    ],
+    "unknowns": []
+  }
+}

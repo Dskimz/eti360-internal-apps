@@ -1,0 +1,171 @@
+{
+  "school_key": "american_section_international_school_de_saint_germain_en_laye",
+  "school_name": "American Section International School De Saint-Germain-En-Laye",
+  "homepage": "http://www.americansection.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:22 PM",
+  "tokens_in": 1306,
+  "tokens_out": 933,
+  "tokens_total": 2239,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "bbf23d7967dd7eb3",
+    "pages": [
+      "http://www.americansection.org/beyond-the-classroom/co-curricular-activities",
+      "http://www.americansection.org/",
+      "http://www.americansection.org/academics/the-middle-school",
+      "http://www.americansection.org/academics/the-middle-school/sixith-grade-sixime",
+      "http://www.americansection.org/academics/the-middle-school/seventh-grade-cinquime",
+      "http://www.americansection.org/academics/the-middle-school/eighth-grade-quatrime",
+      "http://www.americansection.org/academics/the-middle-school/ninth-grade-troisime",
+      "http://www.americansection.org/academics/fostering-intellectual-curiosity",
+      "http://www.americansection.org/academics/fostering-intellectual-curiosity/oib-to-bfi",
+      "http://www.americansection.org/academics/fostering-intellectual-curiosity/us-french-grade-names",
+      "http://www.americansection.org/academics/the-lower-school",
+      "http://www.americansection.org/academics/the-lower-school/prekindergarten-moyenne-section",
+      "http://www.americansection.org/academics/the-lower-school/kindergarten-grande-section",
+      "http://www.americansection.org/academics/the-lower-school/first-grade-cp-first-grade-plus-cp-plus",
+      "http://www.americansection.org/academics/the-lower-school/second-grade-ce1-second-grade-ce1",
+      "http://www.americansection.org/academics/the-lower-school/third-grade-ce2",
+      "http://www.americansection.org/academics/the-lower-school/fourth-grade-cm1",
+      "http://www.americansection.org/academics/the-lower-school/fifth-grade-cm2",
+      "http://www.americansection.org/academics/the-lower-school/campus-assignment",
+      "http://www.americansection.org/academics/the-lower-school/class-schedule",
+      "http://www.americansection.org/academics/the-lower-school/passage-into-sixime"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American Section International School De Saint-Germain-En-Laye offers a variety of experiential learning trips for Middle and High School students. These include day trips for community building, multi-day international trips focused on social themes, and educational visits tied to curriculum topics such as history and sustainability.",
+    "programs": [
+      {
+        "program_name": "Sixième Advisory Zip-lining Trip",
+        "program_format": "day trip",
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "1 day",
+        "locations": [
+          "zip-lining/accrobranche park"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.americansection.org/academics/the-middle-school/sixith-grade-sixime",
+            "quote": "As part of our Advisory program in Sixième, and to foster community-building between the two Middle School campuses, students spend the day at an zip-lining/_accrobranche_ park."
+          }
+        ]
+      },
+      {
+        "program_name": "Cinquième Trip to Amsterdam",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "international"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "3 days",
+        "locations": [
+          "Amsterdam"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.americansection.org/academics/the-middle-school/seventh-grade-cinquime",
+            "quote": "All three Cinquième classes participate in this eagerly awaited trip which focuses on the themes of tolerance, diversity, and sustainability."
+          },
+          {
+            "source_url": "http://www.americansection.org/academics/fostering-intellectual-curiosity",
+            "quote": "Seventh graders (Cinquièmes) spend three days in Amsterdam exploring the themes of tolerance, diversity, and sustainability."
+          }
+        ]
+      },
+      {
+        "program_name": "Quatrième Sustainability Field Trip",
+        "program_format": "day trip",
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "not specified",
+        "locations": [
+          "not specified"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.americansection.org/academics/the-middle-school/eighth-grade-quatrime",
+            "quote": "The Quatrième field trip imparts important hands-on lessons about sustainability."
+          }
+        ]
+      },
+      {
+        "program_name": "Troisième Musée de la Grande Guerre Visit",
+        "program_format": "day trip",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "1 day",
+        "locations": [
+          "Musée de la Grande Guerre, Meaux"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.americansection.org/academics/the-middle-school/ninth-grade-troisime",
+            "quote": "Students visit the celebrated Musée de la Grande Guerre located east of Paris in Meaux as part of the history curriculum."
+          }
+        ]
+      },
+      {
+        "program_name": "Première Trip to Caen and D-Day Beaches",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "not specified",
+        "locations": [
+          "Caen",
+          "D-Day beaches"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.americansection.org/academics/fostering-intellectual-curiosity",
+            "quote": "Eleventh graders (Premières) travel to Caen and the D-Day beaches as part of their study of World War II."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "zip-lining/accrobranche park",
+      "Amsterdam",
+      "Musée de la Grande Guerre, Meaux",
+      "Caen",
+      "D-Day beaches"
+    ],
+    "unknowns": [
+      "Exact duration of Quatrième sustainability trip",
+      "Exact duration of Première trip to Caen and D-Day beaches",
+      "Specific locations for Quatrième sustainability trip"
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "school_key": "international_school_of_latvia",
+  "school_name": "International School of Latvia",
+  "homepage": "http://www.isl.edu.lv/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 563,
+  "tokens_out": 358,
+  "tokens_total": 921,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "92aeba6f44d9ff75",
+    "pages": [
+      "http://www.isl.edu.lv/",
+      "http://www.isl.edu.lv/learning/elementary-school/",
+      "http://www.isl.edu.lv/learning/secondary-school/",
+      "http://www.isl.edu.lv/learning/summer-school-adventure/",
+      "http://www.isl.edu.lv/learning/international-baccalaureate/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The International School of Latvia offers various trip and travel programs including local field trips integrated into the elementary school curriculum, weekly field trips during the summer school adventure program, and global experiences as part of their inquiry-based learning.",
+    "programs": [
+      {
+        "program_name": "Elementary School Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "ongoing throughout the year",
+        "duration": null,
+        "locations": [
+          "Latvia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.isl.edu.lv/learning/elementary-school/",
+            "quote": "exciting field trips both inside and out of Latvia"
+          }
+        ]
+      },
+      {
+        "program_name": "Summer School Adventure Weekly Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "weekly during summer school",
+        "duration": "weekly sessions (e.g., Week 1: 29.06.26 – 03.07.26, Week 2: 06.07.25 – 10.07.25)",
+        "locations": [
+          "Latvia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.isl.edu.lv/learning/summer-school-adventure/",
+            "quote": "weekly field trips are integrated throughout"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Latvia"
+    ],
+    "unknowns": []
+  }
+}

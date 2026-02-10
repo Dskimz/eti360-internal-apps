@@ -1,0 +1,83 @@
+{
+  "school_key": "american_school_of_dubai",
+  "school_name": "American School of Dubai",
+  "homepage": "http://www.asdubai.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:22 PM",
+  "tokens_in": 1155,
+  "tokens_out": 395,
+  "tokens_total": 1550,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 9,
+    "prompt_hash": "4a5e02d86037d242",
+    "pages": [
+      "http://www.asdubai.org/student-life",
+      "http://www.asdubai.org/student-life/arts",
+      "http://www.asdubai.org/student-life/athletics",
+      "http://www.asdubai.org/",
+      "http://www.asdubai.org/learning/middle-school",
+      "http://www.asdubai.org/learning/high-school",
+      "http://www.asdubai.org/learning",
+      "http://www.asdubai.org/learning/early-learning",
+      "http://www.asdubai.org/learning/elementary-school",
+      "http://www.asdubai.org/learning/learning-support-services",
+      "http://www.asdubai.org/learning/libraries"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American School of Dubai offers experiential travel programs designed to extend learning beyond the classroom through service, leadership, and real-world exploration. Middle School students participate annually in the Week Without Walls program focused on service-oriented travel. High School students engage in the Inspire experiential trip to build leadership and global perspective.",
+    "programs": [
+      {
+        "program_name": "Week Without Walls",
+        "program_format": "annual immersive experiential program",
+        "trip_types": [
+          "service_learning",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "week",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.asdubai.org/learning/middle-school",
+            "quote": "Week Without Walls (WWW) is an annual, experiential program that takes Middle School learning beyond the classroom through hands-on, service-oriented travel."
+          }
+        ]
+      },
+      {
+        "program_name": "Inspire",
+        "program_format": "signature experiential trip",
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.asdubai.org/learning/high-school",
+            "quote": "Inspire is a signature High School experiential trip experience that empowers students through connection, leadership, and personal growth. All Grade 9 students participate in a transformative experience designed to strengthen relationships, build leadership skills, and support well-being."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific destinations for Week Without Walls",
+      "Specific destinations for Inspire trips",
+      "Exact duration of Inspire trips"
+    ]
+  }
+}

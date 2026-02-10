@@ -1,0 +1,102 @@
+{
+  "school_key": "dubai_american_academy",
+  "school_name": "Dubai American Academy",
+  "homepage": "http://www.gemsaa-dubai.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:26 PM",
+  "tokens_in": 994,
+  "tokens_out": 516,
+  "tokens_total": 1510,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "ebb5b80dca732f4b",
+    "pages": [
+      "http://www.gemsaa-dubai.com/Student-Life",
+      "http://www.gemsaa-dubai.com/Student-Life/Activities-External",
+      "http://www.gemsaa-dubai.com/Student-Life/Duke-of-Edinburgh-Award",
+      "http://www.gemsaa-dubai.com/Student-Life/Activities-Internal",
+      "http://www.gemsaa-dubai.com/Student-Life/Athletics",
+      "http://www.gemsaa-dubai.com/Student-Life/Arts",
+      "http://www.gemsaa-dubai.com/Student-Life/CAS",
+      "http://www.gemsaa-dubai.com/",
+      "http://www.gemsaa-dubai.com/Curriculum/Middle-School-Curriculum",
+      "http://www.gemsaa-dubai.com/Curriculum/High-School-Curriculum",
+      "http://www.gemsaa-dubai.com/Curriculum/High-School-Curriculum/Advanced-Placement-Program",
+      "http://www.gemsaa-dubai.com/Curriculum/Student-Care-and-Support/High-School-Counseling",
+      "http://www.gemsaa-dubai.com/Curriculum",
+      "http://www.gemsaa-dubai.com/Curriculum/Learning-Overview",
+      "http://www.gemsaa-dubai.com/Curriculum/Elementary-Curriculum",
+      "http://www.gemsaa-dubai.com/Curriculum/Why-the-US-IB-Curriculum",
+      "http://www.gemsaa-dubai.com/Curriculum/Teaching-Learning-Innovation",
+      "http://www.gemsaa-dubai.com/Curriculum/Course-Guidance",
+      "http://www.gemsaa-dubai.com/Curriculum/Student-Care-and-Support",
+      "http://www.gemsaa-dubai.com/Curriculum/Student-Care-and-Support/Inclusion",
+      "http://www.gemsaa-dubai.com/Curriculum/Student-Care-and-Support/Health-Clinic"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Dubai American Academy offers travel and trip programs primarily through the Duke of Edinburgh’s International Award for Grades 9 to 12, which includes a service-based activity, skill development, physical activity, and an expedition. Additionally, students participate in athletic competitions within the EAC and MESAC conferences, which involve travel to compete as teams.",
+    "programs": [
+      {
+        "program_name": "Duke of Edinburgh’s International Award",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "diverse locations"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.gemsaa-dubai.com/Student-Life/Duke-of-Edinburgh-Award",
+            "quote": "The Duke of Edinburgh’s International Award (DofE), an internationally recognized achievement that offers Grade 9 to Grade 12 the opportunity to develop skills that help them to be #worldready. The award includes the completion of a service based activity, a skill component and the completion of a physical activity course. In addition, an expedition takes place in a diverse…"
+          }
+        ]
+      },
+      {
+        "program_name": "Athletic Competitions (EAC and MESAC)",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "seasonal",
+        "duration": null,
+        "locations": [
+          "Middle East",
+          "South Asia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.gemsaa-dubai.com/Student-Life/Athletics",
+            "quote": "Our Junior Varsity and Varsity Athletics and Activities teams also compete in the EAC. Athletes are further selected to compete in MESAC (Middle East South Asia Conference), of which DAA is a proud member. MESAC Competitions provide amazing experiences for our students, as they travel and compete as a team for DAA."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "diverse locations",
+      "Middle East",
+      "South Asia"
+    ],
+    "unknowns": [
+      "program_format for all programs",
+      "frequency and duration for Duke of Edinburgh’s Award",
+      "specific trip destinations for Duke of Edinburgh’s Award and athletic competitions"
+    ]
+  }
+}

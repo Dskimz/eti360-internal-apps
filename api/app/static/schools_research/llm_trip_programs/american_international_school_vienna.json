@@ -1,0 +1,220 @@
+{
+  "school_key": "american_international_school_vienna",
+  "school_name": "American International School Vienna",
+  "homepage": "http://www.ais.at/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:22 PM",
+  "tokens_in": 1805,
+  "tokens_out": 1227,
+  "tokens_total": 3032,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 16,
+    "prompt_hash": "12a092ae97a9a99e",
+    "pages": [
+      "http://www.ais.at/student-life/overview",
+      "http://www.ais.at/student-life/health-wellbeing",
+      "http://www.ais.at/student-life/arts",
+      "http://www.ais.at/student-life/athletics",
+      "http://www.ais.at/student-life/clubs-leadership",
+      "http://www.ais.at/student-life/after-school-activities",
+      "http://www.ais.at/student-life",
+      "http://www.ais.at/school-stories/ms-field-trips-january2023",
+      "https://www.ais.at/student-life/clubs-leadership/",
+      "http://www.ais.at/",
+      "http://www.ais.at/academics/middle-school",
+      "http://www.ais.at/academics/high-school",
+      "http://www.ais.at/academics/welcome",
+      "http://www.ais.at/academics/early-childhood",
+      "http://www.ais.at/academics/elementary-school",
+      "http://www.ais.at/academics/technology",
+      "http://www.ais.at/academics/libraries",
+      "http://www.ais.at/academics/student-support-services",
+      "http://www.ais.at/academics"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "American International School Vienna offers various trip and travel programs primarily for Middle and High School students, including grade-level field trips, cultural excursions, service learning, and competitive travel related to clubs and athletics. These trips enhance learning beyond the classroom and provide opportunities for community engagement and international experiences.",
+    "programs": [
+      {
+        "program_name": "Middle School Grade-Level Field Trips",
+        "program_format": "day trips",
+        "trip_types": [
+          "day_trip",
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "occasional",
+        "duration": "day",
+        "locations": [
+          "Vienna",
+          "Museum Gugging",
+          "Caritas Gruft soup kitchen",
+          "Engineering for Kids® Austria"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ais.at/school-stories/ms-field-trips-january2023",
+            "quote": "On January 23, our Middle School students went on various field trips with their grade levels. Grade 8 students attended a robotics workshop at Engineering for Kids® Austria. At the Museum Gugging, another cohort explored neurodiversity and creativity. A dedicated team prepared and served 150 meals at the Caritas Gruft soup kitchen."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Spanish Cultural Excursion",
+        "program_format": "day trip",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "day",
+        "locations": [
+          "Latin American Institute in Vienna"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ais.at/academics/middle-school",
+            "quote": "On November 14, the Middle School Spanish class embarked on an enriching cultural excursion to the Latin American Institute in Vienna."
+          }
+        ]
+      },
+      {
+        "program_name": "Athletics Travel",
+        "program_format": "travel to competitions",
+        "trip_types": [
+          "domestic",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "seasonal",
+        "duration": "varies",
+        "locations": [
+          "Various locations outside Vienna"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ais.at/student-life/athletics",
+            "quote": "For travel by road, rail or air to competitions outside of Vienna each student will pay 120% of the cost. At the start of the season students will be made aware of their travel commitments."
+          }
+        ]
+      },
+      {
+        "program_name": "Scientific Innovations Club Field Trips",
+        "program_format": "field trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "occasional",
+        "duration": "varies",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.ais.at/student-life/clubs-leadership",
+            "quote": "Students participate in presentations, listen to lectures, and guest speakers, and even go on field trips to keep up-to-date with scientific innovations."
+          }
+        ]
+      },
+      {
+        "program_name": "Math Counts Competition Travel",
+        "program_format": "travel to competition",
+        "trip_types": [
+          "domestic",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "varies",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.ais.at/student-life/clubs-leadership",
+            "quote": "Each year, generally in early February, a team of Math Counts students travel and compete to test their new skills."
+          }
+        ]
+      },
+      {
+        "program_name": "AIS Vienna Choir Travel",
+        "program_format": "performance tours",
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "occasional",
+        "duration": "varies",
+        "locations": [
+          "Austria",
+          "international venues including Carnegie Hall"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ais.at/student-life/arts",
+            "quote": "AIS Vienna Choirs are active in the Association for Music in International Schools (AMIS), and students travel to sing in venues around Austria and internationally, including Carnegie Hall."
+          }
+        ]
+      },
+      {
+        "program_name": "Beamline Competition Travel",
+        "program_format": "competition travel",
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "occasional",
+        "duration": "varies",
+        "locations": [
+          "CERN",
+          "DESY"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.ais.at/student-life/clubs-leadership",
+            "quote": "Winners will have the opportunity to travel to CERN or DESY to complete their experiment in a fully equipped Particle Accelerator lab."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Vienna",
+      "Museum Gugging",
+      "Caritas Gruft soup kitchen",
+      "Engineering for Kids® Austria",
+      "Latin American Institute in Vienna",
+      "Various locations outside Vienna",
+      "Austria",
+      "Carnegie Hall",
+      "CERN",
+      "DESY"
+    ],
+    "unknowns": [
+      "Exact frequency and duration details for Scientific Innovations Club field trips",
+      "Exact locations and duration for Math Counts competition travel"
+    ]
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "school_key": "western_academy_of_beijing",
+  "school_name": "Western Academy Of Beijing",
+  "homepage": "http://www.wab.edu/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:21 PM",
+  "tokens_in": 565,
+  "tokens_out": 563,
+  "tokens_total": 1128,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "f2efe0d1c1e79ca2",
+    "pages": [
+      "http://www.wab.edu/student-experience/clubs-activities",
+      "http://www.wab.edu/student-experience/outdoor-learning",
+      "http://www.wab.edu/",
+      "http://www.wab.edu/how-we-learn/student-support-services",
+      "http://www.wab.edu/whats-happening/learning-news"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Western Academy of Beijing offers multi-day outdoor expeditions and experiential learning opportunities, including the Duke of Edinburgh International Award Adventurous Journey for high school students, as well as international travel opportunities through the World Scholars Cup competition.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education Program",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "multi-day",
+        "locations": [
+          "wild over land and water"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.wab.edu/student-experience/outdoor-learning",
+            "quote": "Multi-day expeditions into the wild over land and water"
+          },
+          {
+            "source_url": "http://www.wab.edu/student-experience/outdoor-learning",
+            "quote": "At the high school level, WAB’s Outdoor Education program challenges students to put their skills to the test through the Duke of Edinburgh International Award Adventurous Journey."
+          }
+        ]
+      },
+      {
+        "program_name": "Duke of Edinburgh International Award Adventurous Journey",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.wab.edu/student-experience/outdoor-learning",
+            "quote": "Students combine their knowledge of outdoor safety, navigation, hiking, and water-based activities to plan and execute self-sufficient expeditions."
+          }
+        ]
+      },
+      {
+        "program_name": "World Scholars Cup",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "abroad"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.wab.edu/student-experience/clubs-activities",
+            "quote": "Students will compete locally and, if they score well enough, they are invited to travel abroad in June to compete."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "wild over land and water",
+      "abroad"
+    ],
+    "unknowns": [
+      "Frequency of trips for all programs",
+      "Exact duration of the Duke of Edinburgh Adventurous Journey",
+      "Specific international destinations for World Scholars Cup travel",
+      "Grade bands for World Scholars Cup participation"
+    ]
+  }
+}

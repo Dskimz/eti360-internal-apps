@@ -1,0 +1,67 @@
+{
+  "school_key": "riverside_school_prague_international_senior_high_and_arts_centre",
+  "school_name": "Riverside School Prague - International Senior High and Arts Centre",
+  "homepage": "http://www.riversideschool.cz/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:34 PM",
+  "tokens_in": 379,
+  "tokens_out": 311,
+  "tokens_total": 690,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "f43813af992d611e",
+    "pages": [
+      "https://www.riversideschool.cz/student-life-and-enrichment/",
+      "http://www.riversideschool.cz/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Riverside School Prague offers a Trips & Adventures programme that provides students with diverse travel opportunities to explore new cultures and experiences through various trips including international, adventure, and exchange programs.",
+    "programs": [
+      {
+        "program_name": "Trips & Adventures",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor",
+          "exchange"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Spain",
+          "Alps",
+          "Cambodia",
+          "Africa",
+          "Korea",
+          "Croatia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.riversideschool.cz/student-life-and-enrichment/",
+            "quote": "Examples of our Trips and Adventures are: Spain Scuba Diving Trip, Alps Ski Trips, Cambodia Connect Trip, Africa Connect Trip, Korea and Spain Exchange Programmes, Dog Sledding Trip, Croatia Climbing Trip, Sports Trips or Culture…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Spain",
+      "Alps",
+      "Cambodia",
+      "Africa",
+      "Korea",
+      "Croatia"
+    ],
+    "unknowns": [
+      "grade bands for trips",
+      "frequency of trips",
+      "duration of trips",
+      "specific program formats"
+    ]
+  }
+}

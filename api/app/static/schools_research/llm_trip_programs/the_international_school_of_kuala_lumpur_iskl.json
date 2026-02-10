@@ -1,0 +1,153 @@
+{
+  "school_key": "the_international_school_of_kuala_lumpur_iskl",
+  "school_name": "The International School of Kuala Lumpur (ISKL)",
+  "homepage": "https://www.iskl.edu.my/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:21 PM",
+  "tokens_in": 2132,
+  "tokens_out": 853,
+  "tokens_total": 2985,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 19,
+    "prompt_hash": "b37eea6244cc5621",
+    "pages": [
+      "https://www.iskl.edu.my/beyond-the-classroom",
+      "https://www.iskl.edu.my/beyond-the-classroom/arts",
+      "https://www.iskl.edu.my/beyond-the-classroom/activities",
+      "https://www.iskl.edu.my/beyond-the-classroom/athletics",
+      "https://www.iskl.edu.my/beyond-the-classroom/off-campus-trips",
+      "https://www.iskl.edu.my/school-life-campus",
+      "https://www.iskl.edu.my/school-life-campus/visit-our-campus",
+      "https://www.iskl.edu.my/school-life-campus/campus-map",
+      "https://www.iskl.edu.my/school-life-campus/calendar-school-hours",
+      "https://www.iskl.edu.my/school-life-campus/health-nutrition-and-safety",
+      "https://www.iskl.edu.my/school-life-campus/school-buses",
+      "https://www.iskl.edu.my/school-life-campus/school-uniforms-devices-policies",
+      "https://www.iskl.edu.my/beyond-the-classroom/service-learning-sustainability",
+      "https://www.iskl.edu.my/",
+      "https://www.iskl.edu.my/learning/middle-school",
+      "https://www.iskl.edu.my/learning/high-school",
+      "https://www.iskl.edu.my/learning",
+      "https://www.iskl.edu.my/learning/elementary-school",
+      "https://www.iskl.edu.my/learning/iskl-curriculum",
+      "https://www.iskl.edu.my/learning/student-services"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "ISKL offers a range of experiential learning travel programs across grade levels, including day trips, overnight camps, and international travel. These trips focus on hands-on learning, leadership, teamwork, cultural immersion, and global citizenship development. Programs include the Grade 5 Overnight Trip to Port Dickson and the High School Global Action Program (GAP) involving international travel and service learning.",
+    "programs": [
+      {
+        "program_name": "Grade 5 Overnight Trip",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [
+          "Port Dickson"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.iskl.edu.my/beyond-the-classroom/off-campus-trips",
+            "quote": "The Grade 5 Overnight Trip to Port Dickson offers students an unforgettable opportunity to develop leadership, teamwork, and a spirit of adventure."
+          }
+        ]
+      },
+      {
+        "program_name": "Global Action Program (GAP)",
+        "program_format": "international travel and service learning",
+        "trip_types": [
+          "international",
+          "service_learning",
+          "exchange"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "not specified",
+        "locations": [
+          "various international destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.iskl.edu.my/beyond-the-classroom/off-campus-trips",
+            "quote": "The pinnacle of this experience is the annual student travel, for which students select their travel destinations and focus areas, forming grade-level teams of 14-16 members."
+          },
+          {
+            "source_url": "https://www.iskl.edu.my/learning/high-school",
+            "quote": "The Global Action Program (GAP) at ISKL is an experiential learning initiative that immerses High School students in real-world challenges through hands-on service, cultural exchanges, and environmental projects."
+          },
+          {
+            "source_url": "https://www.iskl.edu.my/beyond-the-classroom/off-campus-trips",
+            "quote": "The Global Action Program engages all grade 9, 10, and 11 students in action-based travel teams where students are challenged to deepen their understanding of the host country/region."
+          }
+        ]
+      },
+      {
+        "program_name": "Elementary School Field Trips and Short Camps",
+        "program_format": "day trips and short camps",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "regular",
+        "duration": "short duration",
+        "locations": [
+          "various local destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.iskl.edu.my/learning/elementary-school",
+            "quote": "Field trips and short camps are vital for elementary school students, offering hands-on learning experiences that enrich classroom education."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Off-Campus Trips",
+        "program_format": "day trips and experiential learning",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "regular",
+        "duration": "not specified",
+        "locations": [
+          "various local destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.iskl.edu.my/learning/middle-school",
+            "quote": "Find out more about our Middle School OFF-CAMPUS TRIPS."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Port Dickson",
+      "various international destinations",
+      "various local destinations"
+    ],
+    "unknowns": [
+      "Exact duration of GAP trips",
+      "Specific international destinations for GAP",
+      "Frequency and duration details for Middle School trips"
+    ]
+  }
+}

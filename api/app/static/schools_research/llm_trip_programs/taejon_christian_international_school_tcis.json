@@ -1,0 +1,85 @@
+{
+  "school_key": "taejon_christian_international_school_tcis",
+  "school_name": "Taejon Christian International School [TCIS] 대전외국인학교",
+  "homepage": "https://www.tcis.or.kr/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:37 PM",
+  "tokens_in": 907,
+  "tokens_out": 441,
+  "tokens_total": 1348,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "38946c02566a5a53",
+    "pages": [
+      "https://www.tcis.or.kr/lead/high-school-activities",
+      "https://www.tcis.or.kr/lead/middle-school-activities",
+      "https://www.tcis.or.kr/lead/elementary-activities",
+      "https://www.tcis.or.kr/lead/ascent-grades-6-8-outdoor-program",
+      "https://www.tcis.or.kr/",
+      "https://www.tcis.or.kr/boarding/support-services",
+      "https://www.tcis.or.kr/boarding/service-locations",
+      "https://www.tcis.or.kr/school-bus-service",
+      "https://www.tcis.or.kr/lead/lasa",
+      "https://www.tcis.or.kr/learn/academics",
+      "https://www.tcis.or.kr/learn/english-language-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "TCIS offers a variety of trip and travel programs including outdoor programs for middle school grades, service learning trips to the Philippines, and international boarding experiences attracting students from multiple continents. These programs emphasize leadership, cultural exposure, and service.",
+    "programs": [
+      {
+        "program_name": "AScent Grades 6-8 Outdoor Program",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.tcis.or.kr/lead/ascent-grades-6-8-outdoor-program",
+            "quote": "AScent Grades 6-8 Outdoor Program"
+          }
+        ]
+      },
+      {
+        "program_name": "Service Learning Trip to Boracay, Philippines",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Boracay, Philippines"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.tcis.or.kr/lead/lasa",
+            "quote": "Beginning in 2009, our school has partnered with “On the Rock” Ministries in Boracay, Philippines. Boracay is often thought of as a tourist destination known for its beautiful beaches and water fun. Most of the island, however, lives in poverty. “On the Rock” has a vision for meeting the physical and spiritual needs of the local people living there, on many fronts."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Boracay, Philippines"
+    ],
+    "unknowns": [
+      "Details on frequency, duration, and specific grade bands for the AScent outdoor program",
+      "Specific trip formats and other destinations for high school and elementary activities",
+      "Information on domestic trips or day trips"
+    ]
+  }
+}

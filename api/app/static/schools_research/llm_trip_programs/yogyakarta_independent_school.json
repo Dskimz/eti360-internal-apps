@@ -1,0 +1,69 @@
+{
+  "school_key": "yogyakarta_independent_school",
+  "school_name": "Yogyakarta Independent School",
+  "homepage": "http://www.yis-edu.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:41 PM",
+  "tokens_in": 348,
+  "tokens_out": 343,
+  "tokens_total": 691,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "23c6b6c7ea8f5366",
+    "pages": [
+      "http://www.yis-edu.org/",
+      "http://www.yis-edu.org/yis-curriculum",
+      "http://www.yis-edu.org/academics"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Yogyakarta Independent School organizes class excursions and relief projects as part of its trip and travel programs, engaging students in various activities on and off campus.",
+    "programs": [
+      {
+        "program_name": "Class Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.yis-edu.org/",
+            "quote": "Class excursions, relief projects, school holidays… stay up to date and in the loop with what’s happening on campus and in the YIS community."
+          }
+        ]
+      },
+      {
+        "program_name": "Relief Projects",
+        "program_format": null,
+        "trip_types": [
+          "service_learning"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.yis-edu.org/",
+            "quote": "Class excursions, relief projects, school holidays… stay up to date and in the loop with what’s happening on campus and in the YIS community."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific grade bands for trips",
+      "Frequency and duration of trips",
+      "Exact locations of excursions and relief projects",
+      "Details on overnight, international, domestic, expedition, or exchange programs"
+    ]
+  }
+}

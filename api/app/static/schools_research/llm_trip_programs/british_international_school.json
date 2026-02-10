@@ -1,0 +1,84 @@
+{
+  "school_key": "british_international_school",
+  "school_name": "British International School",
+  "homepage": "Phuket",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:24 PM",
+  "tokens_in": 367,
+  "tokens_out": 389,
+  "tokens_total": 756,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "473781644d86f74e",
+    "pages": [
+      "https://www.british-int-school.org.uk/outdoor-activities/",
+      "http://www.british-int-school.org.uk/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British International School offers an annual secondary study tour lasting seven days to various international destinations. Additionally, students frequently participate in day field trips during the school year.",
+    "programs": [
+      {
+        "program_name": "Secondary Study Tour",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "seven days",
+        "locations": [
+          "The UK",
+          "Northern Italy",
+          "France",
+          "Spain",
+          "Russia",
+          "Scandinavia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.british-int-school.org.uk/outdoor-activities/",
+            "quote": "The secondary study tour is organised each year in late October, it lasts for seven days and the students always visit a foreign destination. Some of the destinations the students visited in the previous years are: The UK, Northern Italy, France, Spain, Russia, Scandinavia etc."
+          }
+        ]
+      },
+      {
+        "program_name": "Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "frequent",
+        "duration": "day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.british-int-school.org.uk/outdoor-activities/",
+            "quote": "Besides the annual study tours, during the school year the BIS students frequently go on field trips during the school day."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "The UK",
+      "Northern Italy",
+      "France",
+      "Spain",
+      "Russia",
+      "Scandinavia"
+    ],
+    "unknowns": []
+  }
+}

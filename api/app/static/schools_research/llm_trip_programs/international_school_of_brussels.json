@@ -1,0 +1,67 @@
+{
+  "school_key": "international_school_of_brussels",
+  "school_name": "International School of Brussels",
+  "homepage": "https://www.isb.be/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 872,
+  "tokens_out": 237,
+  "tokens_total": 1109,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "31b0ab416c268975",
+    "pages": [
+      "https://www.isb.be/student-life/activities",
+      "https://www.isb.be/",
+      "https://www.isb.be/learning/middle-school",
+      "https://www.isb.be/learning/high-school",
+      "https://www.isb.be/learning",
+      "https://www.isb.be/learning/early-childhood-centre",
+      "https://www.isb.be/learning/elementary-school",
+      "https://www.isb.be/learning/student-support",
+      "https://www.isb.be/learning/stem-learning",
+      "https://www.isb.be/learning/language-learning",
+      "https://www.isb.be/learning/community-engagement"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "ISB offers international field trips and memorable educational travel experiences, including an 8th grade trip to Normandy that significantly impacted students' learning and interests.",
+    "programs": [
+      {
+        "program_name": "8th Grade Normandy Trip",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Normandy"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.isb.be/",
+            "quote": "The trip we took in 8th Grade to Normandy. I hated history and anything to do with it prior to that. Since then, I started watching documentaries for fun and later decided to become a history teacher myself."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Normandy"
+    ],
+    "unknowns": [
+      "Frequency of trips",
+      "Duration of trips",
+      "Other specific trip programs and destinations",
+      "Grade bands for other trips"
+    ]
+  }
+}

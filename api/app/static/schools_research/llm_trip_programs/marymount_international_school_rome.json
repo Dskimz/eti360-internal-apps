@@ -1,0 +1,109 @@
+{
+  "school_key": "marymount_international_school_rome",
+  "school_name": "Marymount International School Rome",
+  "homepage": "https://www.marymountrome.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 914,
+  "tokens_out": 525,
+  "tokens_total": 1439,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "2727202c7d5ac2f7",
+    "pages": [
+      "https://www.marymountrome.com/student-life/lunch",
+      "https://www.marymountrome.com/student-life/afterschool-activities",
+      "https://www.marymountrome.com/student-life/leadership",
+      "https://www.marymountrome.com/",
+      "https://www.marymountrome.com/admissions/bus-service",
+      "https://www.marymountrome.com/academics/middle-school",
+      "https://www.marymountrome.com/academics/high-school",
+      "https://www.marymountrome.com/academics",
+      "https://www.marymountrome.com/academics/early-childhood-center",
+      "https://www.marymountrome.com/academics/elementary-school",
+      "https://www.marymountrome.com/academics/ib"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Marymount International School Rome offers field trips and cultural studies at each grade level, including trips around Rome, Italy and beyond. These trips complement the curriculum and promote cultural understanding, especially through the Italian language program and service projects linked to the IB Diploma Programme.",
+    "programs": [
+      {
+        "program_name": "Elementary School Field Trips",
+        "program_format": "field trips and cultural studies",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "at each grade level",
+        "duration": null,
+        "locations": [
+          "Rome",
+          "Italy"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.marymountrome.com/academics/elementary-school",
+            "quote": "Students at this international elementary school experience the beauty and historical significance of Rome and Italy through field trips and cultural studies at each grade level."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Field Trips",
+        "program_format": "field trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Rome",
+          "Italy",
+          "beyond"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.marymountrome.com/academics/middle-school",
+            "quote": "Field trips around Rome, Italy and beyond, student clubs, service opportunities and after school activities also offer our students a rich learning experience."
+          }
+        ]
+      },
+      {
+        "program_name": "IB CAS Service Projects",
+        "program_format": "service learning",
+        "trip_types": [
+          "service_learning",
+          "exchange"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "ongoing during IBDP",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.marymountrome.com/student-life/leadership",
+            "quote": "Students following the IBDP engage in a number of Creativity, Activity and Service projects in order to fulfill the IB Diploma Programme's requirements. This voluntary exchange has important learning benefits for our students and also promotes our own RSHM-inspired Mission."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Rome",
+      "Italy",
+      "beyond"
+    ],
+    "unknowns": []
+  }
+}

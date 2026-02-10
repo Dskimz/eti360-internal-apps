@@ -1,0 +1,126 @@
+{
+  "school_key": "hokkaido_international_school",
+  "school_name": "Hokkaido International School",
+  "homepage": "https://www.his.ac.jp/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:28 PM",
+  "tokens_in": 686,
+  "tokens_out": 626,
+  "tokens_total": 1312,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "9ff9a258adebe22e",
+    "pages": [
+      "https://www.his.ac.jp/about-his/activities",
+      "https://www.his.ac.jp/huskies-life/his-outdoors",
+      "https://www.his.ac.jp/academics/outdoor-program",
+      "https://www.his.ac.jp/",
+      "https://www.his.ac.jp/huskies-life/his-service",
+      "https://www.his.ac.jp/huskies-life/his-service/his-huskies-mush",
+      "https://www.his.ac.jp/academics/middle-school",
+      "https://www.his.ac.jp/academics/high-school",
+      "https://www.his.ac.jp/academics",
+      "https://www.his.ac.jp/academics/early-years",
+      "https://www.his.ac.jp/academics/elementary-school"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Hokkaido International School offers multiple outdoor and overnight trip programs across middle and high school levels, including hiking and leadership development trips. High school students participate in two overnight outdoor trips annually and may take outdoor education or leadership classes. Middle school students have overnight trips such as the Takino Overnight trip.",
+    "programs": [
+      {
+        "program_name": "High School Outdoor Overnight Trips",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "twice per year",
+        "duration": "overnight",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.his.ac.jp/academics/high-school",
+            "quote": "All high school students participate in 2 outdoor overnight trips throughout the year."
+          }
+        ]
+      },
+      {
+        "program_name": "High School Outdoor Education and Leadership Classes",
+        "program_format": "class-based",
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "class duration",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.his.ac.jp/academics/high-school",
+            "quote": "Students may opt to take an 9-10 grade Outdoor Education class or an 11-12 grade Outdoor Leadership class."
+          }
+        ]
+      },
+      {
+        "program_name": "Takino Overnight Trip for Middle Schoolers",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": "overnight",
+        "locations": [
+          "Takino"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.his.ac.jp/huskies-life/his-outdoors",
+            "quote": "Takino Overnight trip for Middle Schoolers"
+          }
+        ]
+      },
+      {
+        "program_name": "HIS Niseko Overnight Trip: Hiking",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": "overnight",
+        "locations": [
+          "Niseko"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.his.ac.jp/huskies-life/his-outdoors",
+            "quote": "HIS Niesko Overnight Trip: Hiking"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Takino",
+      "Niseko"
+    ],
+    "unknowns": [
+      "Exact duration of outdoor education and leadership classes",
+      "Frequency of middle school overnight trips",
+      "Specific destinations for high school overnight trips"
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "school_key": "st_clement_s_school",
+  "school_name": "St. Clement's School",
+  "homepage": "http://www.scs.on.ca/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:36 PM",
+  "tokens_in": 1126,
+  "tokens_out": 648,
+  "tokens_total": 1774,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 8,
+    "prompt_hash": "973338162d3d75f3",
+    "pages": [
+      "https://www.scs.on.ca/parents/beyond-the-classroom/",
+      "https://www.scs.on.ca/parents/co-curriculars/",
+      "http://www.scs.on.ca/",
+      "https://www.scs.on.ca/parents/academics/",
+      "https://www.scs.on.ca/about-scs/our-approach-to-learning/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "St. Clement's School offers a diverse experiential education program including local volunteering, domestic trips to Moose Factory in Northern Ontario, international exchanges, outdoor adventure and cultural trips, credit courses abroad, and participation in Round Square service trips and conferences. Programs span from Junior School local community visits to international exchanges for Grades 7-12.",
+    "programs": [
+      {
+        "program_name": "Experiential Education Program",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "domestic",
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Moose Factory, Northern Ontario",
+          "Local community"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.scs.on.ca/parents/beyond-the-classroom/",
+            "quote": "Our experiential education program includes volunteering at local organizations and schools; travelling to Moose Factory in Northern Ontario to further our partnership with the Moose Cree First Nation; international exchanges; outdoor adventure and cultural trips; credit courses abroad; and meeting and working with people in other countries and on different continents as part of Round Square service trips and conferences."
+          },
+          {
+            "source_url": "https://www.scs.on.ca/parents/beyond-the-classroom/",
+            "quote": "In addition to our Grade 3 to 6 students being involved in offsite experiential education opportunities such as a week at Black Creek Pioneer Village, Camp Wanakita and Norval, our entire Junior School is very involved with our local community through visits to local seniors’ residences and choral performances at local churches."
+          }
+        ]
+      },
+      {
+        "program_name": "Foreign Exchanges",
+        "program_format": "exchange",
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "1 to 4 weeks",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.scs.on.ca/parents/beyond-the-classroom/",
+            "quote": "Exchanges offer our girls the opportunity to become immersed in a different country, culture or language. Ranging from one week to four weeks, they are open to students in Grades 7-12."
+          },
+          {
+            "source_url": "https://www.scs.on.ca/parents/beyond-the-classroom/",
+            "quote": "St. Clement’s School students host during Term 1, and are guests during Term 2."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Moose Factory, Northern Ontario",
+      "Black Creek Pioneer Village",
+      "Camp Wanakita",
+      "Norval",
+      "Local community"
+    ],
+    "unknowns": [
+      "Frequency of trips",
+      "Specific international exchange destinations",
+      "Exact duration and frequency of other trips besides foreign exchanges",
+      "Program names for outdoor adventure and cultural trips"
+    ]
+  }
+}

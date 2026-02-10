@@ -1,0 +1,131 @@
+{
+  "school_key": "american_international_school",
+  "school_name": "American International School",
+  "homepage": "http://www.aischennai.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:21 PM",
+  "tokens_in": 909,
+  "tokens_out": 879,
+  "tokens_total": 1788,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "832c0ce407f04d17",
+    "pages": [
+      "http://www.aischennai.org/student-life/activities-clubs",
+      "http://www.aischennai.org/",
+      "http://www.aischennai.org/learning-at-aisc/middle-school/ms-at-aisc",
+      "http://www.aischennai.org/learning-at-aisc/middle-school/week-without-walls",
+      "http://www.aischennai.org/learning-at-aisc/high-school/hs-at-aisc",
+      "http://www.aischennai.org/learning-at-aisc/high-school/discovery-program",
+      "http://www.aischennai.org/learning-at-aisc/teaching-and-learning",
+      "http://www.aischennai.org/learning-at-aisc/academic-excellence",
+      "http://www.aischennai.org/learning-at-aisc/elementary/es-at-aisc",
+      "http://www.aischennai.org/learning-at-aisc/elementary/early-years",
+      "http://www.aischennai.org/learning-at-aisc/elementary/es-experiential-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American International School offers a range of experiential and educational travel programs across all grade levels, including local field trips, overnight stays within Tamil Nadu, outdoor adventure camps, and a week-long high school Discovery Program exploring various parts of India with diverse activities.",
+    "programs": [
+      {
+        "program_name": "Elementary School Classroom Without Walls (CWoW)",
+        "program_format": "experiential learning with field trips and overnight stays",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "multiple opportunities throughout the year",
+        "duration": "up to three nights",
+        "locations": [
+          "Chennai",
+          "Tamil Nadu",
+          "Puducherry",
+          "Yelagiri"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aischennai.org/learning-at-aisc/elementary/es-experiential-learning",
+            "quote": "Our students have multiple opportunities to study in a classroom without walls; on field trips around Chennai, in Service Learning, a school sleepover for students in Grade 4, and a three-night overnight stay for Grade 5 within Tamil Nadu state. In the past, we have visited Puducherry and Yelagiri."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Week Without Walls Camps",
+        "program_format": "outdoor expedition camp",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "not specified",
+        "locations": [
+          "Sajan camp",
+          "Dabhosa camp",
+          "Maharashtra"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aischennai.org/learning-at-aisc/middle-school/week-without-walls",
+            "quote": "Sajan and Dabhosa camps (operated by Nature Trails) are located 120 km northeast of Mumbai. At the first camp, students stay in tents on a 30-acre property that has tree-top rooms, tiled hut rooms and dormitories in a unique Maharashtra setting. Here students are trained in basic outdoor skills, such as orienteering, rappelling, trekking, valley crossing, and kayaking."
+          }
+        ]
+      },
+      {
+        "program_name": "High School Discovery Program",
+        "program_format": "week-long experiential education trip",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "service_learning",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "various locations throughout India"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aischennai.org/learning-at-aisc/high-school/discovery-program",
+            "quote": "Each year the High School suspends classes for one week to engage in experiential education throughout India. Groups of 10 - 12 mixed grade level students join two faculty chaperones and take local transport, interact with the community and explore the magic of India."
+          },
+          {
+            "source_url": "http://www.aischennai.org/learning-at-aisc/high-school/discovery-program",
+            "quote": "Courses range from adventure activities, like rock climbing and rafting; to creative pursuits, such as ceramics and photography; to service activities, working with local students; to more academic pursuits, investigating the impact of the environment on the flora and fauna."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Chennai",
+      "Tamil Nadu",
+      "Puducherry",
+      "Yelagiri",
+      "Sajan camp",
+      "Dabhosa camp",
+      "Maharashtra",
+      "various locations throughout India"
+    ],
+    "unknowns": [
+      "Exact duration of Middle School Week Without Walls camps",
+      "Frequency details for Elementary School trips",
+      "Specific locations for High School Discovery Program trips within India"
+    ]
+  }
+}

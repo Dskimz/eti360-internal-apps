@@ -1,0 +1,61 @@
+{
+  "school_key": "nist_international_school",
+  "school_name": "NIST International School",
+  "homepage": "https://www.nist.ac.th/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:33 PM",
+  "tokens_in": 848,
+  "tokens_out": 242,
+  "tokens_total": 1090,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "e44d5290943df60a",
+    "pages": [
+      "https://www.nist.ac.th/learning/overview/expeditions",
+      "https://www.nist.ac.th/learning/overview/activities",
+      "https://www.nist.ac.th/",
+      "https://www.nist.ac.th/learning/overview",
+      "https://www.nist.ac.th/learning/overview/academics",
+      "https://www.nist.ac.th/learning/overview/service",
+      "https://www.nist.ac.th/learning/overview/service/humanitarian-efforts-inclusivity-equity",
+      "https://www.nist.ac.th/learning/overview/service/sustainable-resilient-communities",
+      "https://www.nist.ac.th/learning/overview/service/environmental-sustainability",
+      "https://www.nist.ac.th/learning/overview/service/unity-collaboration",
+      "https://www.nist.ac.th/learning/support-services"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "NIST International School offers a curated Learning Programme aligned with the IB philosophy that includes expeditions, sports, service, arts, and wellness opportunities. Expeditions focus on developing resilience, self-management, and care for self and the world through outdoor activities such as paddle boarding.",
+    "programs": [
+      {
+        "program_name": "Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nist.ac.th/learning/overview/expeditions",
+            "quote": "A group of students on paddle boards, showcasing resilience, self-management, and care for themselves and the world"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "grade bands for expeditions",
+      "frequency of trips",
+      "duration of trips",
+      "specific locations for trips",
+      "other trip programs beyond expeditions"
+    ]
+  }
+}

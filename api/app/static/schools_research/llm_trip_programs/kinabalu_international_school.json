@@ -1,0 +1,86 @@
+{
+  "school_key": "kinabalu_international_school",
+  "school_name": "Kinabalu International School",
+  "homepage": "https://www.kis.edu.my/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 795,
+  "tokens_out": 426,
+  "tokens_total": 1221,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "e4183bad62bffde3",
+    "pages": [
+      "https://www.kis.edu.my/about-us/student-life/",
+      "https://www.kis.edu.my/beyond-the-classroom/",
+      "https://www.kis.edu.my/extra-curricular-activities/",
+      "https://www.kis.edu.my/field-trips-residentials/",
+      "https://www.kis.edu.my/",
+      "https://www.kis.edu.my/parent-service-charter/",
+      "https://www.kis.edu.my/about-us/academics/",
+      "https://www.kis.edu.my/curriculum-statement/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Kinabalu International School offers a range of trip programs including day-long field trips to local educational and cultural sites, and residential trips designed to support academic topics and personal development through shared experiences and challenges.",
+    "programs": [
+      {
+        "program_name": "Day Trips",
+        "program_format": "field trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": "day-long",
+        "locations": [
+          "University Malaysia Sabah",
+          "local marine park",
+          "cultural centres",
+          "museums"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.kis.edu.my/field-trips-residentials/",
+            "quote": "KIS runs day-long field trips to local places of interest, including the University Malaysia Sabah, the local marine park, cultural centres and museums."
+          }
+        ]
+      },
+      {
+        "program_name": "Residential Trips",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.kis.edu.my/field-trips-residentials/",
+            "quote": "Residential Trips are important both academically and pastorally. Each trip has a different core focus, which has been designed to enhance the topics being studied and provide the students with opportunities for personal and social development."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "University Malaysia Sabah",
+      "local marine park",
+      "cultural centres",
+      "museums"
+    ],
+    "unknowns": [
+      "grade bands for trips",
+      "frequency of trips",
+      "duration of residential trips",
+      "specific locations for residential trips"
+    ]
+  }
+}

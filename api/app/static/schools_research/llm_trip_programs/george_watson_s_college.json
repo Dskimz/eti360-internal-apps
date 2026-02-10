@@ -1,0 +1,103 @@
+{
+  "school_key": "george_watson_s_college",
+  "school_name": "George Watson's College",
+  "homepage": "https://www.gwc.org.uk/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:27 PM",
+  "tokens_in": 463,
+  "tokens_out": 537,
+  "tokens_total": 1000,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "6b7ce210ff4e9fe4",
+    "pages": [
+      "https://www.gwc.org.uk/admissions/wraparound-care-holiday-activities",
+      "https://www.gwc.org.uk/",
+      "https://www.gwc.org.uk/pre-school/learning-curriculum",
+      "https://www.gwc.org.uk/junior-school/learning-curriculum",
+      "https://www.gwc.org.uk/senior-school/learning-curriculum",
+      "https://www.gwc.org.uk/about-us/news/news-article/~board/school-news/post/teaching-and-learning-in-the-age-of-ai"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "George Watson's College offers a range of trip programs for Junior School pupils including residential experiences in Scotland and a week-long trip to London, designed to enhance learning and social bonding.",
+    "programs": [
+      {
+        "program_name": "Primary 5 Residential Experience",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "short (not specified)",
+        "locations": [
+          "Dounans Camp, Aberfoyle"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.gwc.org.uk/junior-school/learning-curriculum",
+            "quote": "In Primary 5 pupils enjoy a residential experience early in the school year, helping them to bond with their new classmates, at Dounans Camp, Aberfoyle."
+          }
+        ]
+      },
+      {
+        "program_name": "Primary 6 Jacobite Residential Trip",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "short (not specified)",
+        "locations": [
+          "Meigle Camp, Perthshire"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.gwc.org.uk/junior-school/learning-curriculum",
+            "quote": "Pupils in Primary 6 learn about the Jacobites, and head to Meigle Camp in Perthshire for a residential trip."
+          }
+        ]
+      },
+      {
+        "program_name": "Primary 7 Week-long London Trip",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "London"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.gwc.org.uk/junior-school/learning-curriculum",
+            "quote": "Primary 7 brings about one of the key highlights of the Junior School, a week-long trip to London."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Dounans Camp, Aberfoyle",
+      "Meigle Camp, Perthshire",
+      "London"
+    ],
+    "unknowns": []
+  }
+}

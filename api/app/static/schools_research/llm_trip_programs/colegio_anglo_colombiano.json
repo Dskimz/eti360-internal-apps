@@ -1,0 +1,70 @@
+{
+  "school_key": "colegio_anglo_colombiano",
+  "school_name": "Colegio Anglo Colombiano",
+  "homepage": "https://anglocolombiano.edu.co/index.php/es/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 577,
+  "tokens_out": 384,
+  "tokens_total": 961,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "cbcbcf59a288b55b",
+    "pages": [
+      "https://anglocolombiano.edu.co/index.php/es/",
+      "https://anglocolombiano.edu.co/global-experiential-learning/",
+      "https://anglocolombiano.edu.co/en/global-experiential-learning/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Colegio Anglo Colombiano offers a range of learning experiences outside of school, both nationally and internationally, including day trips, grade-level field trips, student exchanges, global conferences, and participation in international networks. Trips around Colombia are emphasized for integral education and personal growth, helping students develop skills beyond the classroom and build a positive concept of their country.",
+    "programs": [
+      {
+        "program_name": "Global & Experiential Learning",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic",
+          "exchange"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Colombia",
+          "international destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://anglocolombiano.edu.co/en/global-experiential-learning/",
+            "quote": "The Global & Experiential Learning Department leads all learning experiences that take place outside of school, both nationally and internationally. From day trips in the city to grade-level field trips, student exchanges, global conferences and participation in international networks..."
+          },
+          {
+            "source_url": "https://anglocolombiano.edu.co/en/global-experiential-learning/",
+            "quote": "Trips around Colombia are of great value for the integral education and personal growth of students at Anglo. Educational trips are a tool for the development of skills other than those acquired in class."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Colombia",
+      "international destinations"
+    ],
+    "unknowns": [
+      "Specific grade bands for each trip type",
+      "Frequency of trips",
+      "Duration of trips",
+      "Exact international destinations"
+    ]
+  }
+}

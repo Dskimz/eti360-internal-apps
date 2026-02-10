@@ -1,0 +1,58 @@
+{
+  "school_key": "harrow_school",
+  "school_name": "Harrow School",
+  "homepage": "https://www.harrowschool.org.uk/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:28 PM",
+  "tokens_in": 466,
+  "tokens_out": 230,
+  "tokens_total": 696,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "77a85674768b6143",
+    "pages": [
+      "https://www.harrowschool.org.uk/",
+      "https://www.harrowschool.org.uk/learning-2/learning",
+      "https://www.harrowschool.org.uk/learning-2/academic",
+      "https://www.harrowschool.org.uk/learning-2/sport",
+      "https://www.harrowschool.org.uk/learning-2/arts-and-culture",
+      "https://www.harrowschool.org.uk/learning-2/leadership-and-service",
+      "https://www.harrowschool.org.uk/learning-2/frequently-asked-questions"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Harrow School incorporates The Duke of Edinburgh's Award program, which includes service, skill development, physical recreation, and an expedition component to build resilience and perseverance.",
+    "programs": [
+      {
+        "program_name": "The Duke of Edinburgh's Award",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.harrowschool.org.uk/learning-2/leadership-and-service",
+            "quote": "This well-known national scheme requires boys to learn a skill, undertake a physical recreation, carry out a service and complete an expedition, building resilience, perseverance and grit. In a typical year, boys at Harrow will achi…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "program_format",
+      "duration",
+      "specific expedition locations"
+    ]
+  }
+}

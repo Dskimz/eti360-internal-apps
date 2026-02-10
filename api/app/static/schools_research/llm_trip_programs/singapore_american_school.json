@@ -1,0 +1,79 @@
+{
+  "school_key": "singapore_american_school",
+  "school_name": "singapore american school",
+  "homepage": "http://www.sas.edu.sg/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "55",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:41 PM",
+  "tokens_in": 678,
+  "tokens_out": 345,
+  "tokens_total": 1023,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "67297a790083db68",
+    "pages": [
+      "http://www.sas.edu.sg/co-curriculars/activities",
+      "http://www.sas.edu.sg/student-life",
+      "http://www.sas.edu.sg/student-life/counseling",
+      "http://www.sas.edu.sg/",
+      "http://www.sas.edu.sg/academics/middle-school",
+      "http://www.sas.edu.sg/academics/high-school",
+      "http://www.sas.edu.sg/academics",
+      "http://www.sas.edu.sg/academics/elc",
+      "http://www.sas.edu.sg/academics/elementary-school",
+      "http://www.sas.edu.sg/academics/service-learning",
+      "http://www.sas.edu.sg/academics/support-services-at-sas"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Singapore American School offers experiential learning programs across all divisions that include field trips, Classroom Without Walls, and Interim Semester. These off-campus experiences occur both within Singapore and internationally, aiming to turn cultural knowledge into action.",
+    "programs": [
+      {
+        "program_name": "Experiential Learning Programs",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Singapore",
+          "International"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.sas.edu.sg/",
+            "quote": "Field trips. Classroom Without Walls. Interim Semester. The off-campus experience at SAS—whether within Singapore or internationally—is about turning cultural knowledge into action. Possibilities abound with our experiential learning programs across all divisions."
+          },
+          {
+            "source_url": "http://www.sas.edu.sg/academics",
+            "quote": "Field trips. Classroom Without Walls. Interim Semester. The off-campus experience at SAS is about turning cultural knowledge into action. Possibilities abound with our experiential learning programs across all divisions."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Singapore",
+      "International"
+    ],
+    "unknowns": [
+      "Specific program names beyond 'Experiential Learning Programs'",
+      "Program format details",
+      "Frequency of trips",
+      "Duration of trips",
+      "Specific destinations or countries for international trips",
+      "Grade-specific trip details"
+    ]
+  }
+}

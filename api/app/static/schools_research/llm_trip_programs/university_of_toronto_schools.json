@@ -1,0 +1,128 @@
+{
+  "school_key": "university_of_toronto_schools",
+  "school_name": "University of Toronto Schools",
+  "homepage": "http://www.utschools.ca/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:40 PM",
+  "tokens_in": 950,
+  "tokens_out": 659,
+  "tokens_total": 1609,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "a44ab799c8ad36ff",
+    "pages": [
+      "http://www.utschools.ca/the-uts-difference/student-life/co-curricular-opportunities",
+      "http://www.utschools.ca/the-uts-difference/student-life/student-leadership",
+      "http://www.utschools.ca/the-uts-difference/student-life/trips",
+      "http://www.utschools.ca/",
+      "http://www.utschools.ca/the-uts-difference/academics",
+      "http://www.utschools.ca/the-uts-difference/academics/academics-and-curriculum",
+      "http://www.utschools.ca/the-uts-difference/academics/uts-diplomas-and-certificates",
+      "http://www.utschools.ca/the-uts-difference/academics/ap-program",
+      "http://www.utschools.ca/the-uts-difference/academics/lang-innovation-lab",
+      "https://www.utschools.ca/the-uts-difference/academics/academics-and-curriculum"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "UTS integrates trips into its curriculum through local field trips in downtown Toronto, international exchange partnerships, and class excursions to domestic and international cities to enhance academic learning and global connections.",
+    "programs": [
+      {
+        "program_name": "Local Field Trips",
+        "program_format": "class trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "",
+        "duration": "",
+        "locations": [
+          "Toronto"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.utschools.ca/the-uts-difference/student-life/trips",
+            "quote": "Classes take advantage of our downtown Toronto setting to lead students on field trips to local cultural, civic and geographic landmarks adding authentic experiences to the curriculum."
+          }
+        ]
+      },
+      {
+        "program_name": "International Exchange Partnerships",
+        "program_format": "exchange",
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "",
+        "duration": "",
+        "locations": [
+          "Shanghai, China",
+          "Copenhagen, Denmark",
+          "Frankfurt, Germany",
+          "Marion, U.S."
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.utschools.ca/the-uts-difference/student-life/trips",
+            "quote": "UTS takes part in international partnerships with Number 2 High School Affiliated with East China Normal University in Shanghai, China, Rysensteen Gymnasium in Copenhagen, Denmark, Carl-Schurz-Schule in Frankfurt, Germany, and Tabor Academy in Marion, U.S. These meaningful partnerships provide our students and staff with exchange opportunities to live and learn abroad."
+          }
+        ]
+      },
+      {
+        "program_name": "International and Domestic Excursions",
+        "program_format": "class trips",
+        "trip_types": [
+          "domestic",
+          "international",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "",
+        "duration": "",
+        "locations": [
+          "Ottawa",
+          "New York",
+          "Washington"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.utschools.ca/the-uts-difference/student-life/trips",
+            "quote": "Students take class trips to bring the learning life, visiting cities such as Ottawa, New York and Washington. Excursions to world-renowned historical sites and cultural institutions to broaden and deepen their academic understanding of their course content."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Toronto",
+      "Shanghai, China",
+      "Copenhagen, Denmark",
+      "Frankfurt, Germany",
+      "Marion, U.S.",
+      "Ottawa",
+      "New York",
+      "Washington"
+    ],
+    "unknowns": [
+      "Frequency of trips",
+      "Duration of trips",
+      "Specific grade bands for some programs",
+      "Details on expedition/outdoor or service learning trips"
+    ]
+  }
+}

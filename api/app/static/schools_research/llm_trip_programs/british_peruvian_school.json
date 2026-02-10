@@ -1,0 +1,149 @@
+{
+  "school_key": "british_peruvian_school",
+  "school_name": "British Peruvian school",
+  "homepage": "http://www.britishschool.edu.pe/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:24 PM",
+  "tokens_in": 1134,
+  "tokens_out": 799,
+  "tokens_total": 1933,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 9,
+    "prompt_hash": "98fa5c3b27b0fc96",
+    "pages": [
+      "http://www.britishschool.edu.pe/",
+      "http://www.britishschool.edu.pe/outstanding-experiences",
+      "http://www.britishschool.edu.pe/outstanding-experiences/arts-and-culture",
+      "http://www.britishschool.edu.pe/outstanding-experiences/social-purpose",
+      "http://www.britishschool.edu.pe/es/outstanding-experiences",
+      "http://www.britishschool.edu.pe/es/outstanding-experiences/arts-and-culture",
+      "http://www.britishschool.edu.pe/es/outstanding-experiences/social-purpose"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British Peruvian School offers a rich extra-curricular program including field trips within Peru's three geographical regions and international trips to England and other Nord Anglia Education destinations. Secondary students participate in international programs such as study abroad, summer camps, Global Games sports competitions, and a three-week cultural exchange in the UK.",
+    "programs": [
+      {
+        "program_name": "Field Trips within Peru",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Peru's three geographical regions"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.britishschool.edu.pe/",
+            "quote": "Our students also have incredible experiences on field trips to Peru's exciting landscapes."
+          },
+          {
+            "source_url": "http://www.britishschool.edu.pe/",
+            "quote": "They travel throughout the three geographical regions of Peru."
+          }
+        ]
+      },
+      {
+        "program_name": "International Trips and Programs",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "study_abroad",
+          "summer_camp",
+          "international",
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "United Kingdom",
+          "Nord Anglia Education international destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.britishschool.edu.pe/outstanding-experiences",
+            "quote": "As part of Nord Anglia Education, our students participate in international programmes and events, such as study abroad, summer camps, and Global Games."
+          },
+          {
+            "source_url": "http://www.britishschool.edu.pe/outstanding-experiences",
+            "quote": "Our Secondary students can also participate in a cultural exchange trip to the United Kingdom through our strategic alliance with ISCA."
+          }
+        ]
+      },
+      {
+        "program_name": "Cultural Exchange Trip to the United Kingdom",
+        "program_format": "full immersion",
+        "trip_types": [
+          "international",
+          "exchange"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "three weeks",
+        "locations": [
+          "United Kingdom"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.britishschool.edu.pe/outstanding-experiences",
+            "quote": "This exchange is a three-week full immersion in the English language, history, and culture."
+          }
+        ]
+      },
+      {
+        "program_name": "Global Games (NAE's international sports competition)",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Nord Anglia Education international destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.britishschool.edu.pe/outstanding-experiences",
+            "quote": "Our students participate in Global Games (NAE's international sports competition)."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Peru's three geographical regions",
+      "United Kingdom",
+      "Nord Anglia Education international destinations"
+    ],
+    "unknowns": [
+      "Frequency of trips",
+      "Exact duration of most trips except the UK cultural exchange",
+      "Specific grade bands for some programs except where stated",
+      "Detailed format of most trips except the UK cultural exchange"
+    ]
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "school_key": "york_house_school",
+  "school_name": "York House School",
+  "homepage": "http://www.yorkhouse.ca/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:41 PM",
+  "tokens_in": 746,
+  "tokens_out": 634,
+  "tokens_total": 1380,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "e62f24d47a1783e8",
+    "pages": [
+      "http://www.yorkhouse.ca/outdoor-education",
+      "http://www.yorkhouse.ca/",
+      "http://www.yorkhouse.ca/clubs",
+      "http://www.yorkhouse.ca/learning",
+      "http://www.yorkhouse.ca/learning-strategies",
+      "http://www.yorkhouse.ca/community-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "York House School offers a comprehensive outdoor education program rooted in British Columbia's natural landscape, including day trips, multi-day camping, hiking excursions, and international exchanges. The programs support life skills development, environmental education, and leadership, aligned with the Duke of Edinburgh International Award for Grades 9-12.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "multi-day",
+        "locations": [
+          "British Columbia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.yorkhouse.ca/outdoor-education",
+            "quote": "Rooted in a rich connection with beautiful British Columbia’s natural landscape, Outdoor Education is an essential part of learning and self-discovery at York House. From day trips to local beaches to excursions into the wilderness..."
+          },
+          {
+            "source_url": "http://www.yorkhouse.ca/outdoor-education",
+            "quote": "Grade 8 students begin Senior School life at York House with a transformative multi-day camping trip... In Grade 9, the adventure deepens on a front-country hiking and camping excursion."
+          }
+        ]
+      },
+      {
+        "program_name": "Duke of Edinburgh International Award Trips",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "British Columbia"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.yorkhouse.ca/outdoor-education",
+            "quote": "These Grade 9 and 10 excursions align with the Duke of Edinburgh International Award requirements... Grade 11 and 12 Yorkies can fulfill the Duke of Edinburgh Gold Award requirements through team-formulated trips with support from the YHS Outdoor Education Coordinator."
+          }
+        ]
+      },
+      {
+        "program_name": "International Exchange Program",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "exchange"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Australia",
+          "United Kingdom"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.yorkhouse.ca/community-learning",
+            "quote": "They explore the mountains, forests, and waters of British Columbia through Outdoor Education, and embark on international exchanges to destinations like Australia and the United Kingdom."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "British Columbia",
+      "Australia",
+      "United Kingdom"
+    ],
+    "unknowns": [
+      "frequency of trips",
+      "exact duration of Duke of Edinburgh trips",
+      "specific grades for international exchange"
+    ]
+  }
+}

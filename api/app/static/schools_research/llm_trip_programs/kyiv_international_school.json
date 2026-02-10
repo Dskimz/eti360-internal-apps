@@ -1,0 +1,48 @@
+{
+  "school_key": "kyiv_international_school",
+  "school_name": "Kyiv International School",
+  "homepage": "https://kyiv.qsi.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 557,
+  "tokens_out": 126,
+  "tokens_total": 683,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "892243206b9b843a",
+    "pages": [
+      "https://kyiv.qsi.org/student-life",
+      "https://kyiv.qsi.org/",
+      "https://kyiv.qsi.org/student-services",
+      "https://kyiv.qsi.org/student-services/cafeteria",
+      "https://kyiv.qsi.org/student-services/transportation",
+      "https://kyiv.qsi.org/student-services/library",
+      "https://kyiv.qsi.org/learning/middle-school",
+      "https://kyiv.qsi.org/learning",
+      "https://kyiv.qsi.org/learning/preschool",
+      "https://kyiv.qsi.org/learning/preschool-elementary",
+      "https://kyiv.qsi.org/learning/secondary-school",
+      "https://kyiv.qsi.org/learning/ap-diploma",
+      "https://kyiv.qsi.org/learning/ib-diploma",
+      "https://kyiv.qsi.org/learning/loe",
+      "https://kyiv.qsi.org/learning/intensive-english",
+      "https://kyiv.qsi.org/student-support/learning-center"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Kyiv International School provides transportation support for field trips, after school activities, and athletic events using a fleet of modern buses. Specific trip programs, durations, grade bands, and destinations are not detailed in the provided evidence.",
+    "programs": [],
+    "locations_all": [],
+    "unknowns": [
+      "Specific trip programs offered by Kyiv International School",
+      "Trip formats (day, overnight, international, etc.)",
+      "Grade bands participating in trips",
+      "Trip frequency and duration",
+      "Trip destinations"
+    ]
+  }
+}

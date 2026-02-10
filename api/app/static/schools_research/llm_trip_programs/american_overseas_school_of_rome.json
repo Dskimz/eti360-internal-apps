@@ -1,0 +1,84 @@
+{
+  "school_key": "american_overseas_school_of_rome",
+  "school_name": "American Overseas School Of Rome",
+  "homepage": "http://www.aosr.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:22 PM",
+  "tokens_in": 763,
+  "tokens_out": 318,
+  "tokens_total": 1081,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "8d6a28839c7373ca",
+    "pages": [
+      "http://www.aosr.org/student-life/after-school-activities",
+      "http://www.aosr.org/",
+      "http://www.aosr.org/admissions/bus-service",
+      "http://www.aosr.org/admissions/cafeteria-service",
+      "http://www.aosr.org/academics/middle-school",
+      "http://www.aosr.org/academics/high-school/welcome-to-high-school",
+      "http://www.aosr.org/academics/high-school/advanced-placement-program",
+      "http://www.aosr.org/academics/academics-overview",
+      "http://www.aosr.org/academics/pre-kindergarten",
+      "http://www.aosr.org/academics/elementary-school/welcome-to-elementary-school",
+      "http://www.aosr.org/academics/elementary-school/elementary-school-counselors"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "American Overseas School of Rome offers multiple field trips and an annual week-long Cultural Trip for Middle School students, focusing on experiential learning and cultural immersion within Italy.",
+    "programs": [
+      {
+        "program_name": "Middle School Cultural Trips",
+        "program_format": "week-long",
+        "trip_types": [
+          "domestic",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "Italy"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aosr.org/academics/middle-school",
+            "quote": "During the annual week-long Cultural Trips, students step off the AOSR campus and fully immerse themselves in another region of Italy."
+          }
+        ]
+      },
+      {
+        "program_name": "Middle School Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "throughout the year",
+        "duration": null,
+        "locations": [
+          "Italy"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.aosr.org/academics/middle-school",
+            "quote": "There are numerous field trips available to our Middle School students throughout the year."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Italy"
+    ],
+    "unknowns": []
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "school_key": "garden_international_school_bangkok",
+  "school_name": "Garden International School Bangkok",
+  "homepage": "http://gardenbangkok.com/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:27 PM",
+  "tokens_in": 494,
+  "tokens_out": 239,
+  "tokens_total": 733,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "f44e8fe010fffce6",
+    "pages": [
+      "http://gardenbangkok.com/",
+      "https://gardenbangkok.com/about-gis/academic-excellence/exceptional-learning-experiences/",
+      "https://gardenbangkok.com/our-curriculum/",
+      "https://gardenbangkok.com/our-curriculum/eyfs/",
+      "https://gardenbangkok.com/our-curriculum/primary/",
+      "https://gardenbangkok.com/our-curriculum/secondary/",
+      "https://gardenbangkok.com/our-curriculum/sixth-form/",
+      "https://gardenbangkok.com/our-curriculum/french-first-language-programme/",
+      "https://gardenbangkok.com/our-curriculum/inclusion-at-garden/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Garden International School Bangkok offers a variety of exhilarating expeditions and adventures as part of their extra-curricular program, taking students on trips within Thailand and across Asia.",
+    "programs": [
+      {
+        "program_name": "Exhilarating Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Thailand",
+          "Asia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://gardenbangkok.com/about-gis/academic-excellence/exceptional-learning-experiences/",
+            "quote": "Your child will also go on exhilarating expeditions, taking them on adventures in Thailand and across Asia."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Thailand",
+      "Asia"
+    ],
+    "unknowns": [
+      "Specific grade bands for trips",
+      "Frequency of trips",
+      "Duration of trips",
+      "Detailed program names or formats"
+    ]
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "school_key": "nibras_international_school_dubai",
+  "school_name": "Nibras International School Dubai",
+  "homepage": "https://nisdubai.ae/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:33 PM",
+  "tokens_in": 1426,
+  "tokens_out": 990,
+  "tokens_total": 2416,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 13,
+    "prompt_hash": "0b07fe68a1de3365",
+    "pages": [
+      "https://nisdubai.ae/school-life/multilingual-school",
+      "https://nisdubai.ae/school-life/clubs-sports-opportunities",
+      "https://nisdubai.ae/school-life/music-arts-program",
+      "https://nisdubai.ae/school-life/school-reviews",
+      "https://nisdubai.ae/school-life/inclusion-learning-support",
+      "https://nisdubai.ae/",
+      "https://nisdubai.ae/learning-journey/middle-school-dubai",
+      "https://nisdubai.ae/learning-journey/high-school-dubai",
+      "https://nisdubai.ae/learning-journey/kindergarten-dubai",
+      "https://nisdubai.ae/learning-journey/elementary-school-dubai"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Nibras International School Dubai offers a variety of international and domestic travel programs that foster global citizenship, cultural exchange, leadership, and resilience. These include international exchanges, service expeditions, outdoor adventures, and residential trips designed for different grade levels.",
+    "programs": [
+      {
+        "program_name": "ISP Cultural Exchange",
+        "program_format": "reciprocal exchange with homestay",
+        "trip_types": [
+          "international",
+          "exchange"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "1 month",
+        "locations": [
+          "ISP schools worldwide"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://nisdubai.ae/school-life/clubs-sports-opportunities",
+            "quote": "ISP Cultural Exchange encourages reciprocal exchange across regions where ISP schools are located. The aim is to offer students the opportunity to experience a culture different from their own through a homestay and attending another ISP school for a month."
+          }
+        ]
+      },
+      {
+        "program_name": "ISP Virtual Exchange",
+        "program_format": "virtual reciprocal exchange",
+        "trip_types": [
+          "exchange"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "global ISP schools"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://nisdubai.ae/school-life/clubs-sports-opportunities",
+            "quote": "ISP Virtual Exchange encourages classrooms to do a reciprocal virtual exchange of interactive activities with other ISP schools around the globe."
+          }
+        ]
+      },
+      {
+        "program_name": "International Trips",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "overnight_residential",
+          "service_learning",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Spain",
+          "Cyprus",
+          "Oman",
+          "UAE"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://nisdubai.ae/school-life/clubs-sports-opportunities",
+            "quote": "Whether representing the school at ISP MUN in Spain, embarking on a Senior Service Expedition to Cyprus, joining Outward Bound adventures in Oman, or participating in Elementary Residentials in the UAE, students immerse themselves in new cultures, build resilience, and develop leadership skills."
+          }
+        ]
+      },
+      {
+        "program_name": "Senior Service Expedition",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Cyprus"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://nisdubai.ae/learning-journey/high-school-dubai",
+            "quote": "By participating in local and international Model UN conferences, embarking on a Senior Service expedition in Cyprus, or enjoying adventures in Oman, learners sharpen diplomacy and public speaking skills."
+          }
+        ]
+      },
+      {
+        "program_name": "Outward Bound Adventures",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Oman"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://nisdubai.ae/school-life/clubs-sports-opportunities",
+            "quote": "Joining Outward Bound adventures in Oman."
+          }
+        ]
+      },
+      {
+        "program_name": "Elementary Residentials",
+        "program_format": "residential",
+        "trip_types": [
+          "domestic",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "UAE"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://nisdubai.ae/school-life/clubs-sports-opportunities",
+            "quote": "Participating in Elementary Residentials in the UAE."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "ISP schools worldwide",
+      "Spain",
+      "Cyprus",
+      "Oman",
+      "UAE",
+      "global ISP schools"
+    ],
+    "unknowns": [
+      "Frequency of trips",
+      "Exact duration of trips except ISP Cultural Exchange",
+      "Specific grade bands for some programs"
+    ]
+  }
+}

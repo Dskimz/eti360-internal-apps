@@ -1,0 +1,102 @@
+{
+  "school_key": "strathcona_tweedsmuir_school",
+  "school_name": "Strathcona-Tweedsmuir School",
+  "homepage": "https://www.strathconatweedsmuir.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:37 PM",
+  "tokens_in": 1062,
+  "tokens_out": 466,
+  "tokens_total": 1528,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "e6a3b2e7aacf2576",
+    "pages": [
+      "https://www.strathconatweedsmuir.com/student-life/fine-arts/middle-school-arts/",
+      "https://www.strathconatweedsmuir.com/student-life/athletics/",
+      "https://www.strathconatweedsmuir.com/student-life/athletics/athletic-opportunities/",
+      "https://www.strathconatweedsmuir.com/student-life/fine-arts/",
+      "https://www.strathconatweedsmuir.com/student-life/fine-arts/elementary-school-arts/",
+      "https://www.strathconatweedsmuir.com/student-life/fine-arts/senior-school-arts/",
+      "https://www.strathconatweedsmuir.com/student-life/fine-arts/tickets/",
+      "https://www.strathconatweedsmuir.com/student-life/outdoor-education/",
+      "https://www.strathconatweedsmuir.com/student-life/outdoor-education/outdoor-education/",
+      "https://www.strathconatweedsmuir.com/student-life/duke-of-edinburghs-international-award/sparking-interest-in-community-service/",
+      "https://www.strathconatweedsmuir.com/",
+      "https://www.strathconatweedsmuir.com/academics/academic-excellence/middle-school/",
+      "https://www.strathconatweedsmuir.com/academics/academic-excellence/ib-world-school/",
+      "https://www.strathconatweedsmuir.com/academics/your-complete-child/",
+      "https://www.strathconatweedsmuir.com/academics/academic-excellence/",
+      "https://www.strathconatweedsmuir.com/academics/academic-excellence/elementary-school/",
+      "https://www.strathconatweedsmuir.com/academics/academic-excellence/senior-school/",
+      "https://www.strathconatweedsmuir.com/academics/alberta-education-reports/",
+      "https://www.strathconatweedsmuir.com/academics/aerr-and-education-plan/",
+      "https://www.strathconatweedsmuir.com/academics/educational-technology/",
+      "https://www.strathconatweedsmuir.com/academics/student-services/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Strathcona-Tweedsmuir School offers a variety of travel programs including music tours for senior students and expedition journeys as part of the Duke of Edinburgh's International Award. These trips span local, national, and international destinations and include exploration and expedition challenges to develop skills and broaden student horizons.",
+    "programs": [
+      {
+        "program_name": "Senior Band Travel",
+        "program_format": "credit course",
+        "trip_types": [
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Banff",
+          "Chicago",
+          "Los Angeles",
+          "Austria",
+          "Russia",
+          "Italy"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.strathconatweedsmuir.com/student-life/fine-arts/senior-school-arts/",
+            "quote": "Senior Band is a credit course for Grades 10 to 12 students and takes place before school hours, twice per week. They perform at various concerts, festivals and community events. Each year, the group travels to a provincial, national or international location such as Banff, Chicago, Los Angeles, Austria, Russia or Italy."
+          }
+        ]
+      },
+      {
+        "program_name": "Duke of Edinburgh's International Award Journeys",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.strathconatweedsmuir.com/student-life/duke-of-edinburghs-international-award/sparking-interest-in-community-service/",
+            "quote": "I also had to log a Practice Journey and a Qualifying Journey. They either had to be an exploration or expedition, aiming to challenge me, and further develop my…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Banff",
+      "Chicago",
+      "Los Angeles",
+      "Austria",
+      "Russia",
+      "Italy"
+    ],
+    "unknowns": []
+  }
+}

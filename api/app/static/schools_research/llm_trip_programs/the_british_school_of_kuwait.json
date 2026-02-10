@@ -1,0 +1,146 @@
+{
+  "school_key": "the_british_school_of_kuwait",
+  "school_name": "The British School of Kuwait",
+  "homepage": "http://www.bsk.edu.kw/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:39 PM",
+  "tokens_in": 930,
+  "tokens_out": 759,
+  "tokens_total": 1689,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "473a970a8a693b93",
+    "pages": [
+      "http://www.bsk.edu.kw/outstanding-experiences/visits-and-trips",
+      "http://www.bsk.edu.kw/outstanding-experiences/extracurricular-activities",
+      "http://www.bsk.edu.kw/ar/outstanding-experiences/visits-and-trips",
+      "http://www.bsk.edu.kw/ar/outstanding-experiences/extracurricular-activities",
+      "http://www.bsk.edu.kw/",
+      "http://www.bsk.edu.kw/outstanding-experiences",
+      "http://www.bsk.edu.kw/outstanding-experiences/social-purpose",
+      "http://www.bsk.edu.kw/outstanding-experiences/health-and-wellbeing",
+      "http://www.bsk.edu.kw/news/2026/01/04/the-significance-of-the-national-curriculum-for-england-at-the-british-school-of-kuwait",
+      "http://www.bsk.edu.kw/news/2026/01/04/play-based-learning-in-early-years"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The British School of Kuwait offers a range of academic enrichment trips and expeditions that connect classroom learning with real-world experiences. These include international expeditions to Iceland and Thailand, participation in regional competitions, and regular local excursions within Kuwait.",
+    "programs": [
+      {
+        "program_name": "Upper Department Geography Trip",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Iceland"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsk.edu.kw/outstanding-experiences",
+            "quote": "These include our Upper Department geography trip to Iceland"
+          },
+          {
+            "source_url": "http://www.bsk.edu.kw/",
+            "quote": "From the volcanoes and waterfalls of southern Iceland ... our students discover the world on thrilling expeditions"
+          }
+        ]
+      },
+      {
+        "program_name": "AS and A Level Biology Expedition",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Khao Sam Roi Yot National Park, Thailand"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsk.edu.kw/outstanding-experiences",
+            "quote": "our AS and A Level biology expedition to Khao Sam Roi Yot National Park in Thailand"
+          },
+          {
+            "source_url": "http://www.bsk.edu.kw/",
+            "quote": "From the ... caves and mountains of Khao Sam Roi Yot National Park in Thailand, our students discover the world on thrilling expeditions"
+          }
+        ]
+      },
+      {
+        "program_name": "Local Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "regular",
+        "duration": null,
+        "locations": [
+          "Kuwait"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsk.edu.kw/outstanding-experiences",
+            "quote": "We also organise regular excursions to destinations within Kuwait, including to local museums, places of interest, and leisure locations."
+          }
+        ]
+      },
+      {
+        "program_name": "Regional Competitions Participation",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Dubai, UAE",
+          "Cairo, Egypt"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bsk.edu.kw/",
+            "quote": "Our learners represent BSK with pride at competitions around the world, including the Nord Anglia Regional STEAM Festival in Dubai and the BSME Games in Cairo, Egypt."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Iceland",
+      "Khao Sam Roi Yot National Park, Thailand",
+      "Kuwait",
+      "Dubai, UAE",
+      "Cairo, Egypt"
+    ],
+    "unknowns": [
+      "Exact duration of trips",
+      "Specific grade bands for local excursions and competitions",
+      "Program formats (e.g., residential or day trips) for all trips"
+    ]
+  }
+}

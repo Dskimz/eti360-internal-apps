@@ -1,0 +1,117 @@
+{
+  "school_key": "ist_international_school_of_turin",
+  "school_name": "IST - International School of Turin",
+  "homepage": "http://www.isturin.it/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 1621,
+  "tokens_out": 583,
+  "tokens_total": 2204,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 12,
+    "prompt_hash": "e57e1867f5b91835",
+    "pages": [
+      "http://www.isturin.it/our-school/student-life",
+      "http://www.isturin.it/our-school/student-life/cocurricular-programme-school-clubs",
+      "http://www.isturin.it/our-school/student-life/student-support-services",
+      "http://www.isturin.it/our-school/student-life/student-council",
+      "http://www.isturin.it/our-school/student-life/summer-camp",
+      "http://www.isturin.it/our-school/student-life/eco-school",
+      "http://www.isturin.it/our-school/student-life/international-exchanges",
+      "http://www.isturin.it/our-school/after-school-activities",
+      "http://www.isturin.it/our-school/field-trips",
+      "http://www.isturin.it/",
+      "http://www.isturin.it/our-school/school-services",
+      "http://www.isturin.it/academics/teaching-and-learning",
+      "http://www.isturin.it/academics/ib-programmes",
+      "http://www.isturin.it/academics/ib-programmes/ib-primary-years-programme-0",
+      "http://www.isturin.it/academics/ib-programmes/ib-primary-years-programme",
+      "http://www.isturin.it/academics/ib-programmes/ib-middle-years-programme",
+      "http://www.isturin.it/academics/ib-programmes/ib-diploma-programme",
+      "http://www.isturin.it/academics/ib-programmes/italian-programme",
+      "http://www.isturin.it/academics/ib-programmes/external-language-certification",
+      "https://www.isturin.it/academics/sat-info"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "IST offers a comprehensive field trip program integrated into the curriculum, including domestic trips within Italy focusing on Italian heritage, regional differences, and cultural diversity, as well as international trips aimed at cross-cultural understanding. The school also runs international student exchange programs with partner schools in Tanzania, India, and Switzerland, emphasizing service learning and global mindedness.",
+    "programs": [
+      {
+        "program_name": "Field Trip Program",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Italy",
+          "International destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.isturin.it/our-school/field-trips",
+            "quote": "The School offers both trips within Italian borders that focus on Italian heritage, regional differences, and cultural diversity, and international field trips to focus on cross-cultural understanding."
+          }
+        ]
+      },
+      {
+        "program_name": "International Student Exchange Program",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning",
+          "exchange"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "biannual and alternate years",
+        "duration": null,
+        "locations": [
+          "Zanzibar, Tanzania",
+          "Kodaikanal, India",
+          "Geneva, Switzerland"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.isturin.it/our-school/student-life/international-exchanges",
+            "quote": "Every alternate year, a student exchange programme with the International School of Zanzibar focuses on service-learning activities."
+          },
+          {
+            "source_url": "http://www.isturin.it/our-school/student-life/international-exchanges",
+            "quote": "A student exchange programme takes place biannually year with the Kodaikanal International School in India, focusing on increasing our students' sense of 'international mindedness'."
+          },
+          {
+            "source_url": "http://www.isturin.it/our-school/student-life/international-exchanges",
+            "quote": "A delegation of Grade 4 students visited Turin from the International School of Geneva, Switzerland, as part of their PYP ancient civilization unit."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Italy",
+      "Zanzibar, Tanzania",
+      "Kodaikanal, India",
+      "Geneva, Switzerland"
+    ],
+    "unknowns": [
+      "Exact duration of trips",
+      "Specific grade bands for all trips",
+      "Frequency details for field trips"
+    ]
+  }
+}

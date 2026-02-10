@@ -1,0 +1,89 @@
+{
+  "school_key": "dar_es_salaam_international_academy",
+  "school_name": "Dar es Salaam International Academy",
+  "homepage": "http://www.dia.co.tz/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:26 PM",
+  "tokens_in": 687,
+  "tokens_out": 397,
+  "tokens_total": 1084,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "6c356486455b1d2a",
+    "pages": [
+      "http://www.dia.co.tz/field-trips-study-tours",
+      "http://www.dia.co.tz/extra-curricular-activities",
+      "http://www.dia.co.tz/",
+      "http://www.dia.co.tz/student-services",
+      "http://www.dia.co.tz/learning-dia",
+      "http://www.dia.co.tz/service-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Dar es Salaam International Academy offers experiential learning through field trips and study tours that provide first-hand observations and cultural experiences linked to student learning outcomes. These educational trips enable students to apply classroom knowledge in real-life situations, fostering reflection and deeper curriculum understanding.",
+    "programs": [
+      {
+        "program_name": "Field Trips & Certification Tours",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Dar es Salaam area",
+          "Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.dia.co.tz/field-trips-study-tours",
+            "quote": "Field Trips & Certification Tours are designed for DIA students and teachers to have first-hand observations and cultural experiences, directly linked to student learning outcomes."
+          }
+        ]
+      },
+      {
+        "program_name": "Study Tours",
+        "program_format": null,
+        "trip_types": [
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.dia.co.tz/learning-dia",
+            "quote": "DIA promotes experiential learning through educational trips. These opportunities enable students to apply classroom knowledge in real-life situations, fostering reflection and deeper curriculum understanding."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Dar es Salaam area",
+      "Tanzania"
+    ],
+    "unknowns": [
+      "Specific grade bands for each program",
+      "Frequency of trips",
+      "Duration of trips",
+      "Exact destinations beyond Tanzania"
+    ]
+  }
+}

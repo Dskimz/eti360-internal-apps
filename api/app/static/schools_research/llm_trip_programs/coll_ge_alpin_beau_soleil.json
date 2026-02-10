@@ -1,0 +1,240 @@
+{
+  "school_key": "coll_ge_alpin_beau_soleil",
+  "school_name": "Collège Alpin Beau Soleil",
+  "homepage": "https://www.beausoleil.ch/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:26 PM",
+  "tokens_in": 1550,
+  "tokens_out": 1360,
+  "tokens_total": 2910,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 14,
+    "prompt_hash": "600dd892bc8bd30e",
+    "pages": [
+      "https://www.beausoleil.ch/outdoor-education",
+      "https://www.beausoleil.ch/trips",
+      "https://www.beausoleil.ch/clubs-and-activities",
+      "https://www.beausoleil.ch/sg---school-life",
+      "https://www.beausoleil.ch/",
+      "https://www.beausoleil.ch/learning-support"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Collège Alpin Beau Soleil offers a comprehensive range of trip and travel programs that emphasize outdoor education, internationalism, community service, and adventure. Students participate in termly expeditions including overnight alpine trips, international grade-end trips, and service learning experiences. These trips foster leadership, teamwork, confidence, and global awareness.",
+    "programs": [
+      {
+        "program_name": "Term 1 Alpine Expedition",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "term 1",
+        "locations": [
+          "European Alps"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.beausoleil.ch/outdoor-education",
+            "quote": "In Term 1, all students take part in an unforgettable overnight expedition in the European Alps. Sleeping in alpine huts high in the mountains, they engage in a range of adventurous activities such as summiting ice-capped peaks, rock climbing, tackling Via Ferrata routes, crossing glaciers, or simply hiking and soaking in the alpine environment."
+          }
+        ]
+      },
+      {
+        "program_name": "Term 3 Journeys",
+        "program_format": "overnight residential",
+        "trip_types": [
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "term 3",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.beausoleil.ch/outdoor-education",
+            "quote": "Term 3 focuses on journeys that include an overnight camping element. These expeditions might take place on foot, by bike, or on the water using canoes, kayaks, or stand-up paddleboards."
+          }
+        ]
+      },
+      {
+        "program_name": "Grade 8 Marine Conservation Expedition",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "end of academic year",
+        "locations": [
+          "Maldives"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.beausoleil.ch/trips",
+            "quote": "Trips include our Grade 8 marine conservation expedition to the Maldives."
+          }
+        ]
+      },
+      {
+        "program_name": "Grade 10 Service and Environmental Experience",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "end of academic year",
+        "locations": [
+          "Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.beausoleil.ch/trips",
+            "quote": "Grade 10 service and environmental experience in Tanzania."
+          }
+        ]
+      },
+      {
+        "program_name": "Life Changing Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Mount Kilimanjaro, Tanzania",
+          "jungles of South America"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.beausoleil.ch/outdoor-education",
+            "quote": "Each year, life changing expeditions – including to Mount Kilimanjaro in Tanzania and the jungles of South America."
+          }
+        ]
+      },
+      {
+        "program_name": "International Grade-End Adventures",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "end of grade",
+        "locations": [
+          "Costa Rica",
+          "Cambodia",
+          "Malta",
+          "Maldives"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.beausoleil.ch/trips",
+            "quote": "We offer more than 35 international experiences, which take place throughout the year. These include awe-inspiring end of grade adventures, where entire year groups travel to exciting destinations – from Costa Rica to Cambodia, Malta to the Maldives."
+          }
+        ]
+      },
+      {
+        "program_name": "Half-Term International Trips",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "multiple times per year",
+        "duration": "half-term",
+        "locations": [
+          "Bhutan",
+          "Patagonia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.beausoleil.ch/trips",
+            "quote": "Our half-term trips, which include working with local communities in Bhutan and river rafting in Patagonia."
+          }
+        ]
+      },
+      {
+        "program_name": "Global Community Service, Cultural, Adventure, and Academic Enrichment Trips",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "service_learning",
+          "expedition_outdoor",
+          "exchange"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "year-round",
+        "duration": null,
+        "locations": [
+          "Ethiopia",
+          "Patagonia"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.beausoleil.ch/",
+            "quote": "Our commitment to internationalism extends beyond the Beau Soleil campus, as our students discover the world on extraordinary community service, cultural, adventure, and academic enrichment trips. From working alongside coffee farmers in Ethiopia to river rafting in Patagonia."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "European Alps",
+      "Maldives",
+      "Tanzania",
+      "Mount Kilimanjaro, Tanzania",
+      "jungles of South America",
+      "Costa Rica",
+      "Cambodia",
+      "Malta",
+      "Bhutan",
+      "Patagonia",
+      "Ethiopia"
+    ],
+    "unknowns": []
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "school_key": "regents_international_school_pattaya",
+  "school_name": "Regents International School Pattaya",
+  "homepage": "https://www.nordangliaeducation.com/risp-pattaya",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:34 PM",
+  "tokens_in": 1262,
+  "tokens_out": 965,
+  "tokens_total": 2227,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 9,
+    "prompt_hash": "26a7fa254d061ab8",
+    "pages": [
+      "https://www.nordangliaeducation.com/risp-pattaya",
+      "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences",
+      "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences/creative-arts",
+      "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences/dance",
+      "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences/drama",
+      "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences/music",
+      "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences/social-purpose",
+      "https://www.nordangliaeducation.com/th/risp-pattaya/outstanding-experiences",
+      "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences/cca",
+      "https://www.nordangliaeducation.com/th/risp-pattaya/outstanding-experiences/social-purpose"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Regents International School Pattaya offers a variety of life-changing cultural, sporting, and service trips both locally in Thailand and internationally. These include global expeditions, citizenship trips, community service projects, and educational excursions designed to develop global competence, character, and confidence across all grade levels.",
+    "programs": [
+      {
+        "program_name": "Global Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "international",
+          "expedition_outdoor",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Tanzania",
+          "Switzerland",
+          "New York"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences",
+            "quote": "Our children join Nord Anglia students from across the globe on exhilarating expeditions to Tanzania, Switzerland, and New York."
+          },
+          {
+            "source_url": "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences",
+            "quote": "Our incredible citizenship trip to Arusha in Tanzania teaches students about global responsibility and sustainability, and the important role we play in looking after our planet."
+          }
+        ]
+      },
+      {
+        "program_name": "Secondary Trips",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "service_learning",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Les Martinets"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences",
+            "quote": "Secondary trips: Life-changing expeditions and excursions develop the skills, values, and global mindedness our students need now and in the future."
+          },
+          {
+            "source_url": "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences",
+            "quote": "The personal challenge expedition in Les Martinets in S…"
+          }
+        ]
+      },
+      {
+        "program_name": "Discovery Week",
+        "program_format": "summer program",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "annual",
+        "duration": "week",
+        "locations": [
+          "Elephant Nature Park, Chang Mai",
+          "Mechai Bamboo School, Buriram"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences",
+            "quote": "Our Discovery Week, which takes place in summer, offers a range of carefully considered trips and excursions. These include visits to the Elephant Nature Park in Chang Mai, where students learn about conservation before returning home as fully-fledged elephant ambassadors."
+          },
+          {
+            "source_url": "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences",
+            "quote": "We also organise residential trips to the Mechai Bamboo School in Buriram, where students immerse themselves in community service projects."
+          }
+        ]
+      },
+      {
+        "program_name": "Exchange Trips and International Service Projects",
+        "program_format": null,
+        "trip_types": [
+          "exchange",
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nordangliaeducation.com/risp-pattaya/outstanding-experiences",
+            "quote": "Our students learn by doing – on exchange trips, through international service projects, and by getting involved in community initiatives through our year group community partnerships."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Tanzania",
+      "Switzerland",
+      "New York",
+      "Les Martinets",
+      "Elephant Nature Park, Chang Mai",
+      "Mechai Bamboo School, Buriram"
+    ],
+    "unknowns": [
+      "Program frequency for Global Expeditions, Secondary Trips, Exchange Trips",
+      "Program duration for Global Expeditions, Secondary Trips, Exchange Trips",
+      "Specific grade bands for some programs except Discovery Week"
+    ]
+  }
+}

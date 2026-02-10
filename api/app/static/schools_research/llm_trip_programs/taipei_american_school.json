@@ -1,0 +1,118 @@
+{
+  "school_key": "taipei_american_school",
+  "school_name": "Taipei American School",
+  "homepage": "https://www.tas.edu.tw/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:37 PM",
+  "tokens_in": 2143,
+  "tokens_out": 599,
+  "tokens_total": 2742,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 18,
+    "prompt_hash": "c7ec167720411b05",
+    "pages": [
+      "https://www.tas.edu.tw/student-life",
+      "https://www.tas.edu.tw/student-life/wellbeing",
+      "https://www.tas.edu.tw/student-life/health-nutrition",
+      "https://www.tas.edu.tw/student-life/activities-clubs",
+      "https://www.tas.edu.tw/student-life/the-arts",
+      "https://www.tas.edu.tw/student-life/aquatics",
+      "https://www.tas.edu.tw/student-life/off-campus",
+      "https://www.tas.edu.tw/student-life/service",
+      "https://www.tas.edu.tw/",
+      "https://www.tas.edu.tw/academics/middle-school",
+      "https://www.tas.edu.tw/academics/upper-school",
+      "https://www.tas.edu.tw/academics/summer-academy",
+      "https://www.tas.edu.tw/academics",
+      "https://www.tas.edu.tw/academics/lower-school",
+      "https://www.tas.edu.tw/academics/counseling-and-psychologists",
+      "https://www.tas.edu.tw/academics/learning-support",
+      "https://www.tas.edu.tw/academics/english-language-development",
+      "https://www.tas.edu.tw/academics/the-tech-cube-program",
+      "https://www.tas.edu.tw/academics/mandarin-world-language",
+      "https://www.tas.edu.tw/academics/information-and-educational-technology",
+      "https://www.tas.edu.tw/academics/libraries"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Taipei American School offers a range of trip and travel programs that extend learning beyond the classroom, including experiential camps, service initiatives, and international competitions. These trips provide opportunities for character education, cultural exchange, and skill development across grade levels.",
+    "programs": [
+      {
+        "program_name": "Middle School Camp",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "four days",
+        "locations": [
+          "Taiwan (away from Taipei)"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.tas.edu.tw/academics/middle-school",
+            "quote": "Each September, all Middle School faculty and students attend Middle School Camp, taking four days away from Taipei for experiential learning that includes implicit and explicit character education."
+          }
+        ]
+      },
+      {
+        "program_name": "Indigenous Impact Service Initiative",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Taiwan"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.tas.edu.tw/student-life/activities-clubs",
+            "quote": "Connecting with Taiwan's indigenous communities through service and cultural exchange. We offer student leaders a meaningful service initiative involving helping the TAS community better understand and recognize the original Austronesian inhabitants of Taiwan, fostering mutual understanding and cultural exchange, and offering impactful service to indigenous communities."
+          }
+        ]
+      },
+      {
+        "program_name": "IASAS Film Festival Travel",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Manila, Philippines"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.tas.edu.tw/student-life/activities-clubs",
+            "quote": "Finally, on November 9, 2022, after many years of not being able to travel to other IASAS schools due to the pandemic, we packed our bags and boarded a flight to Manila, Philippines. IASAS Film 2022 was held at the International School of Manila."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Taiwan (away from Taipei)",
+      "Taiwan",
+      "Manila, Philippines"
+    ],
+    "unknowns": [
+      "Grade bands for Indigenous Impact service initiative",
+      "Frequency and duration for Indigenous Impact service initiative",
+      "Frequency and duration for IASAS Film Festival travel",
+      "Grade bands for IASAS Film Festival travel"
+    ]
+  }
+}

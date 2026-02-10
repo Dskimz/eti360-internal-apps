@@ -1,0 +1,39 @@
+{
+  "school_key": "international_school_basel",
+  "school_name": "International School Basel",
+  "homepage": "https://www.isbasel.ch/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 676,
+  "tokens_out": 104,
+  "tokens_total": 780,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "0916d98ac6e89d29",
+    "pages": [
+      "https://www.isbasel.ch/learn/overview/outdoor-education",
+      "https://www.isbasel.ch/experience/isbx-activities",
+      "https://www.isbasel.ch/experience/isbx-activities/kumon",
+      "https://www.isbasel.ch/experience/isbx-activities/basketball-academy",
+      "https://www.isbasel.ch/experience/isbx-activities/football-academy",
+      "https://www.isbasel.ch/",
+      "https://www.isbasel.ch/learn/overview/curriculum",
+      "https://www.isbasel.ch/learn/overview/learning-technology",
+      "https://www.isbasel.ch/learn/overview/learning-technology/guidance-at-home",
+      "https://www.isbasel.ch/learn/overview/learningisb",
+      "https://www.isbasel.ch/learn/wellbeing/see-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "International School Basel offers off-campus learning experiences and carefully curated school trips aligned with their Vision 2030 strategic plan focused on Whole Child Development. These trips provide valuable experiential learning beyond the classroom to foster holistic growth and enrich academic learning.",
+    "programs": [],
+    "locations_all": [],
+    "unknowns": [
+      "Specific trip programs, formats, grade bands, frequency, duration, and locations are not detailed in the provided evidence."
+    ]
+  }
+}

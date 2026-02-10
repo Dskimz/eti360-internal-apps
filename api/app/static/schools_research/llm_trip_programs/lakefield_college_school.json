@@ -1,0 +1,230 @@
+{
+  "school_key": "lakefield_college_school",
+  "school_name": "Lakefield College School",
+  "homepage": "https://www.lcs.on.ca/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 2278,
+  "tokens_out": 1340,
+  "tokens_total": 3618,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 19,
+    "prompt_hash": "84307a05a3ee4f57",
+    "pages": [
+      "https://www.lcs.on.ca/beyond-the-class/outdoor-education",
+      "https://www.lcs.on.ca/beyond-the-class/global-learning/global-learning-trips",
+      "https://www.lcs.on.ca/",
+      "https://www.lcs.on.ca/beyond-the-class/leadership-program/community-service",
+      "https://www.lcs.on.ca/beyond-the-class/leadership-program/community-service/community-service-media-gallery",
+      "https://www.lcs.on.ca/academics/typical-day/standard-of-dress",
+      "https://www.lcs.on.ca/academics",
+      "https://www.lcs.on.ca/academics/learning-at-lcs",
+      "https://www.lcs.on.ca/academics/typical-day",
+      "https://www.lcs.on.ca/academics/curriculum",
+      "https://www.lcs.on.ca/academics/curriculum/graduation-requirements",
+      "https://www.lcs.on.ca/academics/curriculum/enrichment--ap-courses",
+      "https://www.lcs.on.ca/academics/curriculum/technology",
+      "https://www.lcs.on.ca/academics/curriculum/course-selections",
+      "https://www.lcs.on.ca/academics/academic-support",
+      "https://www.lcs.on.ca/academics/academic-support/guidance--advising",
+      "https://www.lcs.on.ca/academics/academic-support/guidance--advising/guidance-at-lcs-media-gallery",
+      "https://www.lcs.on.ca/academics/academic-support/learning-commons",
+      "https://www.lcs.on.ca/academics/university-counselling",
+      "https://www.lcs.on.ca/academics/university-counselling/meet-the-guidance-team",
+      "https://www.lcs.on.ca/beyond-the-class/global-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Lakefield College School offers a diverse range of trip and travel programs including outdoor adventure expeditions, global learning trips, student exchanges, and participation in Round Square Conferences. These programs span various grade levels and include domestic, international, and expedition-style trips focused on leadership, adventure, service, and global learning.",
+    "programs": [
+      {
+        "program_name": "Irving Expedition",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "bi-yearly",
+        "duration": null,
+        "locations": [
+          "Canada's north",
+          "Keele River",
+          "Wind River",
+          "Mountain River"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.lcs.on.ca/beyond-the-class/global-learning/global-learning-trips",
+            "quote": "The Irving Expedition takes grade 11 and 12 students to Canada's north for a whitewater paddling expedition on a northern river. Past expeditions have explored the Keele, Wind and Mountain Rivers."
+          }
+        ]
+      },
+      {
+        "program_name": "Guest Expedition Ontario",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "bi-yearly",
+        "duration": null,
+        "locations": [
+          "remote parts of Ontario"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.lcs.on.ca/beyond-the-class/global-learning/global-learning-trips",
+            "quote": "The Guest Expedition Ontario program takes grade 9 and 10 students to remote parts of Ontario to hone their tripping and paddling skills."
+          }
+        ]
+      },
+      {
+        "program_name": "Ondaatje Expedition",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "bi-yearly",
+        "duration": null,
+        "locations": [
+          "Everest Base Camp, Nepal",
+          "Mt Elbrus, Russia",
+          "Iceland",
+          "Mt Kilimanjaro, Tanzania"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.lcs.on.ca/beyond-the-class/global-learning/global-learning-trips",
+            "quote": "The Ondaatje Expedition takes grade 11 and 12 students around the world with an aim at pushing student comfort zones through adventure and leadership - this program has traveled to Everest Base Camp in Nepal, Mt Elbrus in Russia, Iceland, Mt Kilimanjaro in Tanzania."
+          }
+        ]
+      },
+      {
+        "program_name": "Student Exchange Program",
+        "program_format": "exchange",
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "various international locations via Round Square network"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.lcs.on.ca/beyond-the-class/global-learning/global-learning-trips",
+            "quote": "Through the Round Square network, students have the opportunity to live the life of another student through our grade 10 exchange program."
+          }
+        ]
+      },
+      {
+        "program_name": "Round Square Conferences",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "twice a year",
+        "duration": "week-long",
+        "locations": [
+          "various international locations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.lcs.on.ca/beyond-the-class/global-learning/global-learning-trips",
+            "quote": "Students regularly travel to participate in the Round Square Conferences that occur twice a year around the world. These are life-changing experiences that allow students to gain skills found through the Round Square IDEALS."
+          }
+        ]
+      },
+      {
+        "program_name": "Global Learning March Break Trips",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "March Break",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.lcs.on.ca/beyond-the-class/global-learning/global-learning-trips",
+            "quote": "The LCS Global Learning program provides students with a wide range of meaningful, international opportunities. These opportunities include grade 10 exchanges, global learning March Break trips, adventure/expedition programs, and Round Square Conferences and language exchanges."
+          }
+        ]
+      },
+      {
+        "program_name": "Outdoor Adventure Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "nearby rivers, lakes and woods",
+          "Algonquin Park",
+          "Northwest Territories",
+          "international destinations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.lcs.on.ca/beyond-the-class/outdoor-education",
+            "quote": "LCS also offers opportunities for students to participate in outdoor adventure expeditions that take place in a variety of settings ranging from nearby rivers, lakes and woods, to Algonquin Park, and through the expedition program, to the Northwest Territories and international destinations."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Canada's north",
+      "Keele River",
+      "Wind River",
+      "Mountain River",
+      "remote parts of Ontario",
+      "Everest Base Camp, Nepal",
+      "Mt Elbrus, Russia",
+      "Iceland",
+      "Mt Kilimanjaro, Tanzania",
+      "nearby rivers, lakes and woods",
+      "Algonquin Park",
+      "Northwest Territories",
+      "various international locations"
+    ],
+    "unknowns": [
+      "Exact duration of most expeditions",
+      "Specific frequency details for some programs",
+      "Grade bands for some general outdoor adventure expeditions",
+      "Detailed locations for Global Learning March Break trips"
+    ]
+  }
+}

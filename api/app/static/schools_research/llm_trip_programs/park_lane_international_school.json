@@ -1,0 +1,136 @@
+{
+  "school_key": "park_lane_international_school",
+  "school_name": "Park Lane International School",
+  "homepage": "http://www.parklane-is.cz/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:34 PM",
+  "tokens_in": 1411,
+  "tokens_out": 757,
+  "tokens_total": 2168,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 10,
+    "prompt_hash": "3db6f13b7b26b7e3",
+    "pages": [
+      "https://www.parklane-is.cz/school-life/important-update-ib-diploma-now-fully-recognized-as-czech-maturita-equivalent/",
+      "https://www.parklane-is.cz/school-life/simon-ilincev-about-his-life-at-cornell-university-usa/",
+      "https://www.parklane-is.cz/school-life/welcome-picnic-25/",
+      "https://www.parklane-is.cz/school-life/thinking-about-a-gap-year/",
+      "https://www.parklane-is.cz/school-life/park-lane-in-new-york-city/",
+      "https://www.parklane-is.cz/school-life/park-lanes-2022-bso-inspection/",
+      "https://www.parklane-is.cz/school-life/",
+      "http://www.parklane-is.cz/",
+      "https://www.parklane-is.cz/extra-curricular/",
+      "https://www.parklane-is.cz/academic/curriculum-overview/",
+      "https://www.parklane-is.cz/rampaging-romans-and-exciting-learning-adventures-in-year-3/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Park Lane International School offers a variety of trip and travel programs including local outings, adventurous expeditions, Duke of Edinburgh Award expeditions, and annual Learning Without Borders activities involving local and international residential trips. These trips support curriculum enrichment and extracurricular learning experiences for students primarily in Secondary grades.",
+    "programs": [
+      {
+        "program_name": "Outings and Excursions",
+        "program_format": "day trips",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "at least 3 times a year",
+        "duration": "day",
+        "locations": [
+          "local places of interest near Prague"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.parklane-is.cz/extra-curricular/",
+            "quote": "Park Lane International School is situated close to some places of great interest – all within an easy coach journey or by the public transport system. Teachers are actively encouraged to arrange visits to support and enrich curriculum activities. These normally take place at least 3 times a year."
+          }
+        ]
+      },
+      {
+        "program_name": "Adventurous Journey",
+        "program_format": "expedition/outdoor",
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "ongoing weekly training with expeditions",
+        "duration": "variable",
+        "locations": [
+          "unfamiliar environments"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.parklane-is.cz/extra-curricular/",
+            "quote": "Young people undertake a team journey or expedition. Groups will take part in weekly training sessions including First Aid, Countryside Code, Camping, Campsite cooking."
+          }
+        ]
+      },
+      {
+        "program_name": "Duke of Edinburgh Award",
+        "program_format": "award program with expeditions",
+        "trip_types": [
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual expeditions",
+        "duration": "variable",
+        "locations": [
+          "various expedition locations"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.parklane-is.cz/extra-curricular/",
+            "quote": "Students can start the Duke of Edinburgh award in Year 10. Since 2016, students have collected Bronze, Silver awards and the first Gold expedition took place in October 2019."
+          }
+        ]
+      },
+      {
+        "program_name": "Learning Without Borders Week",
+        "program_format": "residential and day trips",
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual, last week of summer term",
+        "duration": "approximately one week",
+        "locations": [
+          "local",
+          "abroad"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.parklane-is.cz/extra-curricular/",
+            "quote": "Every year during the last week of the summer term, all Secondary students have the opportunity to take part in a wide range of activities involving local trips and residentials abroad."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local places of interest near Prague",
+      "unfamiliar environments",
+      "various expedition locations",
+      "local",
+      "abroad"
+    ],
+    "unknowns": []
+  }
+}

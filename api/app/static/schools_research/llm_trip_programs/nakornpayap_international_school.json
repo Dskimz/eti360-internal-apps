@@ -1,0 +1,73 @@
+{
+  "school_key": "nakornpayap_international_school",
+  "school_name": "Nakornpayap International School",
+  "homepage": "https://www.nis.ac.th/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:33 PM",
+  "tokens_in": 348,
+  "tokens_out": 322,
+  "tokens_total": 670,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "9e59badce4dc6b93",
+    "pages": [
+      "https://www.nis.ac.th/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Nakornpayap International School offers various learning opportunities beyond the classroom including field trips, after school clubs, sports, annual overnight retreats for Grades 1-8, and participation in school-wide events.",
+    "programs": [
+      {
+        "program_name": "Annual Overnight Retreats",
+        "program_format": "overnight",
+        "trip_types": [
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS"
+        ],
+        "frequency": "annual",
+        "duration": "overnight",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nis.ac.th/",
+            "quote": "annual overnight retreats (Grades 1-8)"
+          }
+        ]
+      },
+      {
+        "program_name": "Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nis.ac.th/",
+            "quote": "Each student has the opportunity to take part in field trips"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific destinations for field trips and retreats",
+      "Frequency and duration details for field trips",
+      "Any international, expedition, service learning, or exchange programs"
+    ]
+  }
+}

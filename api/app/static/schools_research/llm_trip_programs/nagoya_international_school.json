@@ -1,0 +1,62 @@
+{
+  "school_key": "nagoya_international_school",
+  "school_name": "Nagoya International School",
+  "homepage": "https://www.nis.ac.jp/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 511,
+  "tokens_out": 242,
+  "tokens_total": 753,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "5d5dc6a2922b8a54",
+    "pages": [
+      "https://www.nis.ac.jp/student-life/cocurricular-activities",
+      "https://www.nis.ac.jp/",
+      "https://www.nis.ac.jp/about/our-guiding-statements/definition-of-learning",
+      "https://www.nis.ac.jp/admissions/learning-challenges-language-expectations",
+      "https://www.nis.ac.jp/learning/learning-at-nis",
+      "https://www.nis.ac.jp/learning/the-ib-at-nis",
+      "https://www.nis.ac.jp/learning/preschool-kindergarten",
+      "https://www.nis.ac.jp/learning/preschool-kindergarten/reggio-emilia",
+      "https://www.nis.ac.jp/learning/preschool-kindergarten/a-day",
+      "https://www.nis.ac.jp/learning/preschool-kindergarten/facilities",
+      "https://www.nis.ac.jp/learning/preschool-kindergarten/preparing"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Nagoya International School offers experiential learning days for preschool and kindergarten students, consisting of special excursions held three times per year that involve parents and children spending time together outside of school.",
+    "programs": [
+      {
+        "program_name": "Experiential Learning Days",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "three times per year",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.nis.ac.jp/learning/preschool-kindergarten/reggio-emilia",
+            "quote": "Experiential Learning Days: Special excursions, three times per year, that give parents and children the opportunity to spend time together outside of school."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Details on trip locations",
+      "Trip duration specifics",
+      "Programs for MS and HS grades",
+      "Other types of trips (overnight, international, expedition, service learning, exchange)"
+    ]
+  }
+}

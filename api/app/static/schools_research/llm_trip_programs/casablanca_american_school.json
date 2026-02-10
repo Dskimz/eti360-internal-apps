@@ -1,0 +1,74 @@
+{
+  "school_key": "casablanca_american_school",
+  "school_name": "Casablanca American School",
+  "homepage": "http://www.cas.ac.ma/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "60",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:25 PM",
+  "tokens_in": 754,
+  "tokens_out": 250,
+  "tokens_total": 1004,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "b8186d7fb9fdbdbb",
+    "pages": [
+      "http://www.cas.ac.ma/campus-life/field-trips",
+      "http://www.cas.ac.ma/campus-life/after-school-activities",
+      "https://www.cas.ac.ma/campus-life/field-trips",
+      "https://www.cas.ac.ma/campus-life/after-school-activities",
+      "http://www.cas.ac.ma/",
+      "http://www.cas.ac.ma/academics/upper-school-academics",
+      "https://www.cas.ac.ma/academics/upper-school-academics",
+      "http://www.cas.ac.ma/academics/pre-school-academics",
+      "http://www.cas.ac.ma/academics/lower-school-academics",
+      "http://www.cas.ac.ma/academics/the-ib-program",
+      "http://www.cas.ac.ma/academics/examination-results",
+      "http://www.cas.ac.ma/academics/college-counseling",
+      "http://www.cas.ac.ma/academics/college-acceptances",
+      "http://www.cas.ac.ma/academics/cas-libraries",
+      "http://www.cas.ac.ma/academics/student-support",
+      "https://www.cas.ac.ma/academics/college-acceptances",
+      "https://www.cas.ac.ma/academics/the-ib-program",
+      "https://www.cas.ac.ma/post-page/~board/general-school-news/post/distance-learning-during-covid19-at-cas"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Casablanca American School incorporates trips and expeditions as part of its IB program's Action component, which includes participation in local and international projects and expeditions. These trips support creativity, service, and action elements of the curriculum.",
+    "programs": [
+      {
+        "program_name": "IB Program Action Trips",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "international",
+          "domestic",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.cas.ac.ma/academics/the-ib-program",
+            "quote": "Action can include not only participation in individual and team sports but also taking part in expeditions and in local or international projects"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific trip destinations",
+      "Trip durations",
+      "Frequency of trips",
+      "Program names beyond IB Action trips",
+      "Grade bands for trips explicitly stated"
+    ]
+  }
+}

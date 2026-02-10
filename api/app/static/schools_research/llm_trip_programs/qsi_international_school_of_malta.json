@@ -1,0 +1,68 @@
+{
+  "school_key": "qsi_international_school_of_malta",
+  "school_name": "QSI International School of Malta",
+  "homepage": "https://malta.qsi.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:34 PM",
+  "tokens_in": 521,
+  "tokens_out": 244,
+  "tokens_total": 765,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "ed60d40a29ccc7c6",
+    "pages": [
+      "https://malta.qsi.org/",
+      "https://malta.qsi.org/student-services",
+      "https://malta.qsi.org/student-services/student-support",
+      "https://malta.qsi.org/student-services/student-support/counseling",
+      "https://malta.qsi.org/academics/middle-school",
+      "https://malta.qsi.org/academics",
+      "https://malta.qsi.org/academics/preschool",
+      "https://malta.qsi.org/academics/elementary",
+      "https://malta.qsi.org/academics/secondary-school",
+      "https://malta.qsi.org/academics/secondary-school/ap-program",
+      "https://malta.qsi.org/student-services/student-support/learning-support"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Preschool students at QSI International School of Malta regularly participate in field trips to local attractions such as Playmobile Land, Ta' Qali Park, Aquarium, and Esplora.",
+    "programs": [
+      {
+        "program_name": "Preschool Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "regularly",
+        "duration": null,
+        "locations": [
+          "Playmobile Land",
+          "Ta' Qali Park",
+          "Aquarium",
+          "Esplora"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://malta.qsi.org/academics/preschool",
+            "quote": "Students go on field trips regularly to various locations such as, Playmobile Land, Ta' Qali Park, Aquarium, Esplora and more."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Playmobile Land",
+      "Ta' Qali Park",
+      "Aquarium",
+      "Esplora"
+    ],
+    "unknowns": []
+  }
+}

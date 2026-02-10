@@ -1,0 +1,114 @@
+{
+  "school_key": "shawnigan_lake_school",
+  "school_name": "Shawnigan Lake School",
+  "homepage": "http://www.shawnigan.ca/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:35 PM",
+  "tokens_in": 911,
+  "tokens_out": 677,
+  "tokens_total": 1588,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "8b79da3df36ccfd9",
+    "pages": [
+      "http://www.shawnigan.ca/student-life",
+      "http://www.shawnigan.ca/student-life/welcome",
+      "http://www.shawnigan.ca/student-life/the-shawnigan-journey",
+      "http://www.shawnigan.ca/student-life/i-am-shawnigan",
+      "http://www.shawnigan.ca/student-life/houses",
+      "http://www.shawnigan.ca/student-life/grade-8-experience",
+      "http://www.shawnigan.ca/student-life/belonging",
+      "http://www.shawnigan.ca/student-life/safeguarding-procedures",
+      "http://www.shawnigan.ca/",
+      "http://www.shawnigan.ca/academics",
+      "http://www.shawnigan.ca/programs/experiential-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Shawnigan Lake School offers a variety of experiential learning trips including outdoor education excursions for younger students, an annual Ski Week trip to Manning Park Resort, and challenging EDGE projects involving service and stewardship. These trips emphasize physical activity, cultural exposure, and personal growth through travel and hands-on experiences.",
+    "programs": [
+      {
+        "program_name": "OuterEDGE Experiential Learning",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "MS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Vancouver Island",
+          "Shawnigan Lake"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.shawnigan.ca/student-life/grade-8-experience",
+            "quote": "Our youngest students have been getting to know Vancouver Island in their first months at Shawnigan thanks to some off-campus excursions with our Outdoor Education teachers, part of our OuterEDGE experiential learning programs aimed at Grade 8s and 9s. In mid-September, the Grade 8s hiked through campus, and kayaked and canoed on Shawnigan Lake"
+          }
+        ]
+      },
+      {
+        "program_name": "Ski Week",
+        "program_format": null,
+        "trip_types": [
+          "overnight_residential",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week in February",
+        "locations": [
+          "Manning Park Resort, British Columbia Cascade Range"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.shawnigan.ca/programs/experiential-learning",
+            "quote": "Ski Week has been a unique and integral part of Shawnigan’s annual calendar since 1973. Taking place in February each year, Ski Week is timed to take everyone off campus to a fresh, fun environment... Manning Park Resort is located in the beautiful British Columbian Cascade Range"
+          }
+        ]
+      },
+      {
+        "program_name": "EDGE Projects",
+        "program_format": null,
+        "trip_types": [
+          "expedition_outdoor",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.shawnigan.ca/programs/experiential-learning",
+            "quote": "Each EDGE project requires a great deal from every participant: pre-trip planning and fundraising, demanding travel, hard physical and emotional work, long days in hot, humid or cold weather... Each trip pushes students out of their comfort zone, tests their limits and puts service and stewardship first."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Vancouver Island",
+      "Shawnigan Lake",
+      "Manning Park Resort, British Columbia Cascade Range"
+    ],
+    "unknowns": [
+      "Exact frequency and duration of OuterEDGE and EDGE projects",
+      "Specific grade bands for Ski Week beyond general assumption",
+      "Details on international or exchange trips"
+    ]
+  }
+}

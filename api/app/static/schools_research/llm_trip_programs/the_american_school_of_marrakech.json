@@ -1,0 +1,88 @@
+{
+  "school_key": "the_american_school_of_marrakech",
+  "school_name": "The American School of Marrakech",
+  "homepage": "https://asm.ac.ma/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:38 PM",
+  "tokens_in": 504,
+  "tokens_out": 380,
+  "tokens_total": 884,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "3a343821a3c9b542",
+    "pages": [
+      "https://asm.ac.ma/sports-and-activities",
+      "https://asm.ac.ma/sports-and-activities/",
+      "https://asm.ac.ma/",
+      "https://asm.ac.ma/summer-learning-packets/",
+      "https://asm.ac.ma/learning-support/",
+      "https://asm.ac.ma/service-learning/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American School of Marrakech offers sports-related travel programs through participation in the Moroccan American Schools Athletic Conference (MASAC), involving travel to regional cities for competitions. Field trips are also integrated into physical education classes across all grades.",
+    "programs": [
+      {
+        "program_name": "MASAC Athletic Competitions",
+        "program_format": null,
+        "trip_types": [
+          "domestic",
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual and throughout the year",
+        "duration": "day trips",
+        "locations": [
+          "Casablanca",
+          "Rabat",
+          "Tangier",
+          "Marrakech"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://asm.ac.ma/sports-and-activities",
+            "quote": "Our teams travel during the year to compete with local schools and other American schools in Morocco in different major cities: Casablanca, Rabat, Tangier, etc."
+          }
+        ]
+      },
+      {
+        "program_name": "Physical Education Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "regular",
+        "duration": "day trips",
+        "locations": [
+          "Marrakech"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://asm.ac.ma/sports-and-activities",
+            "quote": "We have dedicated teachers for Physical Education, who introduce a varied program of sports and activities, including field trips, to every class."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Casablanca",
+      "Rabat",
+      "Tangier",
+      "Marrakech"
+    ],
+    "unknowns": []
+  }
+}

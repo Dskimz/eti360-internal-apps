@@ -1,0 +1,95 @@
+{
+  "school_key": "meadowridge_school",
+  "school_name": "Meadowridge School",
+  "homepage": "http://www.meadowridge.bc.ca/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "60",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:32 PM",
+  "tokens_in": 588,
+  "tokens_out": 431,
+  "tokens_total": 1019,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "25de7b9d41dd3e8f",
+    "pages": [
+      "http://www.meadowridge.bc.ca/academics/experiential-outdoor-education/wwow-trips",
+      "http://www.meadowridge.bc.ca/",
+      "http://www.meadowridge.bc.ca/academics/overview",
+      "http://www.meadowridge.bc.ca/academics/international-baccalaureate",
+      "http://www.meadowridge.bc.ca/academics/international-baccalaureate/units-of-inquiry",
+      "http://www.meadowridge.bc.ca/academics/international-baccalaureate/the-learner-profile",
+      "http://www.meadowridge.bc.ca/academics/early-learning",
+      "http://www.meadowridge.bc.ca/academics/early-learning/junior-kindergarten",
+      "http://www.meadowridge.bc.ca/academics/early-learning/kindergarten",
+      "http://www.meadowridge.bc.ca/academics/primary-years-program-jk-to-5",
+      "http://www.meadowridge.bc.ca/academics/primary-years-program-jk-to-5/pyp-unit-of-inquiries"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Meadowridge School offers various experiential and outdoor learning trips primarily for younger students, including field trips to local educational and natural sites.",
+    "programs": [
+      {
+        "program_name": "Primary Years Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Apple Barn",
+          "Pumpkin Patch",
+          "Science World"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.meadowridge.bc.ca/academics/primary-years-program-jk-to-5/pyp-unit-of-inquiries",
+            "quote": "Field Trip to the Apple Barn and Pumpkin Patch"
+          },
+          {
+            "source_url": "http://www.meadowridge.bc.ca/academics/primary-years-program-jk-to-5/pyp-unit-of-inquiries",
+            "quote": "Science World Field Trip"
+          }
+        ]
+      },
+      {
+        "program_name": "Outdoor Activities for Take Me Outside Day",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.meadowridge.bc.ca/academics/primary-years-program-jk-to-5/pyp-unit-of-inquiries",
+            "quote": "Partake in various outdoor activities for “Take Me Outside Day”"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Apple Barn",
+      "Pumpkin Patch",
+      "Science World"
+    ],
+    "unknowns": [
+      "No information on trips for Middle School or High School grades",
+      "No details on trip frequency or duration",
+      "No information on international, overnight residential, service learning, or exchange trips"
+    ]
+  }
+}

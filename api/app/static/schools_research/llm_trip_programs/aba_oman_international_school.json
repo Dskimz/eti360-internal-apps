@@ -1,0 +1,65 @@
+{
+  "school_key": "aba_oman_international_school",
+  "school_name": "ABA Oman International School",
+  "homepage": "http://www.abaoman.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:21 PM",
+  "tokens_in": 646,
+  "tokens_out": 245,
+  "tokens_total": 891,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "ee60f4a0b4947bdc",
+    "pages": [
+      "http://www.abaoman.org/",
+      "http://www.abaoman.org/community/health-services",
+      "http://www.abaoman.org/after-school-programmes/afterschool-activites",
+      "http://www.abaoman.org/academics/middle-school",
+      "http://www.abaoman.org/academics",
+      "http://www.abaoman.org/academics/early-childhood",
+      "http://www.abaoman.org/academics/elementary-school",
+      "http://www.abaoman.org/academics/hs",
+      "http://www.abaoman.org/academics/after-aba",
+      "http://www.abaoman.org/academics/enrichment",
+      "http://www.abaoman.org/academics/libraries",
+      "http://www.abaoman.org/academics/enrichment/experiential-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "ABA Oman International School incorporates experiential learning through camps, field trips, and hands-on projects that extend learning beyond the classroom. These real-world experiences aim to build resilience, confidence, and adaptability in students by challenging them to take risks, solve problems, and collaborate effectively.",
+    "programs": [
+      {
+        "program_name": "Experiential Learning Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.abaoman.org/academics/enrichment/experiential-learning",
+            "quote": "Learning extends beyond the classroom through camps, field trips, and hands-on projects that push students to ex…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific trip destinations",
+      "Exact duration and frequency of trips",
+      "Detailed program names beyond 'experiential learning'"
+    ]
+  }
+}

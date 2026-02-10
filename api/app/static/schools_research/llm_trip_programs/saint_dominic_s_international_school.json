@@ -1,0 +1,80 @@
+{
+  "school_key": "saint_dominic_s_international_school",
+  "school_name": "Saint Dominic's International School",
+  "homepage": "http://www.dominics-int.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "50",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:35 PM",
+  "tokens_in": 525,
+  "tokens_out": 405,
+  "tokens_total": 930,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "753cf0a04f568237",
+    "pages": [
+      "https://www.dominics-int.org/after-school-activities/",
+      "http://www.dominics-int.org/",
+      "https://www.dominics-int.org/refectory-food-services-3/",
+      "https://www.dominics-int.org/transportation-bus-service/",
+      "https://www.dominics-int.org/creativity-action-service-cas/",
+      "https://www.dominics-int.org/academic-learning-support/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Saint Dominic's International School offers field trips such as visits to museums for experiential learning and incorporates service learning as part of its Creativity, Action, Service (CAS) program.",
+    "programs": [
+      {
+        "program_name": "Grade 2 Field Trip to MAAT Museum",
+        "program_format": "field trip",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "MAAT (Museum of Art, Architecture and Technology)"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.dominics-int.org/",
+            "quote": "Grade 2 Exploring Shapes in Space Through Light | During this field trip, learners explored how shapes change in space and how light affects what we see. As they moved through the exhibition, learners noticed how geometric shapes appeared bigger, smaller, or different depending on their position."
+          }
+        ]
+      },
+      {
+        "program_name": "Creativity, Action, Service (CAS) Program",
+        "program_format": "service learning",
+        "trip_types": [
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.dominics-int.org/creativity-action-service-cas/",
+            "quote": "Service: an unpaid and voluntary exchange that has a learning benefit for the student. The rights, dignity and autonomy of all those involved are respected."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "MAAT (Museum of Art, Architecture and Technology)"
+    ],
+    "unknowns": [
+      "Frequency and duration of trips",
+      "Other grade bands involved in trips",
+      "Additional trip destinations or programs"
+    ]
+  }
+}

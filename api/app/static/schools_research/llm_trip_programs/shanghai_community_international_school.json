@@ -1,0 +1,69 @@
+{
+  "school_key": "shanghai_community_international_school",
+  "school_name": "Shanghai Community International School",
+  "homepage": "https://www.scis-china.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:35 PM",
+  "tokens_in": 698,
+  "tokens_out": 276,
+  "tokens_total": 974,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "62693d406cfd90b5",
+    "pages": [
+      "https://www.scis-china.org/student-life",
+      "https://www.scis-china.org/student-life/after-school-activities",
+      "https://www.scis-china.org/student-life/athletics",
+      "https://www.scis-china.org/student-life/the-arts",
+      "https://www.scis-china.org/student-life/uniform",
+      "https://www.scis-china.org/student-life/food-services",
+      "https://www.scis-china.org/student-life/transportation",
+      "https://www.scis-china.org/student-life/chinese-culture",
+      "https://www.scis-china.org/student-life/serviceandcommunityengagement",
+      "https://www.scis-china.org/",
+      "https://www.scis-china.org/learning/upper-school",
+      "https://www.scis-china.org/learning",
+      "https://www.scis-china.org/learning/curriculum",
+      "https://www.scis-china.org/learning/early-childhood",
+      "https://www.scis-china.org/learning/lower-school",
+      "https://www.scis-china.org/learning/university-counseling",
+      "https://www.scis-china.org/learning/student-support",
+      "https://www.scis-china.org/learning/language-learning"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Shanghai Community International School offers service and community engagement programs that include off-campus opportunities for learners of all ages, reflecting their commitment to international mindedness and community contribution. The school provides daily transportation for students living within a reasonable distance, with possible exceptions for school-sponsored field trips.",
+    "programs": [
+      {
+        "program_name": "Service & Community Engagement",
+        "program_format": null,
+        "trip_types": [
+          "service_learning",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.scis-china.org/student-life/serviceandcommunityengagement",
+            "quote": "Service & Community Engagement is a meaningful expression of international mindedness. It reflects our mission by encouraging learners of all ages to actively contribute to their communities. Pathways for students, parents & families, and the wider community include curricular integration, school-provided experiences, and off-campus opportunities."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific destinations, duration, frequency, and detailed formats of trips or travel programs are not provided in the evidence."
+    ]
+  }
+}

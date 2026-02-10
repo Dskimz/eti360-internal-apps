@@ -1,0 +1,117 @@
+{
+  "school_key": "uwc_south_east_asia_dover_campus",
+  "school_name": "UWC South East Asia (Dover Campus)",
+  "homepage": "https://www.uwcsea.edu.sg/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:40 PM",
+  "tokens_in": 1768,
+  "tokens_out": 801,
+  "tokens_total": 2569,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 10,
+    "prompt_hash": "242913b754e773f7",
+    "pages": [
+      "https://www.uwcsea.edu.sg/learning/activities/home-language-programme",
+      "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+      "https://www.uwcsea.edu.sg/",
+      "https://www.uwcsea.edu.sg/about/guiding-statements/learning-principles",
+      "https://www.uwcsea.edu.sg/learning/pse/safe-behaviours-curriculum",
+      "https://www.uwcsea.edu.sg/about/our-big-ideas/reimagining-learning",
+      "https://www.uwcsea.edu.sg/learning",
+      "https://www.uwcsea.edu.sg/learning/academics",
+      "https://www.uwcsea.edu.sg/learning/academics/language-learning",
+      "https://www.uwcsea.edu.sg/learning/academics/language-learning/english-as-an-additional-language",
+      "https://www.uwcsea.edu.sg/learning/academics/benchmarking"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "UWC South East Asia (Dover Campus) offers a comprehensive outdoor education program with expeditions and trips tailored to different grade levels, ranging from day trips to multi-day international expeditions. These trips include trekking, sailing, mountain biking, kayaking, and visits to natural parks primarily in Southeast Asia and other international locations.",
+    "programs": [
+      {
+        "program_name": "Outdoor Education Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "international",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Japan",
+          "Wales",
+          "Ladakh",
+          "Australia",
+          "Nepal",
+          "Desaru, Malaysia",
+          "Pulau Sibu, Malaysia",
+          "Port Dickson, Malaysia",
+          "Tioman Island, Malaysia",
+          "Khao Yai National Park, Thailand"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 9 and 10: Students join at least one of over 20 expeditions from trekking in Japan, Wales or Ladakh, to Tall Ship Sailing or Mountain Biking in Australia or even White Water kayaking in Nepal"
+          },
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 11: Project Week—independently planned trips by small groups of students"
+          },
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 3: Three-day trip to Desaru, Malaysia"
+          },
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 4: Four-day trip to Pulau Sibu in Malaysia"
+          },
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 5: Five-day trip to Port Dickson, Malaysia"
+          },
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 6: Five-day trip to Tioman Island in Malaysia"
+          },
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 7: Five-day trip to Tioman, Malaysia"
+          },
+          {
+            "source_url": "https://www.uwcsea.edu.sg/learning/outdoor-education/expeditions",
+            "quote": "Grade 8: Six-day trip to Khao Yai National Park, Thailand"
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Japan",
+      "Wales",
+      "Ladakh",
+      "Australia",
+      "Nepal",
+      "Desaru, Malaysia",
+      "Pulau Sibu, Malaysia",
+      "Port Dickson, Malaysia",
+      "Tioman Island, Malaysia",
+      "Khao Yai National Park, Thailand"
+    ],
+    "unknowns": [
+      "Program frequency",
+      "Exact duration for Grade 9-11 expeditions except where specified",
+      "Program format"
+    ]
+  }
+}

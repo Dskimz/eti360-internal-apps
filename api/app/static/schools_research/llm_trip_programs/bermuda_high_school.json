@@ -1,0 +1,94 @@
+{
+  "school_key": "bermuda_high_school",
+  "school_name": "Bermuda High School",
+  "homepage": "http://www.bhs.bm/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:23 PM",
+  "tokens_in": 852,
+  "tokens_out": 496,
+  "tokens_total": 1348,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "2931d8dd63f0d541",
+    "pages": [
+      "http://www.bhs.bm/school-life",
+      "http://www.bhs.bm/school-life/athletics",
+      "http://www.bhs.bm/school-life/the-arts",
+      "http://www.bhs.bm/",
+      "http://www.bhs.bm/academics",
+      "http://www.bhs.bm/academics/early-years-programme",
+      "http://www.bhs.bm/academics/primary",
+      "http://www.bhs.bm/academics/secondary",
+      "http://www.bhs.bm/academics/senior-years-programme",
+      "http://www.bhs.bm/academics/innovation-and-steam-at-bhs",
+      "http://www.bhs.bm/academics/the-benefits-of-staying-a-bhs"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Bermuda High School offers international exchange, conferences, and service projects abroad through its membership in the Round Square programme. The school also organizes theme-based camps with field trips during school holidays and July for younger students.",
+    "programs": [
+      {
+        "program_name": "Round Square Programme",
+        "program_format": null,
+        "trip_types": [
+          "exchange",
+          "international",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "abroad"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bhs.bm/",
+            "quote": "BHS is the only Round Square Member school in Bermuda. Students have access to this internationally acclaimed programme which allows them to participate in exchanges, conferences and service projects abroad."
+          }
+        ]
+      },
+      {
+        "program_name": "Theme-based Camps",
+        "program_format": "day camps",
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES",
+          "Primary"
+        ],
+        "frequency": "during school holidays and July",
+        "duration": "8:00am until 5:30pm",
+        "locations": [
+          "Bermuda"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.bhs.bm/academics/early-years-programme",
+            "quote": "During school holidays and the month of July, theme-based camps are held from 8:00am until 5:30pm. Arts and crafts, field trips, guest speakers, science activities, baking, and costume parties are a few of the activities the campers engage in."
+          },
+          {
+            "source_url": "http://www.bhs.bm/academics/primary",
+            "quote": "During school holidays and the month of July, themed based camps are held from 8:00am until 5:30pm. Arts and crafts, field trips, guest speakers, science activities, baking, and costume parties are a few of the activities the campers engage in."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "abroad",
+      "Bermuda"
+    ],
+    "unknowns": [
+      "specific destinations for Round Square trips",
+      "frequency and duration details for Round Square exchanges and service projects"
+    ]
+  }
+}

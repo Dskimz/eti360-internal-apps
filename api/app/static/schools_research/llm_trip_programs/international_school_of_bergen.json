@@ -1,0 +1,73 @@
+{
+  "school_key": "international_school_of_bergen",
+  "school_name": "International School of Bergen",
+  "homepage": "http://www.isbergen.no/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 647,
+  "tokens_out": 274,
+  "tokens_total": 921,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "c64cbaf191fe1bb3",
+    "pages": [
+      "http://www.isbergen.no/",
+      "http://www.isbergen.no/learning-at-isb/upper-school",
+      "http://www.isbergen.no/learning-at-isb/upper-school/upper-school-supply-list",
+      "http://www.isbergen.no/learning-at-isb",
+      "http://www.isbergen.no/learning-at-isb/early-childhood-centre",
+      "http://www.isbergen.no/learning-at-isb/early-childhood-centre/early-childhood-centre-regulations",
+      "http://www.isbergen.no/learning-at-isb/early-childhood-centre/early-childhood-centre-supply-list",
+      "http://www.isbergen.no/learning-at-isb/lower-school",
+      "http://www.isbergen.no/learning-at-isb/lower-school/lower-school-supply-list",
+      "http://www.isbergen.no/learning-at-isb/faculty",
+      "http://www.isbergen.no/learning-at-isb/support-services"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The International School of Bergen offers an extensive Erasmus+ exchange programme for upper school students, involving exchange visits with member schools in various European countries. These trips provide overseas travel experience and prepare students for diploma programmes and further international opportunities.",
+    "programs": [
+      {
+        "program_name": "Erasmus+ Exchange Programme",
+        "program_format": null,
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Italy",
+          "Spain",
+          "France",
+          "the Netherlands",
+          "Liechtenstein"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.isbergen.no/learning-at-isb/upper-school",
+            "quote": "In recent years, we have developed an extensive and successful exchange programme through Erasmus+, allowing students to engange in exchange visits with member school. Last school year of 2024-2025 included visits to and from Italy, Spain, France, the Netherlands and Liechtenstein."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Italy",
+      "Spain",
+      "France",
+      "the Netherlands",
+      "Liechtenstein"
+    ],
+    "unknowns": [
+      "program_format",
+      "duration"
+    ]
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "school_key": "international_school_of_boston",
+  "school_name": "International School of Boston",
+  "homepage": "http://www.isbos.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:29 PM",
+  "tokens_in": 656,
+  "tokens_out": 469,
+  "tokens_total": 1125,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "c8d6bc9dd55fa279",
+    "pages": [
+      "http://www.isbos.org/",
+      "http://www.isbos.org/about-us/a-center-for-global-learning",
+      "http://www.isbos.org/academics/academics",
+      "http://www.isbos.org/academics/maternelle",
+      "http://www.isbos.org/academics/lowerschool",
+      "http://www.isbos.org/academics/middleschool",
+      "http://www.isbos.org/academics/upperschool",
+      "http://www.isbos.org/academics/college",
+      "http://www.isbos.org/academics/studentsupport",
+      "http://www.isbos.org/academics"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "International School of Boston offers a comprehensive Global Learning Program in Upper School that includes Curriculum and Culture Trips, Academic Exchanges, and AEFE Partnerships, enabling extensive travel and intercultural experiences to enhance language proficiency and cultural fluency.",
+    "programs": [
+      {
+        "program_name": "Curriculum and Culture Trips",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.isbos.org/academics/upperschool",
+            "quote": "ISB's Global Learning Program offers students the chance to travel extensively through three programs: Curriculum and Culture Trips, Academic Exchanges, and AEFE Partnerships."
+          }
+        ]
+      },
+      {
+        "program_name": "Academic Exchanges",
+        "program_format": null,
+        "trip_types": [
+          "exchange",
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.isbos.org/academics/upperschool",
+            "quote": "ISB's Global Learning Program offers students the chance to travel extensively through three programs: Curriculum and Culture Trips, Academic Exchanges, and AEFE Partnerships."
+          }
+        ]
+      },
+      {
+        "program_name": "AEFE Partnerships",
+        "program_format": null,
+        "trip_types": [
+          "international"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.isbos.org/academics/upperschool",
+            "quote": "ISB's Global Learning Program offers students the chance to travel extensively through three programs: Curriculum and Culture Trips, Academic Exchanges, and AEFE Partnerships."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Program frequency",
+      "Program duration",
+      "Specific trip destinations",
+      "Program formats"
+    ]
+  }
+}

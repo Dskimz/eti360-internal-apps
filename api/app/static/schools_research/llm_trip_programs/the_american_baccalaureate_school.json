@@ -1,0 +1,165 @@
+{
+  "school_key": "the_american_baccalaureate_school",
+  "school_name": "The American Baccalaureate School",
+  "homepage": "http://www.abs.edu.kw/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:38 PM",
+  "tokens_in": 870,
+  "tokens_out": 778,
+  "tokens_total": 1648,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "7d82f456d467722b",
+    "pages": [
+      "http://www.abs.edu.kw/campus-life/annual-events-and-activities",
+      "http://www.abs.edu.kw/campus-life/international-trips",
+      "http://www.abs.edu.kw/",
+      "http://www.abs.edu.kw/academics/curriculum/middle-and-high-school",
+      "http://www.abs.edu.kw/academics/curriculum/middle-and-high-school/advanced-placement-courses",
+      "http://www.abs.edu.kw/academics/curriculum/middle-and-high-school/university-and-college-placement",
+      "http://www.abs.edu.kw/academics/curriculum/middle-and-high-school/university-dual-enrollment",
+      "http://www.abs.edu.kw/academics",
+      "http://www.abs.edu.kw/academics/curriculum",
+      "http://www.abs.edu.kw/academics/curriculum/kindergarden",
+      "http://www.abs.edu.kw/academics/curriculum/elementary",
+      "http://www.abs.edu.kw/academics/technology",
+      "http://www.abs.edu.kw/academics/technology/it-resources-applications",
+      "http://www.abs.edu.kw/academics/technology/it-facilities",
+      "http://www.abs.edu.kw/academics/technology/artificial-intelegence",
+      "http://www.abs.edu.kw/academics/technology/it-curriculum",
+      "http://www.abs.edu.kw/academics/technology/contact-us",
+      "http://www.abs.edu.kw/academics/microsoft-for-education"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The American Baccalaureate School offers multiple travel opportunities for middle and high school students, including annual ski trips to Europe, U.S. college tours, Model United Nations in New York, European trips, and a spiritual trip to the Holy Land for high school boys.",
+    "programs": [
+      {
+        "program_name": "Annual Ski Trip",
+        "program_format": "school-organized group trip",
+        "trip_types": [
+          "international",
+          "expedition_outdoor",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "MS",
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "one week",
+        "locations": [
+          "Swiss Alps",
+          "Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.abs.edu.kw/campus-life/international-trips",
+            "quote": "ABS has Annual School Ski Trip where the students are allowed to travel to Europe and ski for an entire week. This trip usually takes place in January and is open to ALL students in the MSHS."
+          }
+        ]
+      },
+      {
+        "program_name": "U.S. College Tours",
+        "program_format": "school-organized group trip",
+        "trip_types": [
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "United States"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.abs.edu.kw/campus-life/international-trips",
+            "quote": "High School students are able to participate in U.S. college tours."
+          }
+        ]
+      },
+      {
+        "program_name": "Model United Nations",
+        "program_format": "school-organized group trip",
+        "trip_types": [
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "New York"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.abs.edu.kw/campus-life/international-trips",
+            "quote": "High School students are able to participate in Model United Nations in New York."
+          }
+        ]
+      },
+      {
+        "program_name": "Annual European Trips",
+        "program_format": "school-organized group trip",
+        "trip_types": [
+          "international",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": null,
+        "locations": [
+          "Europe"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.abs.edu.kw/campus-life/international-trips",
+            "quote": "High School students are able to participate in annual European trips."
+          }
+        ]
+      },
+      {
+        "program_name": "Umrah Trip",
+        "program_format": "school-organized group trip",
+        "trip_types": [
+          "international",
+          "overnight_residential",
+          "service_learning"
+        ],
+        "grade_bands": [
+          "HS"
+        ],
+        "frequency": "annual",
+        "duration": "few days",
+        "locations": [
+          "Holy Land"
+        ],
+        "evidence": [
+          {
+            "source_url": "http://www.abs.edu.kw/campus-life/international-trips",
+            "quote": "Each year, ABS takes a group of High School boys to the Holy Land. This is usually done during the month of March and is chaperoned by the Islamic teacher."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Swiss Alps",
+      "Europe",
+      "United States",
+      "New York",
+      "Holy Land"
+    ],
+    "unknowns": []
+  }
+}

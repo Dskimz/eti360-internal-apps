@@ -1,0 +1,94 @@
+{
+  "school_key": "bangkok_patana_school",
+  "school_name": "Bangkok Patana School",
+  "homepage": "http://www.patana.ac.th/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:23 PM",
+  "tokens_in": 799,
+  "tokens_out": 463,
+  "tokens_total": 1262,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 3,
+    "prompt_hash": "75be874bfaa40ef2",
+    "pages": [
+      "https://www.patana.ac.th/life-at-patana/opportunities/beyond-the-classroom/",
+      "https://www.patana.ac.th/life-at-patana/opportunities/extra-curricular-activities/",
+      "http://www.patana.ac.th/",
+      "https://www.patana.ac.th/life-at-patana/about/school-services/",
+      "https://www.patana.ac.th/learning-at-patana/",
+      "https://www.patana.ac.th/learning-at-patana/primary-school/",
+      "https://www.patana.ac.th/learning-at-patana/primary-school/foundation-stage/",
+      "https://www.patana.ac.th/learning-at-patana/primary-school/key-stage-1/",
+      "https://www.patana.ac.th/learning-at-patana/primary-school/key-stage-2/",
+      "https://www.patana.ac.th/learning-at-patana/primary-school/home-language/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Bangkok Patana School offers a variety of trip and travel programs including school excursions, residential visits, and international award journeys. From Year 3 onwards, students participate in residential visits outside Bangkok involving activities such as learning about deforestation, tree planting, kayaking, and cycling. Other trips include drama, modern foreign language, history trips, arts and music festivals, and a ski trip to Niseko.",
+    "programs": [
+      {
+        "program_name": "School Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "Bangkok",
+          "Niseko"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.patana.ac.th/life-at-patana/opportunities/beyond-the-classroom/",
+            "quote": "Beyond sports competitions and the International Award journeys, students may also partake in Drama trips, Modern Foreign Language or History trips, or arts and music festivals. The Ski Trip to Niseko i…"
+          }
+        ]
+      },
+      {
+        "program_name": "Residential Visits",
+        "program_format": "residential",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "locations outside Bangkok"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.patana.ac.th/life-at-patana/opportunities/beyond-the-classroom/",
+            "quote": "From Year 3 onwards, students travel to locations outside Bangkok on their Residential Visits. From gaining first hand knowledge of deforestation and tree planting to learning to kayak or cycle, these visits take students out of their comfortable environments and challenge them to push boundaries."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "Bangkok",
+      "Niseko",
+      "locations outside Bangkok"
+    ],
+    "unknowns": [
+      "frequency",
+      "duration of trips"
+    ]
+  }
+}

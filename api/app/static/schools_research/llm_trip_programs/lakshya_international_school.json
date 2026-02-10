@@ -1,0 +1,62 @@
+{
+  "school_key": "lakshya_international_school",
+  "school_name": "LAKSHYA INTERNATIONAL SCHOOL",
+  "homepage": "http://thelakshyaschool.com/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 512,
+  "tokens_out": 301,
+  "tokens_total": 813,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "8325033dcb481ae5",
+    "pages": [
+      "http://thelakshyaschool.com/",
+      "http://thelakshyaschool.com/academics/",
+      "https://thelakshyaschool.com/curriculum/",
+      "https://thelakshyaschool.com/academics/pre-primary-a-glance/",
+      "https://thelakshyaschool.com/academics/primary/",
+      "https://thelakshyaschool.com/beyond-academics/",
+      "http://thelakshyaschool.com/beyond-academics/",
+      "https://thelakshyaschool.com/academics/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "The school organizes educational field trips designed to facilitate fast and efficient learning by connecting students to real-world experiences beyond the classroom. These trips provide rich learning opportunities related to classroom concepts.",
+    "programs": [
+      {
+        "program_name": "Educational Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://thelakshyaschool.com/curriculum/",
+            "quote": "Educational field trips facilitate fast and efficient learning, bridge gaps and provide rich experiences related to concepts taught in class. They provide unique opportunities for learning that extend beyond the walls of the classroom."
+          },
+          {
+            "source_url": "https://thelakshyaschool.com/beyond-academics/",
+            "quote": "Educational field trips facilitate fast and efficient learning, bridge gaps and provide rich experiences related to concepts taught in class. They provide unique opportunities for learning that extend beyond the walls of the classroom."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Grade bands for trips",
+      "Frequency of trips",
+      "Duration of trips",
+      "Specific trip destinations",
+      "Other trip types beyond educational field trips"
+    ]
+  }
+}

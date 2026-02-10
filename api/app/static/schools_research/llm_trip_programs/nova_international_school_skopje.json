@@ -1,0 +1,86 @@
+{
+  "school_key": "nova_international_school_skopje",
+  "school_name": "Nova International School Skopje",
+  "homepage": "http://www.nova.edu.mk/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:33 PM",
+  "tokens_in": 823,
+  "tokens_out": 447,
+  "tokens_total": 1270,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 6,
+    "prompt_hash": "77adeac6542473eb",
+    "pages": [
+      "http://www.nova.edu.mk/co-curriculars/after-school-activities-and-clubs",
+      "http://www.nova.edu.mk/co-curriculars/supernova-athletics-and-activities",
+      "http://www.nova.edu.mk/",
+      "http://www.nova.edu.mk/life-nova/student-support-services",
+      "http://www.nova.edu.mk/community/transportation-service",
+      "http://www.nova.edu.mk/community/meal-service",
+      "http://www.nova.edu.mk/community/testing-services",
+      "http://www.nova.edu.mk/community/giving-back-to-the-community"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Nova International School Skopje organizes various trip and travel programs including staff field trips and service learning opportunities for students. The service learning strand involves unpaid, voluntary exchanges with a learning benefit aimed at community contribution and societal understanding.",
+    "programs": [
+      {
+        "program_name": "Staff Field Trip",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "all day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.nova.edu.mk/co-curriculars/after-school-activities-and-clubs",
+            "quote": "NOVA PK-12 Staff Field Trip all day"
+          },
+          {
+            "source_url": "http://www.nova.edu.mk/co-curriculars/after-school-activities-and-clubs",
+            "quote": "all day Staff Field Trip"
+          },
+          {
+            "source_url": "http://www.nova.edu.mk/",
+            "quote": "NOVA PK-12 Staff Field Trip all day"
+          }
+        ]
+      },
+      {
+        "program_name": "Service Learning",
+        "program_format": null,
+        "trip_types": [
+          "service_learning"
+        ],
+        "grade_bands": [],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.nova.edu.mk/community/giving-back-to-the-community",
+            "quote": "This strand is about an unpaid and voluntary exchange with a learning benefit for the student. The purpose of the service element is for students to understand their ability to make a meaningful contribution to their community and society."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific grade bands for Service Learning",
+      "Frequency and locations of Staff Field Trips",
+      "Duration details beyond 'all day' for Staff Field Trips",
+      "Any other trip programs or international/domestic destinations"
+    ]
+  }
+}

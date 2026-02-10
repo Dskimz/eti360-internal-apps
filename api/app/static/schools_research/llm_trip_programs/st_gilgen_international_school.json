@@ -1,0 +1,110 @@
+{
+  "school_key": "st_gilgen_international_school",
+  "school_name": "St. Gilgen International School",
+  "homepage": "https://www.stgis.at/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "45",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:36 PM",
+  "tokens_in": 443,
+  "tokens_out": 608,
+  "tokens_total": 1051,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 2,
+    "prompt_hash": "7b2680c0be385046",
+    "pages": [
+      "https://www.stgis.at/student-life/",
+      "https://www.stgis.at/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "St. Gilgen International School offers a diverse range of trip and travel programs that include sports, outdoor expeditions, arts, cultural trips, and service activities. These programs emphasize perseverance, passion, and personal growth, encouraging students to explore talents and embrace a balanced lifestyle. Activities include water sports with certified supervision, and land-based activities such as rock climbing, mountain biking, hiking, and seasonal excursions with mountaineering skills.",
+    "programs": [
+      {
+        "program_name": "Water Sports Program",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [
+          "On campus boathouse and local water bodies"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.stgis.at/student-life/",
+            "quote": "Students complete a swim test on arrival and enjoy water sports supervised by certified lifeguards and the Austrian Water Rescue team – supported by our fully equipped boathouse."
+          }
+        ]
+      },
+      {
+        "program_name": "Outdoor Land Activities and Seasonal Excursions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "expedition_outdoor",
+          "overnight_residential"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": "seasonal excursions",
+        "locations": [
+          "Local mountains and trails"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.stgis.at/student-life/",
+            "quote": "Rock climbing, Klettersteigs, mountain biking, hiking, and trail running are part of everyday life. Students learn rope skills and mountaineering basics, applied during seasonal excursions."
+          }
+        ]
+      },
+      {
+        "program_name": "Arts, Cultural Trips and Service Activities",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "service_learning",
+          "domestic",
+          "international"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.stgis.at/",
+            "quote": "From sports and outdoor expeditions to arts, cultural trips and service, our diverse activities inspire perseverance, passion, and personal growth."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "On campus boathouse and local water bodies",
+      "Local mountains and trails"
+    ],
+    "unknowns": [
+      "Program frequency",
+      "Exact duration of trips except seasonal excursions",
+      "Specific destinations for arts, cultural, and service trips",
+      "Grade-specific participation details"
+    ]
+  }
+}

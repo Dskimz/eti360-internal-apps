@@ -1,0 +1,67 @@
+{
+  "school_key": "harrow_international_school_beijing",
+  "school_name": "Harrow International School Beijing",
+  "homepage": "http://www.harrowbeijing.cn/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "70",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:28 PM",
+  "tokens_in": 518,
+  "tokens_out": 279,
+  "tokens_total": 797,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "707338a56a51d8f0",
+    "pages": [
+      "https://www.harrowbeijing.cn/leadership-in-action/expeditions-and-retreats/",
+      "http://www.harrowbeijing.cn/",
+      "https://www.harrowbeijing.cn/leadership-in-action/service-and-community/",
+      "https://www.harrowbeijing.cn/academics/",
+      "https://www.harrowbeijing.cn/academics/kindergarten/",
+      "https://www.harrowbeijing.cn/academics/year-2-6/",
+      "https://www.harrowbeijing.cn/academics/year-7-8/",
+      "https://www.harrowbeijing.cn/academics/year-9-11/",
+      "https://www.harrowbeijing.cn/academics/year-12-13/",
+      "https://www.harrowbeijing.cn/leadership-in-action/super-curriculum/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "Harrow International School Beijing offers educational visits, expeditions, and residential trips as integral parts of the curriculum, providing students with practical opportunities to develop skills, awareness, confidence, and initiative outside the classroom.",
+    "programs": [
+      {
+        "program_name": "Expeditions and Residential Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "overnight_residential",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": null,
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.harrowbeijing.cn/leadership-in-action/expeditions-and-retreats/",
+            "quote": "Educational visits, expeditions and residential trips are an important aspect of the curriculum and provide exposure to a variety of experiences outside the classroom for all our students."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific program names beyond 'Expeditions and Residential Trips'",
+      "Program formats",
+      "Frequency of trips",
+      "Duration of trips",
+      "Specific destinations or locations",
+      "Grade bands for specific programs"
+    ]
+  }
+}

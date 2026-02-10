@@ -1,0 +1,88 @@
+{
+  "school_key": "isf_school",
+  "school_name": "ISF School",
+  "homepage": "https://www.isfwaterloo.org/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "65",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:30 PM",
+  "tokens_in": 826,
+  "tokens_out": 433,
+  "tokens_total": 1259,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 4,
+    "prompt_hash": "cf94e7a8e14469cd",
+    "pages": [
+      "https://www.isfwaterloo.org/296/extra-curricular-activities",
+      "https://www.isfwaterloo.org/300/student-life",
+      "https://www.isfwaterloo.org/1547/eco-schools-and-outdoor-learning",
+      "https://www.isfwaterloo.org/",
+      "https://www.isfwaterloo.org/313/latest-news/post/498/sleepy-time-learning",
+      "https://www.isfwaterloo.org/370/photo-gallery/cat/114/y6-project-based-learning",
+      "https://www.isfwaterloo.org/370/photo-gallery/cat/115/y5-project-based-learning",
+      "https://www.isfwaterloo.org/370/photo-gallery/cat/116/y4-project-based-learning",
+      "https://www.isfwaterloo.org/370/photo-gallery/cat/129/learning-about-family"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "ISF School organizes regular day trips to local museums and places of interest for all classes once per term. Additionally, the school arranges residential trips in the third term of each school year, lasting almost a week, primarily for upper Primary students to develop social skills. These residential trips are not compulsory and have a separate charge.",
+    "programs": [
+      {
+        "program_name": "Day Trips",
+        "program_format": "curriculum-integrated",
+        "trip_types": [
+          "day_trip",
+          "domestic"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "once per term",
+        "duration": "day",
+        "locations": [
+          "local museums",
+          "places of interest"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.isfwaterloo.org/296/extra-curricular-activities",
+            "quote": "School visits to local museums and places of interest are an integral part of our curriculum at all levels. Every class will have a trip once a term."
+          }
+        ]
+      },
+      {
+        "program_name": "Residential Trips",
+        "program_format": "curriculum-integrated",
+        "trip_types": [
+          "overnight_residential",
+          "domestic",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "once per year (third term)",
+        "duration": "almost a week",
+        "locations": [
+          "Domaine de Mambaye"
+        ],
+        "evidence": [
+          {
+            "source_url": "https://www.isfwaterloo.org/296/extra-curricular-activities",
+            "quote": "We organise Residential trips in the third term of each school year. Students develop their social skills by spending time away from home for almost a week. Last year upper Primary school visited Domaine de Mambaye."
+          }
+        ]
+      }
+    ],
+    "locations_all": [
+      "local museums",
+      "places of interest",
+      "Domaine de Mambaye"
+    ],
+    "unknowns": []
+  }
+}

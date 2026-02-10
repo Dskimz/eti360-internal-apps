@@ -1,0 +1,63 @@
+{
+  "school_key": "jg_international_school_ahmedabad",
+  "school_name": "JG International School - Ahmedabad",
+  "homepage": "http://www.jginternationalschool.in/",
+  "tier": "Partial",
+  "trip_crawl_health_score": "40",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:31 PM",
+  "tokens_in": 512,
+  "tokens_out": 225,
+  "tokens_total": 737,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 1,
+    "prompt_hash": "3f349f0eed4aaeca",
+    "pages": [
+      "http://www.jginternationalschool.in/content/academic/co-curricular-activity",
+      "http://www.jginternationalschool.in/",
+      "http://www.jginternationalschool.in/content/facilities-services",
+      "http://www.jginternationalschool.in/content/facilities-services/jg-campus-infrastructure",
+      "http://www.jginternationalschool.in/content/facilities-services/sports-games",
+      "http://www.jginternationalschool.in/content/facilities-services/wellness-centre",
+      "http://www.jginternationalschool.in/content/facilities-services/transportation",
+      "http://www.jginternationalschool.in/content/academic/curriculum-teaching-methodology"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "JG International School conducts regular field trips and expeditions to help children develop skills and experiences beyond the classroom.",
+    "programs": [
+      {
+        "program_name": "Field Trips and Expeditions",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES",
+          "MS",
+          "HS"
+        ],
+        "frequency": "regular",
+        "duration": null,
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "http://www.jginternationalschool.in/content/academic/curriculum-teaching-methodology",
+            "quote": "Regular field trips and expeditions help children develop a se…"
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific destinations of trips",
+      "Exact duration of trips",
+      "Program names if any formal titles exist",
+      "Frequency details beyond 'regular'",
+      "Grade bands explicitly mentioned for trips"
+    ]
+  }
+}

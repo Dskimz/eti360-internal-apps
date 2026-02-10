@@ -1,0 +1,79 @@
+{
+  "school_key": "isr_international_school_on_the_rhine",
+  "school_name": "ISR International School on the Rhine",
+  "homepage": "http://www.isr-school.de/",
+  "tier": "Healthy",
+  "trip_crawl_health_score": "80",
+  "model": "gpt-4.1-mini",
+  "generated_at_local": "Feb 08, 2026, 12:30 PM",
+  "tokens_in": 905,
+  "tokens_out": 402,
+  "tokens_total": 1307,
+  "evidence": {
+    "max_evidence_chars": 10000,
+    "max_snippets": 25,
+    "snippets_used": 5,
+    "prompt_hash": "bafcdd7d73735ff9",
+    "pages": [
+      "https://www.isr-school.de/student-extracurricular-activities-events-and-trips/",
+      "https://www.isr-school.de/school-life-art/",
+      "https://www.isr-school.de/student-extracurricular-activities/",
+      "http://www.isr-school.de/",
+      "https://www.isr-school.de/school-bus/",
+      "https://www.isr-school.de/cas-projects/",
+      "https://www.isr-school.de/upper-school-curriculum/",
+      "https://www.isr-school.de/academics-upper-school-course-selections/",
+      "https://www.isr-school.de/primary-school-curriculum/"
+    ]
+  },
+  "result": {
+    "trip_overview_narrative": "ISR offers experiential learning trips starting from Grade 1 with two field trips per school year. These trips reinforce classroom concepts in interactive ways. In Grades 5 and 6, students participate in various day trips focusing on team building, outdoor education, and experiential learning.",
+    "programs": [
+      {
+        "program_name": "Primary School Field Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": "two trips per school year",
+        "duration": "day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.isr-school.de/student-extracurricular-activities-events-and-trips/",
+            "quote": "Starting in Grade 1, students enjoy two field trips during the school year. These trips enrich the learning of our students, reinforcing concepts taught in the classroom in exciting and interactive ways."
+          }
+        ]
+      },
+      {
+        "program_name": "Grades 5 and 6 Day Trips",
+        "program_format": null,
+        "trip_types": [
+          "day_trip",
+          "expedition_outdoor"
+        ],
+        "grade_bands": [
+          "ES"
+        ],
+        "frequency": null,
+        "duration": "day",
+        "locations": [],
+        "evidence": [
+          {
+            "source_url": "https://www.isr-school.de/student-extracurricular-activities-events-and-trips/",
+            "quote": "In Grades 5 and 6, students participate in a variety of day trips to focus on team building, outdoor education, and experiential learning."
+          }
+        ]
+      }
+    ],
+    "locations_all": [],
+    "unknowns": [
+      "Specific trip destinations",
+      "Programs for middle school and high school grades",
+      "Overnight, international, or service learning trips"
+    ]
+  }
+}

@@ -3519,13 +3519,24 @@ def schools_ui(
 	        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="7" class="muted">No matching schools.</td></tr>';
 	        metaEl.textContent = `Schools: ${filtered.length}/${items.length}`;
 	      }
-      async function load() {
-        const includeAll = includeAllEl.checked ? '1' : '0';
-        const res = await fetch(`/schools/api/list?include_all=${encodeURIComponent(includeAll)}`, { cache:'no-store' });
-        const body = await res.json().catch(() => ({}));
-        items = Array.isArray(body.schools) ? body.schools : [];
-        render();
-      }
+	      async function load() {
+	        const includeAll = includeAllEl.checked ? '1' : '0';
+	        try {
+	          const res = await fetch(`/schools/api/list?include_all=${encodeURIComponent(includeAll)}`, { cache:'no-store' });
+	          const body = await res.json().catch(() => ({}));
+	          if (!res.ok || !body.ok) {
+	            metaEl.textContent = body.detail || body.error || `Failed to load schools (HTTP ${res.status})`;
+	            rowsEl.innerHTML = '<tr><td colspan="7" class="muted">Failed to load.</td></tr>';
+	            return;
+	          }
+	          if (body.fallback_used) metaEl.textContent = 'Showing all tiers (no Healthy/Partial matches found).';
+	          items = Array.isArray(body.schools) ? body.schools : [];
+	          render();
+	        } catch (e) {
+	          metaEl.textContent = 'Failed to load: ' + String(e?.message || e);
+	          rowsEl.innerHTML = '<tr><td colspan="7" class="muted">Failed to load.</td></tr>';
+	        }
+	      }
       qEl.value = localStorage.getItem('eti_schools_q') || '';
       qEl.addEventListener('input', () => { localStorage.setItem('eti_schools_q', qEl.value); render(); });
       includeAllEl.checked = (localStorage.getItem('eti_schools_includeAll') || '') === '1';
@@ -3886,43 +3897,53 @@ def schools_api_list(
 ) -> dict[str, Any]:
     _ = request
     schools: list[dict[str, Any]] = []
+    fallback_used = False
     with _connect() as conn:
         with conn.cursor() as cur:
             _ensure_arp_tables(cur)
             where = ""
             if not include_all:
-                where = "WHERE s.tier IN ('Healthy','Partial')"
-            cur.execute(
-                _arp_schema(
-                    f"""
-                    SELECT
-                      s.school_key,
-                      s.name,
-                      s.homepage_url,
-                      s.primary_domain,
-                      s.last_crawled_at,
-                      s.tier,
-                      s.health_score,
-                      COALESCE(s.social_links, '{{}}'::jsonb) AS social_links,
-                      COALESCE(o.overview_75w, '') AS overview_75w,
-                      COALESCE(o.narrative, '') AS narrative,
-                      (o.school_key IS NOT NULL AND (COALESCE(o.llm_json,'{{}}'::jsonb) <> '{{}}'::jsonb OR COALESCE(o.narrative,'') <> '' OR COALESCE(o.overview_75w,'') <> '')) AS has_llm,
-                      COALESCE(p.programs, ARRAY[]::text[]) AS programs,
-                      (e.school_key IS NOT NULL AND COALESCE(e.evidence_markdown,'') <> '') AS has_evidence
-                    FROM "__ARP_SCHEMA__".schools s
-                    LEFT JOIN "__ARP_SCHEMA__".school_overviews o ON o.school_key = s.school_key
-                    LEFT JOIN (
-                      SELECT school_key, array_agg(program_name ORDER BY program_name) AS programs
-                      FROM "__ARP_SCHEMA__".school_trip_programs
-                      GROUP BY school_key
-                    ) p ON p.school_key = s.school_key
-                    LEFT JOIN "__ARP_SCHEMA__".school_evidence e ON e.school_key = s.school_key
-                    {where}
-                    ORDER BY s.health_score DESC, s.name ASC;
-                    """
-                ).strip()
-            )
-            for row in cur.fetchall() or []:
+                where = "WHERE lower(trim(s.tier)) IN ('healthy','partial')"
+
+            def run_query(where_sql: str) -> list[tuple[Any, ...]]:
+                cur.execute(
+                    _arp_schema(
+                        f"""
+                        SELECT
+                          s.school_key,
+                          s.name,
+                          s.homepage_url,
+                          s.primary_domain,
+                          s.last_crawled_at,
+                          s.tier,
+                          s.health_score,
+                          COALESCE(s.social_links, '{{}}'::jsonb) AS social_links,
+                          COALESCE(o.overview_75w, '') AS overview_75w,
+                          COALESCE(o.narrative, '') AS narrative,
+                          (o.school_key IS NOT NULL AND (COALESCE(o.llm_json,'{{}}'::jsonb) <> '{{}}'::jsonb OR COALESCE(o.narrative,'') <> '' OR COALESCE(o.overview_75w,'') <> '')) AS has_llm,
+                          COALESCE(p.programs, ARRAY[]::text[]) AS programs,
+                          (e.school_key IS NOT NULL AND COALESCE(e.evidence_markdown,'') <> '') AS has_evidence
+                        FROM "__ARP_SCHEMA__".schools s
+                        LEFT JOIN "__ARP_SCHEMA__".school_overviews o ON o.school_key = s.school_key
+                        LEFT JOIN (
+                          SELECT school_key, array_agg(program_name ORDER BY program_name) AS programs
+                          FROM "__ARP_SCHEMA__".school_trip_programs
+                          GROUP BY school_key
+                        ) p ON p.school_key = s.school_key
+                        LEFT JOIN "__ARP_SCHEMA__".school_evidence e ON e.school_key = s.school_key
+                        {where_sql}
+                        ORDER BY s.health_score DESC, s.name ASC;
+                        """
+                    ).strip()
+                )
+                return list(cur.fetchall() or [])
+
+            rows = run_query(where)
+            if (not include_all) and not rows:
+                fallback_used = True
+                rows = run_query("")
+
+            for row in rows:
                 (
                     school_key,
                     name,
@@ -3958,7 +3979,7 @@ def schools_api_list(
                     }
                 )
         conn.commit()
-    return {"ok": True, "schools": schools}
+    return {"ok": True, "schools": schools, "fallback_used": fallback_used}
 
 
 @app.get("/arp/schools/{school_key}", response_class=HTMLResponse)

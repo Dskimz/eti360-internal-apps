@@ -42,6 +42,7 @@ from app.arp_pipeline import (
     tokenize,
     validate_arp_json,
 )
+from app.geo import CONTINENT_ORDER, continent_for_country
 from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
@@ -4014,6 +4015,19 @@ def _truncate_words(s: str, max_words: int) -> str:
     return " ".join(words[:max_words]).strip()
 
 
+def _has_column(cur: psycopg.Cursor, *, schema: str, table: str, column: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema=%s AND table_name=%s AND column_name=%s
+        LIMIT 1;
+        """.strip(),
+        (schema, table, column),
+    )
+    return cur.fetchone() is not None
+
+
 @app.get("/arp/api/schools")
 def arp_api_schools_redirect(request: Request) -> Response:
     _ = request
@@ -4028,88 +4042,95 @@ def schools_api_list(
     _ = request
     schools: list[dict[str, Any]] = []
     fallback_used = False
-    with _connect() as conn:
-        with conn.cursor() as cur:
-            _ensure_arp_tables(cur)
-            where = ""
-            if not include_all:
-                where = "WHERE lower(trim(s.tier)) IN ('healthy','partial')"
+    try:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _ensure_arp_tables(cur)
+                schema = _require_safe_ident("ARP_SCHEMA", ARP_SCHEMA)
+                has_llm_json = _has_column(cur, schema=schema, table="school_overviews", column="llm_json")
+                llm_json_expr = "COALESCE(o.llm_json,'{}'::jsonb)" if has_llm_json else "'{}'::jsonb"
 
-            def run_query(where_sql: str) -> list[tuple[Any, ...]]:
-                cur.execute(
-                    _arp_schema(
-                        f"""
-                        SELECT
-                          s.school_key,
-                          s.name,
-                          s.homepage_url,
-                          s.primary_domain,
-                          s.last_crawled_at,
-                          s.tier,
-                          s.health_score,
-                          COALESCE(s.social_links, '{{}}'::jsonb) AS social_links,
-                          COALESCE(o.overview_75w, '') AS overview_75w,
-                          COALESCE(o.narrative, '') AS narrative,
-                          (o.school_key IS NOT NULL AND (COALESCE(o.llm_json,'{{}}'::jsonb) <> '{{}}'::jsonb OR COALESCE(o.narrative,'') <> '' OR COALESCE(o.overview_75w,'') <> '')) AS has_llm,
-                          COALESCE(p.programs, ARRAY[]::text[]) AS programs,
-                          (e.school_key IS NOT NULL AND COALESCE(e.evidence_markdown,'') <> '') AS has_evidence
-                        FROM "__ARP_SCHEMA__".schools s
-                        LEFT JOIN "__ARP_SCHEMA__".school_overviews o ON o.school_key = s.school_key
-                        LEFT JOIN (
-                          SELECT school_key, array_agg(program_name ORDER BY program_name) AS programs
-                          FROM "__ARP_SCHEMA__".school_trip_programs
-                          GROUP BY school_key
-                        ) p ON p.school_key = s.school_key
-                        LEFT JOIN "__ARP_SCHEMA__".school_evidence e ON e.school_key = s.school_key
-                        {where_sql}
-                        ORDER BY s.health_score DESC, s.name ASC;
-                        """
-                    ).strip()
-                )
-                return list(cur.fetchall() or [])
+                where = ""
+                if not include_all:
+                    where = "WHERE lower(trim(s.tier)) IN ('healthy','partial')"
 
-            rows = run_query(where)
-            if (not include_all) and not rows:
-                fallback_used = True
-                rows = run_query("")
+                def run_query(where_sql: str) -> list[tuple[Any, ...]]:
+                    cur.execute(
+                        _arp_schema(
+                            f"""
+                            SELECT
+                              s.school_key,
+                              s.name,
+                              s.homepage_url,
+                              s.primary_domain,
+                              s.last_crawled_at,
+                              s.tier,
+                              s.health_score,
+                              COALESCE(s.social_links, '{{}}'::jsonb) AS social_links,
+                              COALESCE(o.overview_75w, '') AS overview_75w,
+                              COALESCE(o.narrative, '') AS narrative,
+                              (o.school_key IS NOT NULL AND ({llm_json_expr} <> '{{}}'::jsonb OR COALESCE(o.narrative,'') <> '' OR COALESCE(o.overview_75w,'') <> '')) AS has_llm,
+                              COALESCE(p.programs, ARRAY[]::text[]) AS programs,
+                              (e.school_key IS NOT NULL AND COALESCE(e.evidence_markdown,'') <> '') AS has_evidence
+                            FROM "__ARP_SCHEMA__".schools s
+                            LEFT JOIN "__ARP_SCHEMA__".school_overviews o ON o.school_key = s.school_key
+                            LEFT JOIN (
+                              SELECT school_key, array_agg(program_name ORDER BY program_name) AS programs
+                              FROM "__ARP_SCHEMA__".school_trip_programs
+                              GROUP BY school_key
+                            ) p ON p.school_key = s.school_key
+                            LEFT JOIN "__ARP_SCHEMA__".school_evidence e ON e.school_key = s.school_key
+                            {where_sql}
+                            ORDER BY s.health_score DESC, s.name ASC;
+                            """
+                        ).strip()
+                    )
+                    return list(cur.fetchall() or [])
 
-            for row in rows:
-                (
-                    school_key,
-                    name,
-                    homepage_url,
-                    primary_domain,
-                    last_crawled_at,
-                    tier,
-                    health_score,
-                    social_links,
-                    overview_75w,
-                    narrative,
-                    has_llm,
-                    programs,
-                    has_evidence,
-                ) = row
-                review = str(overview_75w or "").strip()
-                if not review:
-                    review = _truncate_words(str(narrative or "").strip(), 75)
-                schools.append(
-                    {
-                        "school_key": str(school_key),
-                        "name": str(name or ""),
-                        "homepage_url": str(homepage_url or ""),
-                        "primary_domain": str(primary_domain or ""),
-                        "last_crawled_at": last_crawled_at.isoformat() if last_crawled_at else None,
-                        "tier": str(tier or ""),
-                        "health_score": int(health_score or 0),
-                        "social_links": social_links if isinstance(social_links, dict) else {},
-                        "review": review,
-                        "programs": list(programs or []),
-                        "has_evidence": bool(has_evidence),
-                        "has_llm": bool(has_llm),
-                    }
-                )
-        conn.commit()
-    return {"ok": True, "schools": schools, "fallback_used": fallback_used}
+                rows = run_query(where)
+                if (not include_all) and not rows:
+                    fallback_used = True
+                    rows = run_query("")
+
+                for row in rows:
+                    (
+                        school_key,
+                        name,
+                        homepage_url,
+                        primary_domain,
+                        last_crawled_at,
+                        tier,
+                        health_score,
+                        social_links,
+                        overview_75w,
+                        narrative,
+                        has_llm,
+                        programs,
+                        has_evidence,
+                    ) = row
+                    review = str(overview_75w or "").strip()
+                    if not review:
+                        review = _truncate_words(str(narrative or "").strip(), 75)
+                    schools.append(
+                        {
+                            "school_key": str(school_key),
+                            "name": str(name or ""),
+                            "homepage_url": str(homepage_url or ""),
+                            "primary_domain": str(primary_domain or ""),
+                            "last_crawled_at": last_crawled_at.isoformat() if last_crawled_at else None,
+                            "tier": str(tier or ""),
+                            "health_score": int(health_score or 0),
+                            "social_links": social_links if isinstance(social_links, dict) else {},
+                            "review": review,
+                            "programs": list(programs or []),
+                            "has_evidence": bool(has_evidence),
+                            "has_llm": bool(has_llm),
+                        }
+                    )
+            conn.commit()
+        return {"ok": True, "schools": schools, "fallback_used": fallback_used}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(getattr(e, "detail", e))})
 
 
 @app.get("/arp/schools/{school_key}", response_class=HTMLResponse)
@@ -4321,6 +4342,9 @@ def school_llm_ui(
     with _connect() as conn:
         with conn.cursor() as cur:
             _ensure_arp_tables(cur)
+            schema = _require_safe_ident("ARP_SCHEMA", ARP_SCHEMA)
+            has_llm_json = _has_column(cur, schema=schema, table="school_overviews", column="llm_json")
+
             cur.execute(
                 _arp_schema('SELECT name FROM "__ARP_SCHEMA__".schools WHERE school_key=%s;'),
                 (key,),
@@ -4330,10 +4354,11 @@ def school_llm_ui(
                 raise HTTPException(status_code=404, detail="Unknown school")
             (name,) = row
 
+            llm_col = "llm_json" if has_llm_json else "'{}'::jsonb AS llm_json"
             cur.execute(
                 _arp_schema(
-                    """
-                    SELECT overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at, llm_json
+                    f"""
+                    SELECT overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at, {llm_col}
                     FROM "__ARP_SCHEMA__".school_overviews
                     WHERE school_key=%s;
                     """
@@ -5272,16 +5297,41 @@ def trip_providers_countries_index_ui(
             cur.execute(sql, params)
             rows = list(cur.fetchall())
 
-    lis: list[str] = []
+    continent_to_items: dict[str, list[str]] = {}
+    total_items = 0
     for country, provider_count in rows:
         c = str(country or "").strip()
         if not c:
             continue
         slug = _slugify(c)
         href = f"/trip_providers/countries/{quote(slug)}"
-        lis.append(f'<li><a href="{href}">{_esc(c)}</a> <span class="muted">({int(provider_count or 0)})</span></li>')
+        continent = continent_for_country(c)
+        item_html = f'<li><a href="{href}">{_esc(c)}</a> <span class="count">({int(provider_count or 0)})</span></li>'
+        continent_to_items.setdefault(continent, []).append(item_html)
+        total_items += 1
 
-    list_html = "<ul style=\"margin: 8px 0 0 18px; padding: 0;\">" + "".join(lis) + "</ul>" if lis else "<p class=\"muted\">No countries found.</p>"
+    cards: list[str] = []
+    for continent in CONTINENT_ORDER:
+        items = continent_to_items.get(continent) or []
+        if not items:
+            continue
+        cards.append(
+            f"""
+            <div class="continent-card">
+              <div class="continent-head">
+                <div class="continent-title">{_esc(continent)}</div>
+                <div class="muted">{len(items)} country(ies)</div>
+              </div>
+              <ul class="country-list">{"".join(items)}</ul>
+            </div>
+            """.strip()
+        )
+
+    list_html = (
+        '<div class="continent-grid">' + "".join(cards) + "</div>"
+        if cards
+        else "<p class=\"muted\">No countries found.</p>"
+    )
 
     body_html = f"""
       <div class="card">
@@ -5310,7 +5360,7 @@ def trip_providers_countries_index_ui(
 
       <div class="card">
         <h2>Countries</h2>
-        <div class="muted">Showing {len(lis)} result(s).</div>
+        <div class="muted">Showing {total_items} result(s).</div>
         <div class="divider"></div>
         <div class="section">
           {list_html}

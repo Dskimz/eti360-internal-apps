@@ -6400,12 +6400,12 @@ async def trip_providers_delete(
 
 
 @app.get("/health")
-def health() -> dict[str, bool]:
-    return {"ok": True}
+def health() -> JSONResponse:
+    return JSONResponse({"ok": True}, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/health/db")
-def health_db() -> dict[str, Any]:
+def health_db() -> JSONResponse:
     """
     DB diagnostics (safe to share):
     - verifies DB connectivity
@@ -6465,13 +6465,47 @@ def health_db() -> dict[str, Any]:
 
         conn.commit()
 
-    return {
-        "ok": True,
-        "schemas": {"arp": arp_schema, "ops": ops_schema},
-        "tables_exist": exists,
-        "row_counts": counts,
-        "migrations_applied": migrations,
-    }
+    return JSONResponse(
+        {
+            "ok": True,
+            "schemas": {"arp": arp_schema, "ops": ops_schema},
+            "tables_exist": exists,
+            "row_counts": counts,
+            "migrations_applied": migrations,
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/health/version")
+def health_version() -> JSONResponse:
+    """
+    Safe diagnostics for deploy/version checking (no secrets).
+    """
+    main_path = Path(__file__).resolve()
+    try:
+        mtime = datetime.fromtimestamp(main_path.stat().st_mtime, tz=timezone.utc).isoformat()
+    except Exception:
+        mtime = ""
+
+    keys = [
+        "RENDER",
+        "RENDER_SERVICE_ID",
+        "RENDER_SERVICE_NAME",
+        "RENDER_GIT_COMMIT",
+        "RENDER_GIT_BRANCH",
+    ]
+    env = {k: (os.environ.get(k) or "") for k in keys if os.environ.get(k) is not None}
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "utc_now": datetime.now(tz=timezone.utc).isoformat(),
+            "main_py_mtime_utc": mtime,
+            "env": env,
+        },
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 class LoginIn(BaseModel):

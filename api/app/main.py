@@ -3531,11 +3531,11 @@ def schools_ui(
         <p class="muted">Browse schools with trip/travel evidence (official websites only), extracted program names, and overview narratives.</p>
       </div>
 
-      <div class="card">
-        <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
-          <h2>Directory</h2>
-          <div class="btnrow" style="margin-top:0;">
-            <input id="q" type="text" placeholder="Search (school / domain / key / program)" style="max-width:480px;" />
+	      <div class="card">
+	        <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
+	          <h2>Directory</h2>
+	          <div class="btnrow" style="margin-top:0;">
+	            <input id="q" type="text" placeholder="Search (school / domain / key / program)" style="max-width:480px;" />
             <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
               <input id="includeAll" type="checkbox" />
               Include all tiers
@@ -3546,13 +3546,13 @@ def schools_ui(
 	          <table>
 	            <thead>
 	              <tr>
-	                <th>School</th>
-	                <th>Tier</th>
-	                <th class="mono">Score</th>
-	                <th>Social</th>
-	                <th>Programs</th>
-	                <th>LLM review</th>
-	                <th>Links</th>
+	                <th style="min-width:360px;">School</th>
+	                <th style="min-width:110px;">Tier</th>
+	                <th class="mono" style="min-width:80px;">Score</th>
+	                <th style="min-width:200px;">Social</th>
+	                <th style="min-width:260px;">Programs</th>
+	                <th style="min-width:520px;">LLM review</th>
+	                <th style="min-width:120px;">Links</th>
 	              </tr>
 	            </thead>
 	            <tbody id="rows"></tbody>
@@ -3645,7 +3645,7 @@ def schools_ui(
 	            it.has_llm ? `<a href="${llmUrl}">LLM</a>` : '<span class="muted">LLM —</span>',
 	          ].join(' · ');
 	          const schoolCell = `
-	            <div style="font-weight:600; color:var(--text-secondary);">${esc(it.name||key||'(missing)')}</div>
+	            <div style="font-weight:600; color:var(--text-secondary); white-space:normal; word-break:break-word;">${esc(it.name||key||'(missing)')}</div>
 	            <div class="muted">
 	              ${home ? `<a href="${esc(home)}" target="_blank" rel="noopener">${esc(it.primary_domain||home)}</a>` : esc(it.primary_domain||'')}
 	              ${key ? ` · <span class="mono">${esc(key)}</span>` : ''}
@@ -3727,6 +3727,7 @@ def _bootstrap_schools_from_static() -> None:
     evidence_dir = base / "evidence_markdown"
     extracted_dir = base / "extracted"
     llm_dir = base / "llm_trip_programs"
+    social_dir = base / "social_links"
 
     evidence_by_key: dict[str, str] = {}
     if evidence_dir.exists():
@@ -3761,6 +3762,31 @@ def _bootstrap_schools_from_static() -> None:
                 continue
             if isinstance(obj, dict):
                 llm_by_key[key] = obj
+
+    social_by_key: dict[str, dict[str, str]] = {}
+    if social_dir.exists():
+        for p in social_dir.glob("*.json"):
+            key = p.stem.strip()
+            if not key:
+                continue
+            try:
+                obj = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+            except Exception:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            links = obj.get("social_links")
+            if not isinstance(links, dict):
+                continue
+            cleaned: dict[str, str] = {}
+            for k, v in links.items():
+                kk = str(k or "").strip().lower()
+                vv = str(v or "").strip()
+                if not kk or not vv:
+                    continue
+                cleaned[kk] = vv
+            if cleaned:
+                social_by_key[key] = cleaned
 
     schools_raw = csv_path.read_bytes()
     _, rows = _parse_csv_bytes(schools_raw)
@@ -3835,14 +3861,17 @@ def _bootstrap_schools_from_static() -> None:
                     continue
 
                 social_links: dict[str, str] = {}
-                extracted_obj = extracted_by_key.get(school_key) or {}
-                if isinstance(extracted_obj, dict):
-                    sl = extracted_obj.get("social_links")
-                    if isinstance(sl, dict):
-                        for k3, v3 in sl.items():
-                            if not k3 or not v3:
-                                continue
-                            social_links[str(k3).strip().lower()] = str(v3).strip()
+                if school_key in social_by_key:
+                    social_links = dict(social_by_key.get(school_key) or {})
+                else:
+                    extracted_obj = extracted_by_key.get(school_key) or {}
+                    if isinstance(extracted_obj, dict):
+                        sl = extracted_obj.get("social_links")
+                        if isinstance(sl, dict):
+                            for k3, v3 in sl.items():
+                                if not k3 or not v3:
+                                    continue
+                                social_links[str(k3).strip().lower()] = str(v3).strip()
 
                 # Upsert core school row.
                 cur.execute(
@@ -4080,7 +4109,9 @@ def schools_api_list(
 
                 where = ""
                 if not include_all:
-                    where = "WHERE lower(trim(s.tier)) IN ('healthy','partial')"
+                    where = "WHERE s.school_key <> 'american_international_school_vienna' AND lower(trim(s.tier)) IN ('healthy','partial')"
+                else:
+                    where = "WHERE s.school_key <> 'american_international_school_vienna'"
 
                 def run_query(where_sql: str) -> list[tuple[Any, ...]]:
                     cur.execute(
@@ -4118,7 +4149,7 @@ def schools_api_list(
                 rows = run_query(where)
                 if (not include_all) and not rows:
                     fallback_used = True
-                    rows = run_query("")
+                    rows = run_query("WHERE s.school_key <> 'american_international_school_vienna'")
 
                 for row in rows:
                     (

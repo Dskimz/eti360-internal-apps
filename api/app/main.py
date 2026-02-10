@@ -470,8 +470,24 @@ def _arp_fetch_and_store_source(
 
     _job_append_log(cur, job_id=job_id, line=f"Fetch: {source_id}")
 
+    u = (url or "").strip()
+    parsed = urlparse(u) if u else None
+    if not parsed or parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        msg = f"Invalid source URL (must start with http:// or https://): {u or '(empty)'}"
+        cur.execute(
+            _arp_schema(
+                """
+                UPDATE "__ARP_SCHEMA__".documents
+                SET status='error', error=%s, fetched_at=now()
+                WHERE source_id=%s;
+                """
+            ).strip(),
+            (msg, source_id),
+        )
+        raise RuntimeError(msg)
+
     try:
-        resp = requests.get(url, timeout=45, headers={"User-Agent": "ETI360/1.0"})
+        resp = requests.get(u, timeout=45, headers={"User-Agent": "ETI360/1.0"})
         resp.raise_for_status()
         raw = resp.content
     except Exception as e:

@@ -8,10 +8,11 @@ import tempfile
 import threading
 import time
 import uuid
+import zipfile
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
 from hashlib import pbkdf2_hmac, sha256
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from secrets import token_bytes
 from typing import Any
@@ -3242,25 +3243,7 @@ def arp_schools_ui(
 ) -> str:
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
 
-    def esc(s: str) -> str:
-        return (
-            (s or "")
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-            .replace("'", "&#39;")
-        )
-
-    # Placeholder list (prove-out page wiring). Swap to DB table / CSV import later.
-    schools = [
-        "Example Elementary School",
-        "Example Middle School",
-        "Example High School",
-    ]
-    rows_html = "".join(f"<tr><td>{esc(name)}</td></tr>" for name in schools)
-
-    body_html = f"""
+    body_html = """
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
           <h1>Schools</h1>
@@ -3268,19 +3251,695 @@ def arp_schools_ui(
             <a class="btn" href="/arp/ui">Back to ARP</a>
           </div>
         </div>
-        <p class="muted">Simple proof-of-concept page. School names are currently hard-coded in the server route.</p>
+        <p class="muted">Import pipeline outputs (Schools.csv + artifacts zip), then browse schools with evidence, extracted program names, and overview narratives.</p>
       </div>
 
       <div class="card">
+        <h2>Import</h2>
+        <div class="muted">API key is stored in your browser localStorage (this page only).</div>
+        <div class="section grid-2">
+          <div>
+            <label>X-API-Key (for import)</label>
+            <input id="apiKey" type="password" placeholder="Paste ETI360_API_KEY here" />
+          </div>
+          <div class="muted" style="display:flex; align-items:end;">
+            Required unless <code>ALLOW_UNAUTH_WRITE=true</code>.
+          </div>
+        </div>
+        <form id="importForm" enctype="multipart/form-data">
+          <div class="grid-2">
+            <div>
+              <label>Schools.csv</label>
+              <input type="file" name="schools_csv" accept=".csv" required />
+              <div class="muted">Expected columns include: School, URL, school_key, primary_domain, last_crawled_at, trip_crawl_tier, trip_crawl_health_score.</div>
+            </div>
+            <div>
+              <label>Artifacts zip (optional)</label>
+              <input type="file" name="artifacts_zip" accept=".zip" />
+              <div class="muted">May include per-school <code>&lt;school_key&gt;.md</code> and <code>&lt;school_key&gt;.json</code>.</div>
+            </div>
+          </div>
+          <div class="btnrow">
+            <button class="btn primary" id="btnImport" type="button">Import / Update</button>
+            <span class="muted" id="importStatus">Ready.</span>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
+          <h2>Directory</h2>
+          <div class="btnrow" style="margin-top:0;">
+            <input id="q" type="text" placeholder="Search (school / domain / key / program)" style="max-width:480px;" />
+            <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
+              <input id="includeAll" type="checkbox" />
+              Include all tiers
+            </label>
+          </div>
+        </div>
         <div class="section tablewrap">
           <table>
-            <thead><tr><th>School name</th></tr></thead>
-            <tbody>{rows_html or '<tr><td class="muted">No schools yet.</td></tr>'}</tbody>
+            <thead>
+              <tr>
+                <th>School</th>
+                <th>Tier</th>
+                <th class="mono">Score</th>
+                <th>Programs</th>
+                <th>Overview</th>
+                <th>Evidence</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
           </table>
         </div>
+        <div class="muted" id="meta" style="margin-top:10px;">Loading…</div>
+      </div>
+
+    """.strip()
+
+    script = """
+    <script>
+      const rowsEl = document.getElementById('rows');
+      const metaEl = document.getElementById('meta');
+      const qEl = document.getElementById('q');
+      const includeAllEl = document.getElementById('includeAll');
+
+      const apiKeyEl = document.getElementById('apiKey');
+      const importStatusEl = document.getElementById('importStatus');
+      const btnImportEl = document.getElementById('btnImport');
+
+      let items = [];
+
+      function esc(s) {
+        return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
+      }
+      function pickPrograms(programs) {
+        const arr = Array.isArray(programs) ? programs.map(x => String(x||'').trim()).filter(Boolean) : [];
+        const first = arr.slice(0, 3);
+        const more = arr.length > 3 ? ` +${arr.length - 3} more` : '';
+        return first.map(esc).join(', ') + (more ? `<span class="muted">${esc(more)}</span>` : '');
+      }
+      function matches(it, q) {
+        if (!q) return true;
+        const hay = [
+          it.name, it.primary_domain, it.school_key, it.tier,
+          ...(Array.isArray(it.programs) ? it.programs : [])
+        ].map(x => String(x||'').toLowerCase()).join(' | ');
+        return hay.includes(q);
+      }
+      function render() {
+        const q = String(qEl.value || '').trim().toLowerCase();
+        const filtered = items.filter((it) => matches(it, q));
+        rowsEl.innerHTML = '';
+        for (const it of filtered) {
+          const key = String(it.school_key || '');
+          const home = String(it.homepage_url || '');
+          const detailUrl = `/arp/schools/${encodeURIComponent(key)}`;
+          const ev = it.has_evidence ? `<a href="${detailUrl}">View</a>` : '<span class="muted">—</span>';
+          const schoolCell = `
+            <div style="font-weight:600; color:var(--text-secondary);">${esc(it.name||key||'(missing)')}</div>
+            <div class="muted">
+              ${home ? `<a href="${esc(home)}" target="_blank" rel="noopener">${esc(it.primary_domain||home)}</a>` : esc(it.primary_domain||'')}
+              ${key ? ` · <span class="mono">${esc(key)}</span>` : ''}
+            </div>
+          `;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${schoolCell}</td>
+            <td><span class="pill">${esc(it.tier || '')}</span></td>
+            <td class="mono">${Number(it.health_score||0)}</td>
+            <td>${pickPrograms(it.programs||[]) || '<span class="muted">—</span>'}</td>
+            <td>${esc(it.overview_75w || '')}</td>
+            <td>${ev}</td>
+          `;
+          rowsEl.appendChild(tr);
+        }
+        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="6" class="muted">No matching schools.</td></tr>';
+        metaEl.textContent = `Schools: ${filtered.length}/${items.length}`;
+      }
+      async function load() {
+        const includeAll = includeAllEl.checked ? '1' : '0';
+        const res = await fetch(`/arp/api/schools?include_all=${encodeURIComponent(includeAll)}`, { cache:'no-store' });
+        const body = await res.json().catch(() => ({}));
+        items = Array.isArray(body.schools) ? body.schools : [];
+        render();
+      }
+
+      async function doImport() {
+        const form = document.getElementById('importForm');
+        const fd = new FormData(form);
+        const zipEl = form.querySelector('input[name="artifacts_zip"]');
+        if (zipEl && zipEl.files && zipEl.files.length === 0) fd.delete('artifacts_zip');
+        const apiKey = String(apiKeyEl.value || localStorage.getItem('eti_x_api_key') || '').trim();
+        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
+        const headers = {};
+        if (apiKey) headers['X-API-Key'] = apiKey;
+        importStatusEl.textContent = 'Importing…';
+        btnImportEl.disabled = true;
+        try {
+          const res = await fetch('/arp/schools/import', { method:'POST', headers, body: fd });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
+          importStatusEl.textContent = `Imported: ${Number(body.schools||0)} schools, ${Number(body.evidence||0)} evidence, ${Number(body.json||0)} JSON`;
+          await load();
+        } finally {
+          btnImportEl.disabled = false;
+        }
+      }
+
+      apiKeyEl.value = localStorage.getItem('eti_x_api_key') || '';
+      qEl.value = localStorage.getItem('eti_schools_q') || '';
+      qEl.addEventListener('input', () => { localStorage.setItem('eti_schools_q', qEl.value); render(); });
+      includeAllEl.checked = (localStorage.getItem('eti_schools_includeAll') || '') === '1';
+      includeAllEl.addEventListener('change', () => { localStorage.setItem('eti_schools_includeAll', includeAllEl.checked ? '1' : '0'); load(); });
+      btnImportEl.addEventListener('click', async () => {
+        try { await doImport(); }
+        catch (e) { importStatusEl.textContent = 'Error: ' + String(e?.message || e); }
+      });
+
+      load();
+    </script>
+    """.strip()
+
+    return _ui_shell(title="Schools", active="arp", body_html=body_html, max_width_px=1200, extra_script=script, user=user)
+
+
+def _escape_html(s: str) -> str:
+    return (
+        (s or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+
+
+def _safe_school_key(school_key: str) -> str:
+    school_key = (school_key or "").strip()
+    if not school_key:
+        raise HTTPException(status_code=400, detail="Missing school_key")
+    if "/" in school_key or "\\" in school_key:
+        raise HTTPException(status_code=400, detail="Invalid school_key")
+    if len(school_key) > 200:
+        raise HTTPException(status_code=400, detail="school_key too long")
+    return school_key
+
+
+def _parse_dt_maybe(s: str) -> datetime | None:
+    s = (s or "").strip()
+    if not s:
+        return None
+    s = s.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+
+def _truncate_words(s: str, max_words: int) -> str:
+    s = str(s or "").strip()
+    if not s:
+        return ""
+    words = s.split()
+    if len(words) <= max_words:
+        return s
+    return " ".join(words[:max_words]).strip()
+
+
+@app.get("/arp/api/schools")
+def arp_api_schools(
+    request: Request,
+    include_all: bool = Query(default=False),
+) -> dict[str, Any]:
+    _ = request
+    schools: list[dict[str, Any]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            where = ""
+            if not include_all:
+                where = "WHERE s.tier IN ('Healthy','Partial')"
+            cur.execute(
+                _arp_schema(
+                    f"""
+                    SELECT
+                      s.school_key,
+                      s.name,
+                      s.homepage_url,
+                      s.primary_domain,
+                      s.last_crawled_at,
+                      s.tier,
+                      s.health_score,
+                      COALESCE(o.overview_75w, '') AS overview_75w,
+                      COALESCE(p.programs, ARRAY[]::text[]) AS programs,
+                      (e.school_key IS NOT NULL AND COALESCE(e.evidence_markdown,'') <> '') AS has_evidence
+                    FROM "__ARP_SCHEMA__".schools s
+                    LEFT JOIN "__ARP_SCHEMA__".school_overviews o ON o.school_key = s.school_key
+                    LEFT JOIN (
+                      SELECT school_key, array_agg(program_name ORDER BY program_name) AS programs
+                      FROM "__ARP_SCHEMA__".school_trip_programs
+                      GROUP BY school_key
+                    ) p ON p.school_key = s.school_key
+                    LEFT JOIN "__ARP_SCHEMA__".school_evidence e ON e.school_key = s.school_key
+                    {where}
+                    ORDER BY s.health_score DESC, s.name ASC;
+                    """
+                ).strip()
+            )
+            for row in cur.fetchall() or []:
+                (
+                    school_key,
+                    name,
+                    homepage_url,
+                    primary_domain,
+                    last_crawled_at,
+                    tier,
+                    health_score,
+                    overview_75w,
+                    programs,
+                    has_evidence,
+                ) = row
+                schools.append(
+                    {
+                        "school_key": str(school_key),
+                        "name": str(name or ""),
+                        "homepage_url": str(homepage_url or ""),
+                        "primary_domain": str(primary_domain or ""),
+                        "last_crawled_at": last_crawled_at.isoformat() if last_crawled_at else None,
+                        "tier": str(tier or ""),
+                        "health_score": int(health_score or 0),
+                        "overview_75w": str(overview_75w or ""),
+                        "programs": list(programs or []),
+                        "has_evidence": bool(has_evidence),
+                    }
+                )
+        conn.commit()
+    return {"ok": True, "schools": schools}
+
+
+@app.get("/arp/schools/{school_key}", response_class=HTMLResponse)
+def arp_school_detail_ui(
+    school_key: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    key = _safe_school_key(school_key)
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT name, homepage_url, primary_domain, last_crawled_at, tier, health_score, emails, social_links
+                    FROM "__ARP_SCHEMA__".schools
+                    WHERE school_key=%s;
+                    """
+                ).strip(),
+                (key,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Unknown school")
+            name, homepage_url, primary_domain, last_crawled_at, tier, health_score, emails, social_links = row
+
+            cur.execute(
+                _arp_schema('SELECT program_name FROM "__ARP_SCHEMA__".school_trip_programs WHERE school_key=%s ORDER BY program_name ASC;'),
+                (key,),
+            )
+            programs = [str(r[0]) for r in (cur.fetchall() or []) if r and r[0]]
+
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at
+                    FROM "__ARP_SCHEMA__".school_overviews
+                    WHERE school_key=%s;
+                    """
+                ).strip(),
+                (key,),
+            )
+            o = cur.fetchone()
+            overview_75w = ""
+            narrative = ""
+            model = ""
+            run_id = ""
+            tokens_in = 0
+            tokens_out = 0
+            tokens_total = 0
+            cost_usd = 0.0
+            extracted_at = None
+            if o:
+                (
+                    overview_75w,
+                    narrative,
+                    model,
+                    run_id,
+                    tokens_in,
+                    tokens_out,
+                    tokens_total,
+                    cost_usd,
+                    extracted_at,
+                ) = o
+
+            cur.execute(
+                _arp_schema('SELECT evidence_markdown, evidence_generated_at FROM "__ARP_SCHEMA__".school_evidence WHERE school_key=%s;'),
+                (key,),
+            )
+            e = cur.fetchone()
+            evidence_md = ""
+            evidence_generated_at = None
+            if e:
+                evidence_md, evidence_generated_at = e
+        conn.commit()
+
+    prog_html = "<span class=\"muted\">—</span>"
+    if programs:
+        prog_html = "<ul style=\"margin: 8px 0 0 18px; padding: 0;\">" + "".join(
+            f"<li>{_escape_html(p)}</li>" for p in programs
+        ) + "</ul>"
+
+    emails_obj = emails if isinstance(emails, dict) else {}
+    emails_items = []
+    for k2, label in [
+        ("general_email", "General"),
+        ("admissions_email", "Admissions"),
+        ("communications_email", "Communications"),
+    ]:
+        v = (emails_obj.get(k2) or "").strip() if isinstance(emails_obj, dict) else ""
+        if v:
+            emails_items.append(f"<div><span class=\"pill\">{_escape_html(label)}</span> <span class=\"mono\">{_escape_html(v)}</span></div>")
+    emails_html = "".join(emails_items) if emails_items else "<span class=\"muted\">—</span>"
+
+    home_link = ""
+    if homepage_url:
+        home_link = f'<a class="btn" href="{_escape_html(str(homepage_url))}" target="_blank" rel="noopener">Homepage</a>'
+
+    evidence_html = ""
+    if evidence_md:
+        evidence_html = _render_markdown_safe(str(evidence_md or ""))
+    else:
+        evidence_html = '<p class="muted">No evidence markdown imported yet.</p>'
+
+    updated_parts = []
+    if last_crawled_at:
+        updated_parts.append(f"Last crawled: {last_crawled_at}")
+    if extracted_at:
+        updated_parts.append(f"LLM extracted: {extracted_at}")
+    if evidence_generated_at:
+        updated_parts.append(f"Evidence generated: {evidence_generated_at}")
+    updated_html = " · ".join(updated_parts) if updated_parts else ""
+
+    usage_html = ""
+    if int(tokens_total or 0) > 0 or float(cost_usd or 0) > 0:
+        usage_html = (
+            f"<div class=\"muted\">Model: <span class=\"mono\">{_escape_html(str(model or ''))}</span>"
+            f"{(' · Run: <span class=\"mono\">' + _escape_html(str(run_id or '')) + '</span>') if run_id else ''}"
+            f" · Tokens: <span class=\"mono\">{int(tokens_in or 0)}/{int(tokens_out or 0)}/{int(tokens_total or 0)}</span>"
+            f" · Cost: <span class=\"mono\">${float(cost_usd or 0):.4f}</span></div>"
+        )
+
+    key_html = f' · <span class="mono">{_escape_html(key)}</span>' if key else ""
+    overview_html = _escape_html(str(overview_75w or "")) if overview_75w else '<span class="muted">—</span>'
+    narrative_html = (
+        f'<div class="section"><h2>Narrative</h2><pre class="log">{_escape_html(str(narrative or ""))}</pre></div>'
+        if narrative
+        else ""
+    )
+
+    body_html = f"""
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <h1>{_escape_html(str(name or key))}</h1>
+          <div class="btnrow" style="margin-top:0;">
+            <a class="btn" href="/arp/schools">Back</a>
+            {home_link}
+          </div>
+        </div>
+        <p class="muted">
+          <span class="pill">{_escape_html(str(tier or ''))}</span>
+          <span class="mono">score {int(health_score or 0)}</span>
+          {(' · ' + _escape_html(str(primary_domain or ''))) if primary_domain else ''}
+          {key_html}
+        </p>
+        <p class="muted">{_escape_html(updated_html) if updated_html else ''}</p>
+      </div>
+
+      <div class="card">
+        <h2>Programs</h2>
+        {prog_html}
+      </div>
+
+      <div class="card">
+        <h2>Overview</h2>
+        <p>{overview_html}</p>
+        {usage_html}
+        {narrative_html}
+      </div>
+
+      <div class="card">
+        <h2>Emails</h2>
+        {emails_html}
+      </div>
+
+      <div class="card">
+        <h2>Evidence</h2>
+        {evidence_html}
       </div>
     """.strip()
-    return _ui_shell(title="Schools", active="arp", body_html=body_html, max_width_px=900, user=user)
+    return _ui_shell(title=f"School — {str(name or key)}", active="arp", body_html=body_html, max_width_px=1100, user=user)
+
+
+@app.post("/arp/schools/import")
+def arp_schools_import(
+    request: Request,
+    schools_csv: UploadFile = File(...),
+    artifacts_zip: UploadFile | None = File(default=None),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_write_access(request=request, x_api_key=x_api_key, role="editor")
+
+    schools_raw = schools_csv.file.read()
+    _, rows = _parse_csv_bytes(schools_raw)
+
+    zip_raw = b""
+    if artifacts_zip is not None:
+        zip_raw = artifacts_zip.file.read()
+
+    now = datetime.now(timezone.utc)
+    schools_count = 0
+    evidence_count = 0
+    json_count = 0
+    errors: list[str] = []
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+
+            for r in rows:
+                nr = _norm_row(r)
+                school_key = _row_get(nr, "school_key", "schoolkey", "key")
+                name = _row_get(nr, "School", "school", "name")
+                homepage_url = _row_get(nr, "URL", "url", "homepage_url", "homepage")
+                primary_domain = _row_get(nr, "primary_domain", "primarydomain", "domain")
+                last_crawled_at = _parse_dt_maybe(_row_get(nr, "last_crawled_at", "lastcrawledat", "last_crawled"))
+                tier = _row_get(nr, "trip_crawl_tier", "tier")
+                hs_raw = _row_get(nr, "trip_crawl_health_score", "health_score", "score")
+                try:
+                    health_score = int(float(hs_raw)) if hs_raw else 0
+                except Exception:
+                    health_score = 0
+
+                emails = {
+                    "general_email": _row_get(nr, "general_email"),
+                    "admissions_email": _row_get(nr, "admissions_email"),
+                    "communications_email": _row_get(nr, "communications_email"),
+                }
+                emails = {k: v for k, v in emails.items() if v}
+
+                if not school_key:
+                    if homepage_url:
+                        school_key = _stable_slug(name or homepage_url, max_len=90)
+                    else:
+                        continue
+                school_key = _safe_school_key(school_key)
+
+                cur.execute(
+                    _arp_schema(
+                        """
+                        INSERT INTO "__ARP_SCHEMA__".schools
+                          (school_key, name, homepage_url, primary_domain, last_crawled_at, tier, health_score, emails, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
+                        ON CONFLICT (school_key) DO UPDATE SET
+                          name=EXCLUDED.name,
+                          homepage_url=EXCLUDED.homepage_url,
+                          primary_domain=EXCLUDED.primary_domain,
+                          last_crawled_at=EXCLUDED.last_crawled_at,
+                          tier=EXCLUDED.tier,
+                          health_score=EXCLUDED.health_score,
+                          emails=EXCLUDED.emails,
+                          updated_at=now();
+                        """
+                    ).strip(),
+                    (
+                        school_key,
+                        name,
+                        homepage_url,
+                        primary_domain,
+                        last_crawled_at,
+                        tier,
+                        int(health_score),
+                        json.dumps(emails),
+                    ),
+                )
+                schools_count += 1
+
+            if zip_raw:
+                try:
+                    zf = zipfile.ZipFile(BytesIO(zip_raw))
+                except Exception as e:
+                    raise HTTPException(status_code=400, detail=f"Invalid zip: {e}")
+
+                for info in zf.infolist():
+                    fname = str(info.filename or "")
+                    base = Path(fname).name
+                    if not base or base.startswith("."):
+                        continue
+                    key = base.rsplit(".", 1)[0]
+                    if not key:
+                        continue
+                    try:
+                        key = _safe_school_key(key)
+                    except Exception:
+                        continue
+
+                    if base.lower().endswith(".md"):
+                        try:
+                            md_text = zf.read(info).decode("utf-8", errors="replace")
+                        except Exception as e:
+                            errors.append(f"{base}: {e}")
+                            continue
+
+                        dt = None
+                        try:
+                            dt = datetime(*info.date_time, tzinfo=timezone.utc)
+                        except Exception:
+                            dt = now
+
+                        cur.execute(
+                            _arp_schema(
+                                """
+                                INSERT INTO "__ARP_SCHEMA__".school_evidence (school_key, evidence_markdown, evidence_generated_at)
+                                VALUES (%s, %s, %s)
+                                ON CONFLICT (school_key) DO UPDATE SET
+                                  evidence_markdown=EXCLUDED.evidence_markdown,
+                                  evidence_generated_at=EXCLUDED.evidence_generated_at;
+                                """
+                            ).strip(),
+                            (key, md_text, dt),
+                        )
+                        evidence_count += 1
+                        continue
+
+                    if base.lower().endswith(".json"):
+                        try:
+                            obj = json.loads(zf.read(info).decode("utf-8", errors="replace"))
+                        except Exception as e:
+                            errors.append(f"{base}: {e}")
+                            continue
+                        if not isinstance(obj, dict):
+                            continue
+
+                        narrative = str(
+                            obj.get("trip_overview_narrative")
+                            or obj.get("narrative")
+                            or obj.get("overview_narrative")
+                            or ""
+                        ).strip()
+                        overview_75w = str(obj.get("overview_75w") or "").strip()
+                        if not overview_75w and narrative:
+                            overview_75w = _truncate_words(narrative, 75)
+
+                        model = str(obj.get("model") or "").strip()
+                        run_id = str(obj.get("run_id") or obj.get("runId") or "").strip()
+
+                        def _to_int(v) -> int:
+                            try:
+                                return int(v or 0)
+                            except Exception:
+                                try:
+                                    return int(float(v or 0))
+                                except Exception:
+                                    return 0
+
+                        def _to_float(v) -> float:
+                            try:
+                                return float(v or 0)
+                            except Exception:
+                                return 0.0
+
+                        tokens_in = _to_int(obj.get("tokens_in") or obj.get("tokensIn") or obj.get("prompt_tokens"))
+                        tokens_out = _to_int(obj.get("tokens_out") or obj.get("tokensOut") or obj.get("completion_tokens"))
+                        tokens_total = _to_int(obj.get("tokens_total") or obj.get("tokensTotal") or obj.get("total_tokens"))
+                        cost_usd = _to_float(obj.get("cost_usd") or obj.get("costUsd"))
+
+                        cur.execute(
+                            _arp_schema(
+                                """
+                                INSERT INTO "__ARP_SCHEMA__".school_overviews
+                                  (school_key, overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                                ON CONFLICT (school_key) DO UPDATE SET
+                                  overview_75w=EXCLUDED.overview_75w,
+                                  narrative=EXCLUDED.narrative,
+                                  model=EXCLUDED.model,
+                                  run_id=EXCLUDED.run_id,
+                                  tokens_in=EXCLUDED.tokens_in,
+                                  tokens_out=EXCLUDED.tokens_out,
+                                  tokens_total=EXCLUDED.tokens_total,
+                                  cost_usd=EXCLUDED.cost_usd,
+                                  extracted_at=now();
+                                """
+                            ).strip(),
+                            (key, overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd),
+                        )
+
+                        progs_raw = obj.get("programs") or []
+                        program_names: list[str] = []
+                        if isinstance(progs_raw, list):
+                            for p in progs_raw:
+                                if isinstance(p, str) and p.strip():
+                                    program_names.append(p.strip())
+                                elif isinstance(p, dict):
+                                    nm = str(p.get("program_name") or p.get("name") or "").strip()
+                                    if nm:
+                                        program_names.append(nm)
+                        program_names = sorted({x for x in program_names if x})
+
+                        cur.execute(
+                            _arp_schema('DELETE FROM "__ARP_SCHEMA__".school_trip_programs WHERE school_key=%s;'),
+                            (key,),
+                        )
+                        for nm in program_names:
+                            cur.execute(
+                                _arp_schema(
+                                    """
+                                    INSERT INTO "__ARP_SCHEMA__".school_trip_programs (school_key, program_name, source, extracted_at)
+                                    VALUES (%s, %s, 'llm', now())
+                                    ON CONFLICT (school_key, program_name) DO NOTHING;
+                                    """
+                                ).strip(),
+                                (key, nm),
+                            )
+                        json_count += 1
+
+            conn.commit()
+
+    return {"ok": True, "schools": schools_count, "evidence": evidence_count, "json": json_count, "errors": errors[:50]}
 
 
 def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:

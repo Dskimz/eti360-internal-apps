@@ -34,6 +34,10 @@
   --eti-danger: #b03a2e;
   --eti-warn: #8a6d1d;
 
+  /* Icons */
+  --eti-icon-primary: #1F4E79;
+  --eti-icon-neutral: #2B2B2B;
+
   /* Radii */
   --eti-radius-lg: 16px;
   --eti-radius-md: 12px;

@@ -690,6 +690,18 @@ def _arp_generate_activity(*, activity_id: int, top_k: int, job_id: str) -> dict
             if not row:
                 raise RuntimeError("Unknown activity")
             activity_slug, activity_name = row
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT scope_notes
+                    FROM "__ARP_SCHEMA__".activities
+                    WHERE activity_id=%s;
+                    """
+                ).strip(),
+                (activity_id,),
+            )
+            row2 = cur.fetchone()
+            scope_notes = str(row2[0] or "") if row2 else ""
 
             cur.execute(
                 _arp_schema(
@@ -852,7 +864,125 @@ def _arp_generate_activity(*, activity_id: int, top_k: int, job_id: str) -> dict
             )
         conn.commit()
 
+    # Icon classification + deterministic SVG render (non-fatal).
+    try:
+        _arp_upsert_activity_icon(
+            activity_id=int(activity_id),
+            activity_slug=str(activity_slug),
+            activity_name=str(activity_name),
+            scope_notes=str(scope_notes or ""),
+            report_md=str(report_md or ""),
+            job_id=job_id,
+        )
+    except Exception as e:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _job_append_log(cur, job_id=job_id, line=f"Icon skipped: {e}")
+            conn.commit()
+
     return {"activity_id": int(activity_id), "activity_slug": str(activity_slug), "report_url": f"/arp/report/{quote(str(activity_slug))}"}
+
+
+def _arp_upsert_activity_icon(
+    *,
+    activity_id: int,
+    activity_slug: str,
+    activity_name: str,
+    scope_notes: str,
+    report_md: str,
+    job_id: str,
+) -> None:
+    overview = extract_activity_overview(report_md) or (scope_notes or "")
+    ih = icon_input_hash(activity_name=activity_name, overview=overview)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT activity_id, activity_slug, input_hash, renderer_version, spec_json, svg
+                    FROM "__ARP_SCHEMA__".activity_icons
+                    WHERE activity_id=%s;
+                    """
+                ).strip(),
+                (int(activity_id),),
+            )
+            row = cur.fetchone()
+            if row:
+                rec = icon_record_from_row(row)
+                if rec.svg and rec.input_hash == ih and rec.renderer_version == ICON_RENDERER_VERSION:
+                    _job_append_log(cur, job_id=job_id, line="Icon: cached")
+                    conn.commit()
+                    return
+        conn.commit()
+
+    model_icon = os.environ.get("OPENAI_MODEL_ARP_ICON", "").strip() or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini"
+    user_prompt = (
+        "Activity name:\n"
+        f"{activity_name}\n\n"
+        "Activity overview:\n"
+        f"{overview}\n"
+    )
+
+    _job_append_log_safe(job_id=job_id, line=f"Icon: classify (model={model_icon})")
+    run_id = _create_run_id()
+    res = chat_json(model=model_icon, system=ICON_CLASSIFY_SYSTEM, user=user_prompt, temperature=0.0)
+
+    spec_raw = res.payload or {}
+    spec, err = validate_icon_spec(spec_raw)
+    if err:
+        spec = fallback_icon_spec(activity_name=activity_name, overview=overview)
+
+    svg = render_icon_svg(spec, stroke_mode="primary")
+
+    _record_llm_usage(
+        run_id=run_id,
+        workflow="arp",
+        kind="icon_classify",
+        prompt_key="arp_icon_v1",
+        app_key="arp",
+        prompt_workflow="arp",
+        provider="openai",
+        model=res.model,
+        prompt_tokens=res.prompt_tokens,
+        completion_tokens=res.completion_tokens,
+        total_tokens=res.total_tokens,
+        locations_count=0,
+        ok_count=0,
+        fail_count=0,
+    )
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema(
+                    """
+                    INSERT INTO "__ARP_SCHEMA__".activity_icons
+                      (activity_id, activity_slug, input_hash, renderer_version, spec_json, svg, updated_at)
+                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, now())
+                    ON CONFLICT (activity_id) DO UPDATE SET
+                      activity_slug=EXCLUDED.activity_slug,
+                      input_hash=EXCLUDED.input_hash,
+                      renderer_version=EXCLUDED.renderer_version,
+                      spec_json=EXCLUDED.spec_json,
+                      svg=EXCLUDED.svg,
+                      updated_at=now();
+                    """
+                ).strip(),
+                (int(activity_id), str(activity_slug), str(ih), str(ICON_RENDERER_VERSION), json.dumps(spec), str(svg)),
+            )
+        conn.commit()
+
+    _job_append_log_safe(job_id=job_id, line="Icon: saved")
+
+
+def _job_append_log_safe(*, job_id: str, line: str) -> None:
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _job_append_log(cur, job_id=job_id, line=line)
+        conn.commit()
 
 
 def _run_job(*, job_id: str, kind: str, payload: dict[str, Any]) -> None:
@@ -4892,12 +5022,28 @@ def arp_report_ui(
             if not row:
                 raise HTTPException(status_code=404, detail="Report not found")
             activity_name, report_md, updated_at = row
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT svg
+                    FROM "__ARP_SCHEMA__".activity_icons
+                    WHERE activity_slug=%s;
+                    """
+                ).strip(),
+                (slug,),
+            )
+            row2 = cur.fetchone()
+            icon_svg = str(row2[0] or "") if row2 else ""
 
     html = _render_markdown_safe(str(report_md or ""))
+    icon_html = icon_svg if icon_svg.strip().startswith("<svg") else ""
     body_html = f"""
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
-          <h1>ARP Report</h1>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div style="width:28px; height:28px; display:flex; align-items:center; justify-content:center;">{icon_html}</div>
+            <h1 style="margin:0;">ARP Report</h1>
+          </div>
           <div class="btnrow" style="margin-top:0;">
             <a class="btn" href="/arp/ui">Activities</a>
             <a class="btn" href="/arp/report/{quote(slug)}/edit">Edit</a>

@@ -8,11 +8,10 @@ import tempfile
 import threading
 import time
 import uuid
-import zipfile
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
 from hashlib import pbkdf2_hmac, sha256
-from io import BytesIO, StringIO
+from io import StringIO
 from pathlib import Path
 from secrets import token_bytes
 from typing import Any
@@ -77,6 +76,7 @@ def _startup_reconcile() -> None:
                 _ensure_prompts_tables(cur)
                 _ensure_documents_tables(cur)
             conn.commit()
+        _bootstrap_schools_from_static()
         _reconcile_required_prompts(edited_by={"id": "startup", "username": "startup", "role": "admin"}, change_note="Startup reconcile")
         _maybe_start_jobs_worker()
     except Exception as e:
@@ -513,7 +513,7 @@ def _arp_fetch_and_store_source(
     return ctype, s3cfg.bucket, key, int(len(raw))
 
 
-def _arp_prepare_activity(*, activity_id: int, job_id: str) -> dict[str, Any]:
+def _arp_prepare_activity(*, activity_id: int, job_id: str, only_missing: bool = True) -> dict[str, Any]:
     s3cfg = get_s3_config()
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -527,39 +527,75 @@ def _arp_prepare_activity(*, activity_id: int, job_id: str) -> dict[str, Any]:
             cur.execute(
                 _arp_schema(
                     """
-                    SELECT source_id, url, jurisdiction, authority_class, publication_date, source_type
-                    FROM "__ARP_SCHEMA__".sources
-                    WHERE activity_id=%s
-                    ORDER BY source_id ASC;
+                    SELECT s.source_id, s.url, s.jurisdiction, s.authority_class, s.publication_date, s.source_type,
+                           d.status, d.content_type, d.s3_bucket, d.s3_key
+                    FROM "__ARP_SCHEMA__".sources s
+                    LEFT JOIN "__ARP_SCHEMA__".documents d ON d.source_id = s.source_id
+                    WHERE s.activity_id=%s
+                    ORDER BY s.source_id ASC;
                     """
                 ).strip(),
                 (activity_id,),
             )
             sources = list(cur.fetchall())
 
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT source_id, COUNT(*) AS n
+                    FROM "__ARP_SCHEMA__".chunks
+                    WHERE activity_id=%s
+                    GROUP BY source_id;
+                    """
+                ).strip(),
+                (activity_id,),
+            )
+            chunks_by_source = {str(sid): int(n or 0) for sid, n in (cur.fetchall() or [])}
+
         conn.commit()
 
     prepared = 0
     chunks_added = 0
+    skipped = 0
     errors: list[str] = []
 
-    for idx, (source_id, url, jurisdiction, authority_class, publication_date, source_type) in enumerate(sources, start=1):
+    for idx, (source_id, url, jurisdiction, authority_class, publication_date, source_type, d_status, d_ctype, d_bucket, d_key) in enumerate(
+        sources, start=1
+    ):
         with _connect() as conn:
             with conn.cursor() as cur:
                 _ensure_arp_tables(cur)
                 _job_append_log(cur, job_id=job_id, line=f"[{idx}/{len(sources)}] {source_id}")
                 try:
-                    ctype, bucket, key, _ = _arp_fetch_and_store_source(
-                        cur, source_id=str(source_id), url=str(url), job_id=job_id, s3_prefix=s3cfg.prefix
-                    )
-                    raw = get_bytes(region=s3cfg.region, bucket=bucket, key=key, max_bytes=15 * 1024 * 1024)
-                    if ctype == "pdf":
-                        doc = parse_pdf_bytes(str(source_id), raw)
+                    sid = str(source_id)
+                    existing_chunks = int(chunks_by_source.get(sid, 0))
+                    if only_missing and str(d_status or "") == "fetched" and existing_chunks > 0:
+                        skipped += 1
+                        _job_append_log(cur, job_id=job_id, line=f"skip (already fetched; chunks={existing_chunks})")
+                        conn.commit()
+                        continue
+
+                    # Prefer re-parsing from existing S3 object if already fetched, to avoid repeated external downloads.
+                    ctype = str(d_ctype or "")
+                    bucket = str(d_bucket or "")
+                    key = str(d_key or "")
+                    if str(d_status or "") == "fetched" and bucket and key:
+                        raw = get_bytes(region=s3cfg.region, bucket=bucket, key=key, max_bytes=15 * 1024 * 1024)
+                        if not ctype:
+                            ctype = guess_content_type(url=str(url), header_content_type="")
                     else:
-                        doc = parse_html_bytes(str(source_id), raw)
+                        ctype, bucket, key, _ = _arp_fetch_and_store_source(
+                            cur, source_id=sid, url=str(url), job_id=job_id, s3_prefix=s3cfg.prefix
+                        )
+                        raw = get_bytes(region=s3cfg.region, bucket=bucket, key=key, max_bytes=15 * 1024 * 1024)
+
+                    if ctype == "pdf":
+                        doc = parse_pdf_bytes(sid, raw)
+                    else:
+                        doc = parse_html_bytes(sid, raw)
 
                     chunks = chunks_from_document(
-                        source_id=str(source_id),
+                        source_id=sid,
                         activity_id=int(activity_id),
                         jurisdiction=str(jurisdiction or ""),
                         authority_class=str(authority_class or ""),
@@ -606,6 +642,7 @@ def _arp_prepare_activity(*, activity_id: int, job_id: str) -> dict[str, Any]:
         "activity_name": str(activity_name),
         "sources_total": len(sources),
         "sources_prepared": prepared,
+        "sources_skipped": skipped,
         "chunks_added": chunks_added,
         "errors": errors,
     }
@@ -3251,39 +3288,7 @@ def arp_schools_ui(
             <a class="btn" href="/arp/ui">Back to ARP</a>
           </div>
         </div>
-        <p class="muted">Import pipeline outputs (Schools.csv + artifacts zip), then browse schools with evidence, extracted program names, and overview narratives.</p>
-      </div>
-
-      <div class="card">
-        <h2>Import</h2>
-        <div class="muted">API key is stored in your browser localStorage (this page only).</div>
-        <div class="section grid-2">
-          <div>
-            <label>X-API-Key (for import)</label>
-            <input id="apiKey" type="password" placeholder="Paste ETI360_API_KEY here" />
-          </div>
-          <div class="muted" style="display:flex; align-items:end;">
-            Required unless <code>ALLOW_UNAUTH_WRITE=true</code>.
-          </div>
-        </div>
-        <form id="importForm" enctype="multipart/form-data">
-          <div class="grid-2">
-            <div>
-              <label>Schools.csv</label>
-              <input type="file" name="schools_csv" accept=".csv" required />
-              <div class="muted">Expected columns include: School, URL, school_key, primary_domain, last_crawled_at, trip_crawl_tier, trip_crawl_health_score.</div>
-            </div>
-            <div>
-              <label>Artifacts zip (optional)</label>
-              <input type="file" name="artifacts_zip" accept=".zip" />
-              <div class="muted">May include per-school <code>&lt;school_key&gt;.md</code> and <code>&lt;school_key&gt;.json</code>.</div>
-            </div>
-          </div>
-          <div class="btnrow">
-            <button class="btn primary" id="btnImport" type="button">Import / Update</button>
-            <span class="muted" id="importStatus">Ready.</span>
-          </div>
-        </form>
+        <p class="muted">Browse schools with trip/travel evidence (official websites only), extracted program names, and overview narratives.</p>
       </div>
 
       <div class="card">
@@ -3323,10 +3328,6 @@ def arp_schools_ui(
       const metaEl = document.getElementById('meta');
       const qEl = document.getElementById('q');
       const includeAllEl = document.getElementById('includeAll');
-
-      const apiKeyEl = document.getElementById('apiKey');
-      const importStatusEl = document.getElementById('importStatus');
-      const btnImportEl = document.getElementById('btnImport');
 
       let items = [];
 
@@ -3384,38 +3385,10 @@ def arp_schools_ui(
         items = Array.isArray(body.schools) ? body.schools : [];
         render();
       }
-
-      async function doImport() {
-        const form = document.getElementById('importForm');
-        const fd = new FormData(form);
-        const zipEl = form.querySelector('input[name="artifacts_zip"]');
-        if (zipEl && zipEl.files && zipEl.files.length === 0) fd.delete('artifacts_zip');
-        const apiKey = String(apiKeyEl.value || localStorage.getItem('eti_x_api_key') || '').trim();
-        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
-        const headers = {};
-        if (apiKey) headers['X-API-Key'] = apiKey;
-        importStatusEl.textContent = 'Importing…';
-        btnImportEl.disabled = true;
-        try {
-          const res = await fetch('/arp/schools/import', { method:'POST', headers, body: fd });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
-          importStatusEl.textContent = `Imported: ${Number(body.schools||0)} schools, ${Number(body.evidence||0)} evidence, ${Number(body.json||0)} JSON`;
-          await load();
-        } finally {
-          btnImportEl.disabled = false;
-        }
-      }
-
-      apiKeyEl.value = localStorage.getItem('eti_x_api_key') || '';
       qEl.value = localStorage.getItem('eti_schools_q') || '';
       qEl.addEventListener('input', () => { localStorage.setItem('eti_schools_q', qEl.value); render(); });
       includeAllEl.checked = (localStorage.getItem('eti_schools_includeAll') || '') === '1';
       includeAllEl.addEventListener('change', () => { localStorage.setItem('eti_schools_includeAll', includeAllEl.checked ? '1' : '0'); load(); });
-      btnImportEl.addEventListener('click', async () => {
-        try { await doImport(); }
-        catch (e) { importStatusEl.textContent = 'Error: ' + String(e?.message || e); }
-      });
 
       load();
     </script>
@@ -3433,6 +3406,245 @@ def _escape_html(s: str) -> str:
         .replace('"', "&quot;")
         .replace("'", "&#39;")
     )
+
+
+def _schools_static_dir() -> Path:
+    return _STATIC_DIR / "schools_research"
+
+
+def _bootstrap_schools_from_static() -> None:
+    """
+    One-time bootstrap import into Postgres from bundled pipeline outputs.
+
+    Intended behavior:
+    - If `__ARP_SCHEMA__.schools` is empty and bundled files exist, import them.
+    - Otherwise, no-op.
+    """
+    base = _schools_static_dir()
+    csv_path = base / "Schools.csv"
+    if not csv_path.exists():
+        return
+
+    evidence_dir = base / "evidence_markdown"
+    extracted_dir = base / "extracted"
+
+    evidence_by_key: dict[str, str] = {}
+    if evidence_dir.exists():
+        for p in evidence_dir.glob("*.md"):
+            key = p.stem.strip()
+            if not key:
+                continue
+            evidence_by_key[key] = p.read_text(encoding="utf-8", errors="replace")
+
+    extracted_by_key: dict[str, dict[str, Any]] = {}
+    if extracted_dir.exists():
+        for p in extracted_dir.glob("*.json"):
+            key = p.stem.strip()
+            if not key:
+                continue
+            try:
+                obj = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+            except Exception:
+                continue
+            if isinstance(obj, dict):
+                extracted_by_key[key] = obj
+
+    schools_raw = csv_path.read_bytes()
+    _, rows = _parse_csv_bytes(schools_raw)
+    if not rows:
+        return
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(_arp_schema('SELECT COUNT(*) FROM "__ARP_SCHEMA__".schools;'))
+            (existing,) = cur.fetchone()
+            if int(existing or 0) > 0:
+                conn.commit()
+                return
+
+            schools_count = 0
+            evidence_count = 0
+            json_count = 0
+
+            for r in rows:
+                nr = _norm_row(r)
+                school_key = _row_get(nr, "school_key", "schoolkey", "key")
+                name = _row_get(nr, "School", "school", "name")
+                homepage_url = _row_get(nr, "URL", "url", "homepage_url", "homepage")
+                primary_domain = _row_get(nr, "primary_domain", "primarydomain", "domain")
+                last_crawled_at = _parse_dt_maybe(_row_get(nr, "last_crawled_at", "lastcrawledat", "last_crawled"))
+                tier = _row_get(nr, "trip_crawl_tier", "tier")
+                hs_raw = _row_get(nr, "trip_crawl_health_score", "health_score", "score")
+                extracted_at = _parse_dt_maybe(_row_get(nr, "extracted_at", "extractedat"))
+                logo_url = _row_get(nr, "logo_url", "logourl")
+
+                try:
+                    health_score = int(float(hs_raw)) if hs_raw else 0
+                except Exception:
+                    health_score = 0
+
+                emails = {
+                    "general_email": _row_get(nr, "general_email"),
+                    "admissions_email": _row_get(nr, "admissions_email"),
+                    "communications_email": _row_get(nr, "communications_email"),
+                }
+                emails = {k: v for k, v in emails.items() if v}
+
+                if not school_key:
+                    if homepage_url or name:
+                        school_key = _stable_slug(name or homepage_url, max_len=90)
+                    else:
+                        continue
+                try:
+                    school_key = _safe_school_key(school_key)
+                except Exception:
+                    continue
+
+                cur.execute(
+                    _arp_schema(
+                        """
+                        INSERT INTO "__ARP_SCHEMA__".schools
+                          (school_key, name, homepage_url, primary_domain, last_crawled_at, tier, health_score, logo_url, emails, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
+                        ON CONFLICT (school_key) DO UPDATE SET
+                          name=EXCLUDED.name,
+                          homepage_url=EXCLUDED.homepage_url,
+                          primary_domain=EXCLUDED.primary_domain,
+                          last_crawled_at=EXCLUDED.last_crawled_at,
+                          tier=EXCLUDED.tier,
+                          health_score=EXCLUDED.health_score,
+                          logo_url=EXCLUDED.logo_url,
+                          emails=EXCLUDED.emails,
+                          updated_at=now();
+                        """
+                    ).strip(),
+                    (
+                        school_key,
+                        name,
+                        homepage_url,
+                        primary_domain,
+                        last_crawled_at,
+                        tier,
+                        int(health_score),
+                        logo_url,
+                        json.dumps(emails),
+                    ),
+                )
+                schools_count += 1
+
+                md_text = evidence_by_key.get(school_key)
+                if md_text:
+                    cur.execute(
+                        _arp_schema(
+                            """
+                            INSERT INTO "__ARP_SCHEMA__".school_evidence (school_key, evidence_markdown, evidence_generated_at)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (school_key) DO UPDATE SET
+                              evidence_markdown=EXCLUDED.evidence_markdown,
+                              evidence_generated_at=EXCLUDED.evidence_generated_at;
+                            """
+                        ).strip(),
+                        (school_key, md_text, last_crawled_at),
+                    )
+                    evidence_count += 1
+
+                obj = extracted_by_key.get(school_key) or {}
+                if isinstance(obj, dict) and obj:
+                    narrative = str(
+                        obj.get("trip_overview_narrative")
+                        or obj.get("narrative")
+                        or obj.get("overview_narrative")
+                        or ""
+                    ).strip()
+                    overview_75w = str(obj.get("overview_75w") or "").strip()
+                    if not overview_75w and narrative:
+                        overview_75w = _truncate_words(narrative, 75)
+
+                    model = str(obj.get("model") or "").strip()
+                    run_id = str(obj.get("run_id") or obj.get("runId") or "").strip()
+
+                    def _to_int(v) -> int:
+                        try:
+                            return int(v or 0)
+                        except Exception:
+                            try:
+                                return int(float(v or 0))
+                            except Exception:
+                                return 0
+
+                    def _to_float(v) -> float:
+                        try:
+                            return float(v or 0)
+                        except Exception:
+                            return 0.0
+
+                    tokens_in = _to_int(obj.get("tokens_in") or obj.get("tokensIn") or obj.get("prompt_tokens"))
+                    tokens_out = _to_int(obj.get("tokens_out") or obj.get("tokensOut") or obj.get("completion_tokens"))
+                    tokens_total = _to_int(obj.get("tokens_total") or obj.get("tokensTotal") or obj.get("total_tokens"))
+                    cost_usd = _to_float(obj.get("cost_usd") or obj.get("costUsd"))
+
+                    cur.execute(
+                        _arp_schema(
+                            """
+                            INSERT INTO "__ARP_SCHEMA__".school_overviews
+                              (school_key, overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (school_key) DO UPDATE SET
+                              overview_75w=EXCLUDED.overview_75w,
+                              narrative=EXCLUDED.narrative,
+                              model=EXCLUDED.model,
+                              run_id=EXCLUDED.run_id,
+                              tokens_in=EXCLUDED.tokens_in,
+                              tokens_out=EXCLUDED.tokens_out,
+                              tokens_total=EXCLUDED.tokens_total,
+                              cost_usd=EXCLUDED.cost_usd,
+                              extracted_at=EXCLUDED.extracted_at;
+                            """
+                        ).strip(),
+                        (
+                            school_key,
+                            overview_75w,
+                            narrative,
+                            model,
+                            run_id,
+                            tokens_in,
+                            tokens_out,
+                            tokens_total,
+                            cost_usd,
+                            extracted_at,
+                        ),
+                    )
+
+                    progs_raw = obj.get("programs") or []
+                    program_names: list[str] = []
+                    if isinstance(progs_raw, list):
+                        for p in progs_raw:
+                            if isinstance(p, str) and p.strip():
+                                program_names.append(p.strip())
+                            elif isinstance(p, dict):
+                                nm = str(p.get("program_name") or p.get("name") or "").strip()
+                                if nm:
+                                    program_names.append(nm)
+                    program_names = sorted({x for x in program_names if x})
+
+                    if program_names:
+                        for nm in program_names:
+                            cur.execute(
+                                _arp_schema(
+                                    """
+                                    INSERT INTO "__ARP_SCHEMA__".school_trip_programs (school_key, program_name, source, extracted_at)
+                                    VALUES (%s, %s, 'llm', %s)
+                                    ON CONFLICT (school_key, program_name) DO NOTHING;
+                                    """
+                                ).strip(),
+                                (school_key, nm, extracted_at),
+                            )
+
+                    json_count += 1
+
+            conn.commit()
+    print(f"[schools] bootstrapped: schools={schools_count} evidence={evidence_count} json={json_count}")
 
 
 def _safe_school_key(school_key: str) -> str:
@@ -3712,234 +3924,6 @@ def arp_school_detail_ui(
       </div>
     """.strip()
     return _ui_shell(title=f"School — {str(name or key)}", active="arp", body_html=body_html, max_width_px=1100, user=user)
-
-
-@app.post("/arp/schools/import")
-def arp_schools_import(
-    request: Request,
-    schools_csv: UploadFile = File(...),
-    artifacts_zip: UploadFile | None = File(default=None),
-    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> dict[str, Any]:
-    _require_write_access(request=request, x_api_key=x_api_key, role="editor")
-
-    schools_raw = schools_csv.file.read()
-    _, rows = _parse_csv_bytes(schools_raw)
-
-    zip_raw = b""
-    if artifacts_zip is not None:
-        zip_raw = artifacts_zip.file.read()
-
-    now = datetime.now(timezone.utc)
-    schools_count = 0
-    evidence_count = 0
-    json_count = 0
-    errors: list[str] = []
-
-    with _connect() as conn:
-        with conn.cursor() as cur:
-            _ensure_arp_tables(cur)
-
-            for r in rows:
-                nr = _norm_row(r)
-                school_key = _row_get(nr, "school_key", "schoolkey", "key")
-                name = _row_get(nr, "School", "school", "name")
-                homepage_url = _row_get(nr, "URL", "url", "homepage_url", "homepage")
-                primary_domain = _row_get(nr, "primary_domain", "primarydomain", "domain")
-                last_crawled_at = _parse_dt_maybe(_row_get(nr, "last_crawled_at", "lastcrawledat", "last_crawled"))
-                tier = _row_get(nr, "trip_crawl_tier", "tier")
-                hs_raw = _row_get(nr, "trip_crawl_health_score", "health_score", "score")
-                try:
-                    health_score = int(float(hs_raw)) if hs_raw else 0
-                except Exception:
-                    health_score = 0
-
-                emails = {
-                    "general_email": _row_get(nr, "general_email"),
-                    "admissions_email": _row_get(nr, "admissions_email"),
-                    "communications_email": _row_get(nr, "communications_email"),
-                }
-                emails = {k: v for k, v in emails.items() if v}
-
-                if not school_key:
-                    if homepage_url:
-                        school_key = _stable_slug(name or homepage_url, max_len=90)
-                    else:
-                        continue
-                school_key = _safe_school_key(school_key)
-
-                cur.execute(
-                    _arp_schema(
-                        """
-                        INSERT INTO "__ARP_SCHEMA__".schools
-                          (school_key, name, homepage_url, primary_domain, last_crawled_at, tier, health_score, emails, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
-                        ON CONFLICT (school_key) DO UPDATE SET
-                          name=EXCLUDED.name,
-                          homepage_url=EXCLUDED.homepage_url,
-                          primary_domain=EXCLUDED.primary_domain,
-                          last_crawled_at=EXCLUDED.last_crawled_at,
-                          tier=EXCLUDED.tier,
-                          health_score=EXCLUDED.health_score,
-                          emails=EXCLUDED.emails,
-                          updated_at=now();
-                        """
-                    ).strip(),
-                    (
-                        school_key,
-                        name,
-                        homepage_url,
-                        primary_domain,
-                        last_crawled_at,
-                        tier,
-                        int(health_score),
-                        json.dumps(emails),
-                    ),
-                )
-                schools_count += 1
-
-            if zip_raw:
-                try:
-                    zf = zipfile.ZipFile(BytesIO(zip_raw))
-                except Exception as e:
-                    raise HTTPException(status_code=400, detail=f"Invalid zip: {e}")
-
-                for info in zf.infolist():
-                    fname = str(info.filename or "")
-                    base = Path(fname).name
-                    if not base or base.startswith("."):
-                        continue
-                    key = base.rsplit(".", 1)[0]
-                    if not key:
-                        continue
-                    try:
-                        key = _safe_school_key(key)
-                    except Exception:
-                        continue
-
-                    if base.lower().endswith(".md"):
-                        try:
-                            md_text = zf.read(info).decode("utf-8", errors="replace")
-                        except Exception as e:
-                            errors.append(f"{base}: {e}")
-                            continue
-
-                        dt = None
-                        try:
-                            dt = datetime(*info.date_time, tzinfo=timezone.utc)
-                        except Exception:
-                            dt = now
-
-                        cur.execute(
-                            _arp_schema(
-                                """
-                                INSERT INTO "__ARP_SCHEMA__".school_evidence (school_key, evidence_markdown, evidence_generated_at)
-                                VALUES (%s, %s, %s)
-                                ON CONFLICT (school_key) DO UPDATE SET
-                                  evidence_markdown=EXCLUDED.evidence_markdown,
-                                  evidence_generated_at=EXCLUDED.evidence_generated_at;
-                                """
-                            ).strip(),
-                            (key, md_text, dt),
-                        )
-                        evidence_count += 1
-                        continue
-
-                    if base.lower().endswith(".json"):
-                        try:
-                            obj = json.loads(zf.read(info).decode("utf-8", errors="replace"))
-                        except Exception as e:
-                            errors.append(f"{base}: {e}")
-                            continue
-                        if not isinstance(obj, dict):
-                            continue
-
-                        narrative = str(
-                            obj.get("trip_overview_narrative")
-                            or obj.get("narrative")
-                            or obj.get("overview_narrative")
-                            or ""
-                        ).strip()
-                        overview_75w = str(obj.get("overview_75w") or "").strip()
-                        if not overview_75w and narrative:
-                            overview_75w = _truncate_words(narrative, 75)
-
-                        model = str(obj.get("model") or "").strip()
-                        run_id = str(obj.get("run_id") or obj.get("runId") or "").strip()
-
-                        def _to_int(v) -> int:
-                            try:
-                                return int(v or 0)
-                            except Exception:
-                                try:
-                                    return int(float(v or 0))
-                                except Exception:
-                                    return 0
-
-                        def _to_float(v) -> float:
-                            try:
-                                return float(v or 0)
-                            except Exception:
-                                return 0.0
-
-                        tokens_in = _to_int(obj.get("tokens_in") or obj.get("tokensIn") or obj.get("prompt_tokens"))
-                        tokens_out = _to_int(obj.get("tokens_out") or obj.get("tokensOut") or obj.get("completion_tokens"))
-                        tokens_total = _to_int(obj.get("tokens_total") or obj.get("tokensTotal") or obj.get("total_tokens"))
-                        cost_usd = _to_float(obj.get("cost_usd") or obj.get("costUsd"))
-
-                        cur.execute(
-                            _arp_schema(
-                                """
-                                INSERT INTO "__ARP_SCHEMA__".school_overviews
-                                  (school_key, overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd, extracted_at)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now())
-                                ON CONFLICT (school_key) DO UPDATE SET
-                                  overview_75w=EXCLUDED.overview_75w,
-                                  narrative=EXCLUDED.narrative,
-                                  model=EXCLUDED.model,
-                                  run_id=EXCLUDED.run_id,
-                                  tokens_in=EXCLUDED.tokens_in,
-                                  tokens_out=EXCLUDED.tokens_out,
-                                  tokens_total=EXCLUDED.tokens_total,
-                                  cost_usd=EXCLUDED.cost_usd,
-                                  extracted_at=now();
-                                """
-                            ).strip(),
-                            (key, overview_75w, narrative, model, run_id, tokens_in, tokens_out, tokens_total, cost_usd),
-                        )
-
-                        progs_raw = obj.get("programs") or []
-                        program_names: list[str] = []
-                        if isinstance(progs_raw, list):
-                            for p in progs_raw:
-                                if isinstance(p, str) and p.strip():
-                                    program_names.append(p.strip())
-                                elif isinstance(p, dict):
-                                    nm = str(p.get("program_name") or p.get("name") or "").strip()
-                                    if nm:
-                                        program_names.append(nm)
-                        program_names = sorted({x for x in program_names if x})
-
-                        cur.execute(
-                            _arp_schema('DELETE FROM "__ARP_SCHEMA__".school_trip_programs WHERE school_key=%s;'),
-                            (key,),
-                        )
-                        for nm in program_names:
-                            cur.execute(
-                                _arp_schema(
-                                    """
-                                    INSERT INTO "__ARP_SCHEMA__".school_trip_programs (school_key, program_name, source, extracted_at)
-                                    VALUES (%s, %s, 'llm', now())
-                                    ON CONFLICT (school_key, program_name) DO NOTHING;
-                                    """
-                                ).strip(),
-                                (key, nm),
-                            )
-                        json_count += 1
-
-            conn.commit()
-
-    return {"ok": True, "schools": schools_count, "evidence": evidence_count, "json": json_count, "errors": errors[:50]}
 
 
 def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:

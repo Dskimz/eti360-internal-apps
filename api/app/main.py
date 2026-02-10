@@ -2927,14 +2927,14 @@ def arp_ui(
     body_html = """
       <div class="card">
         <h1>Activity Risk Profiles (ARP)</h1>
-        <p class="muted">Import your activity directory + research CSVs, then prepare evidence (S3) and generate reports (OpenAI). Data is stored in Postgres under the ARP schema.</p>
+        <p class="muted">Activities + resources live in Postgres under the ARP schema. Prepare evidence (S3) and generate reports (OpenAI) via background jobs.</p>
         <div class="btnrow">
           <a class="btn" href="/arp/schools">Schools</a>
         </div>
       </div>
 
       <div class="card">
-        <h2>Import CSVs</h2>
+        <h2>Write access</h2>
         <div class="muted">API key is stored in your browser localStorage (this page only).</div>
         <div class="section grid-2">
           <div>
@@ -2946,32 +2946,9 @@ def arp_ui(
             </div>
           </div>
           <div class="muted" style="display:flex; align-items:end;">
-            Required for import/prepare/generate unless <code>ALLOW_UNAUTH_WRITE=true</code>.
+            Required for create/prepare/generate unless <code>ALLOW_UNAUTH_WRITE=true</code>.
           </div>
         </div>
-
-        <form id="importForm" enctype="multipart/form-data">
-          <div class="grid-2">
-            <div>
-              <label>Activities CSV</label>
-              <input type="file" name="activities_csv" accept=".csv" required />
-              <div class="muted">Expected: ActivityID, Activity Category, Activity Name, Context / Scope Notes, Status</div>
-            </div>
-            <div>
-              <label>Research CSV (optional)</label>
-              <input type="file" name="research_csv" accept=".csv" />
-              <div class="muted">Expected: ActivityID, Title, Organization / Publisher, URL, etc. You can import this later.</div>
-            </div>
-          </div>
-          <div class="btnrow">
-            <button class="btn primary" id="btnImport" type="button">Import / Update</button>
-            <button class="btn" id="btnImportRepo" type="button">Import from repo CSVs</button>
-          </div>
-          <div class="muted" style="margin-top:10px;">
-            Repo CSV location: <code>api/app/static/arp_data/activities.csv</code> and <code>api/app/static/arp_data/research.csv</code>.
-            Updating these files requires a deploy.
-          </div>
-        </form>
       </div>
 
       <div class="card">
@@ -3058,7 +3035,6 @@ def arp_ui(
       const topkEl = document.getElementById('topk');
       const btnPrepare = document.getElementById('btnPrepare');
       const btnGenerate = document.getElementById('btnGenerate');
-      const btnImportRepo = document.getElementById('btnImportRepo');
       const btnCreate = document.getElementById('btnCreate');
 
       let items = [];
@@ -3128,22 +3104,6 @@ def arp_ui(
         if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
         window.location.href = `/jobs/ui?job_id=${encodeURIComponent(body.job_id)}`;
       }
-      async function doImport() {
-        const form = document.getElementById('importForm');
-        const fd = new FormData(form);
-        const researchEl = form.querySelector('input[name=\"research_csv\"]');
-        if (researchEl && researchEl.files && researchEl.files.length === 0) fd.delete('research_csv');
-        const apiKey = String(document.getElementById('apiKey').value || localStorage.getItem('eti_x_api_key') || '').trim();
-        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
-        const headers = {};
-        if (apiKey) headers['X-API-Key'] = apiKey;
-        metaEl.textContent = 'Importing…';
-        const res = await fetch('/arp/import', { method:'POST', headers, body: fd });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
-        metaEl.textContent = `Imported. Activities: ${body.activities || 0}, Sources: ${body.sources || 0}`;
-        await load();
-      }
       btnPrepare.addEventListener('click', async () => {
         const ids = selected();
         if (!ids.length) { metaEl.textContent = 'Select at least one activity.'; return; }
@@ -3160,28 +3120,7 @@ def arp_ui(
 
       const apiKeyEl = document.getElementById('apiKey');
       apiKeyEl.value = localStorage.getItem('eti_x_api_key') || '';
-      document.getElementById('btnImport').addEventListener('click', async () => {
-        try { await doImport(); } catch (e) { metaEl.textContent = 'Error: ' + String(e?.message || e); }
-      });
-      btnImportRepo.addEventListener('click', async () => {
-        const apiKey = String(document.getElementById('apiKey').value || localStorage.getItem('eti_x_api_key') || '').trim();
-        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
-        const headers = {};
-        if (apiKey) headers['X-API-Key'] = apiKey;
-        metaEl.textContent = 'Importing from repo…';
-        btnImportRepo.disabled = true;
-        try {
-          const res = await fetch('/arp/import_from_repo', { method:'POST', headers });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
-          metaEl.textContent = `Imported from repo. Activities: ${body.activities || 0}, Sources: ${body.sources || 0}`;
-          await load();
-        } catch (e) {
-          metaEl.textContent = 'Error: ' + String(e?.message || e);
-        } finally {
-          btnImportRepo.disabled = false;
-        }
-      });
+      // (CSV import removed from UI; Postgres is the source of truth.)
 
       function splitUrls(s) {
         const parts = String(s||'')

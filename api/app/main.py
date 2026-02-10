@@ -3531,33 +3531,63 @@ def schools_ui(
         <p class="muted">Browse schools with trip/travel evidence (official websites only), extracted program names, and overview narratives.</p>
       </div>
 
-	      <div class="card">
-	        <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
-	          <h2>Directory</h2>
-	          <div class="btnrow" style="margin-top:0;">
-	            <input id="q" type="text" placeholder="Search (school / domain / key / program)" style="max-width:480px;" />
+      <style>
+        /* Fit table to viewport without horizontal scroll (prefer wrapping + responsive column drops). */
+        table.schools-table { width: 100%; table-layout: fixed; }
+        table.schools-table th, table.schools-table td { white-space: normal; word-break: break-word; }
+        .schools-wrap { overflow-x: hidden; }
+
+        .clamp-2 {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          overflow: hidden;
+        }
+        .clamp-3 {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 3;
+          overflow: hidden;
+        }
+
+        @media (max-width: 1100px) {
+          /* Hide Programs first on smaller screens. */
+          table.schools-table th:nth-child(5),
+          table.schools-table td:nth-child(5) { display:none; }
+        }
+        @media (max-width: 920px) {
+          /* Then hide Score. */
+          table.schools-table th:nth-child(3),
+          table.schools-table td:nth-child(3) { display:none; }
+        }
+      </style>
+
+      <div class="card">
+        <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
+          <h2>Directory</h2>
+          <div class="btnrow" style="margin-top:0;">
+            <input id="q" type="text" placeholder="Search (school / domain / program)" style="max-width:480px;" />
             <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
               <input id="includeAll" type="checkbox" />
               Include all tiers
             </label>
           </div>
         </div>
-	        <div class="section tablewrap">
-	          <table>
-	            <thead>
-	              <tr>
-	                <th style="min-width:360px;">School</th>
-	                <th style="min-width:110px;">Tier</th>
-	                <th class="mono" style="min-width:80px;">Score</th>
-	                <th style="min-width:200px;">Social</th>
-	                <th style="min-width:260px;">Programs</th>
-	                <th style="min-width:520px;">LLM review</th>
-	                <th style="min-width:120px;">Links</th>
-	              </tr>
-	            </thead>
-	            <tbody id="rows"></tbody>
-	          </table>
-	        </div>
+        <div class="section tablewrap schools-wrap">
+          <table class="schools-table">
+            <thead>
+              <tr>
+                <th style="width:28%;">School</th>
+                <th style="width:9%;">Tier</th>
+                <th class="mono" style="width:6%;">Score</th>
+                <th style="width:10%;">Social</th>
+                <th style="width:17%;">Programs</th>
+                <th style="width:30%;">LLM review</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
         <div class="muted" id="meta" style="margin-top:10px;">Loading…</div>
       </div>
 
@@ -3606,13 +3636,13 @@ def schools_ui(
 	      function renderSocial(obj) {
 	        const sl = normalizeSocial(obj);
 	        const order = [
-	          ['instagram','Instagram'],
-	          ['facebook','Facebook'],
+	          ['instagram','IG'],
+	          ['facebook','FB'],
 	          ['x','X'],
 	          ['twitter','X'],
-	          ['linkedin','LinkedIn'],
-	          ['youtube','YouTube'],
-	          ['tiktok','TikTok'],
+	          ['linkedin','IN'],
+	          ['youtube','YT'],
+	          ['tiktok','TT'],
 	        ];
 	        const seen = new Set();
 	        const parts = [];
@@ -3644,46 +3674,47 @@ def schools_ui(
 	            it.has_evidence ? `<a href="${detailUrl}">Evidence</a>` : '<span class="muted">Evidence —</span>',
 	            it.has_llm ? `<a href="${llmUrl}">LLM</a>` : '<span class="muted">LLM —</span>',
 	          ].join(' · ');
-	          const schoolCell = `
-	            <div style="font-weight:600; color:var(--text-secondary); white-space:normal; word-break:break-word;">${esc(it.name||key||'(missing)')}</div>
-	            <div class="muted">
-	              ${home ? `<a href="${esc(home)}" target="_blank" rel="noopener">${esc(it.primary_domain||home)}</a>` : esc(it.primary_domain||'')}
-	              ${key ? ` · <span class="mono">${esc(key)}</span>` : ''}
-	            </div>
-	          `;
-	          const tr = document.createElement('tr');
-	          tr.innerHTML = `
-	            <td>${schoolCell}</td>
-	            <td><span class="pill">${esc(it.tier || '')}</span></td>
-	            <td class="mono">${Number(it.health_score||0)}</td>
-	            <td>${renderSocial(it.social_links)}</td>
-	            <td>${pickPrograms(it.programs||[]) || '<span class="muted">—</span>'}</td>
-	            <td>${esc(it.review || '') || '<span class="muted">—</span>'}</td>
-	            <td>${links}</td>
-	          `;
-	          rowsEl.appendChild(tr);
-	        }
-	        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="7" class="muted">No matching schools.</td></tr>';
-	        metaEl.textContent = `Schools: ${filtered.length}/${items.length}`;
-	      }
+	          const nameText = esc(it.name||'(missing)');
+          const nameHtml = home ? `<a href="${esc(home)}" target="_blank" rel="noopener">${nameText}</a>` : nameText;
+          const schoolCell = `
+            <div style="font-weight:600; color:var(--text-secondary);" class="clamp-2">${nameHtml}</div>
+            <div class="muted clamp-2">
+              ${home ? `${esc(it.primary_domain||home)}` : esc(it.primary_domain||'')}
+            </div>
+            <div class="muted" style="margin-top:2px;">${links}</div>
+          `;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${schoolCell}</td>
+            <td><span class="pill">${esc(it.tier || '')}</span></td>
+            <td class="mono">${Number(it.health_score||0)}</td>
+            <td>${renderSocial(it.social_links)}</td>
+            <td><div class="clamp-2">${pickPrograms(it.programs||[]) || '<span class="muted">—</span>'}</div></td>
+            <td><div class="clamp-3">${esc(it.review || '') || '<span class="muted">—</span>'}</div></td>
+          `;
+          rowsEl.appendChild(tr);
+        }
+        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="6" class="muted">No matching schools.</td></tr>';
+        metaEl.textContent = `Schools: ${filtered.length}/${items.length}`;
+      }
 	      async function load() {
 	        const includeAll = includeAllEl.checked ? '1' : '0';
 	        try {
 	          const res = await fetch(`/schools/api/list?include_all=${encodeURIComponent(includeAll)}`, { cache:'no-store' });
 	          const body = await res.json().catch(() => ({}));
-	          if (!res.ok || !body.ok) {
-	            metaEl.textContent = body.detail || body.error || `Failed to load schools (HTTP ${res.status})`;
-	            rowsEl.innerHTML = '<tr><td colspan="7" class="muted">Failed to load.</td></tr>';
-	            return;
-	          }
+          if (!res.ok || !body.ok) {
+            metaEl.textContent = body.detail || body.error || `Failed to load schools (HTTP ${res.status})`;
+            rowsEl.innerHTML = '<tr><td colspan="6" class="muted">Failed to load.</td></tr>';
+            return;
+          }
 	          if (body.fallback_used) metaEl.textContent = 'Showing all tiers (no Healthy/Partial matches found).';
 	          items = Array.isArray(body.schools) ? body.schools : [];
 	          render();
-	        } catch (e) {
-	          metaEl.textContent = 'Failed to load: ' + String(e?.message || e);
-	          rowsEl.innerHTML = '<tr><td colspan="7" class="muted">Failed to load.</td></tr>';
-	        }
-	      }
+        } catch (e) {
+          metaEl.textContent = 'Failed to load: ' + String(e?.message || e);
+          rowsEl.innerHTML = '<tr><td colspan="6" class="muted">Failed to load.</td></tr>';
+        }
+      }
       qEl.value = localStorage.getItem('eti_schools_q') || '';
       qEl.addEventListener('input', () => { localStorage.setItem('eti_schools_q', qEl.value); render(); });
       includeAllEl.checked = (localStorage.getItem('eti_schools_includeAll') || '') === '1';
@@ -3775,7 +3806,10 @@ def _bootstrap_schools_from_static() -> None:
                 continue
             if not isinstance(obj, dict):
                 continue
-            links = obj.get("social_links")
+            # The pipeline social link snapshots have used either `links` or `social_links`.
+            links = obj.get("links")
+            if not isinstance(links, dict):
+                links = obj.get("social_links")
             if not isinstance(links, dict):
                 continue
             cleaned: dict[str, str] = {}
@@ -3867,6 +3901,8 @@ def _bootstrap_schools_from_static() -> None:
                     extracted_obj = extracted_by_key.get(school_key) or {}
                     if isinstance(extracted_obj, dict):
                         sl = extracted_obj.get("social_links")
+                        if not isinstance(sl, dict):
+                            sl = extracted_obj.get("links")
                         if isinstance(sl, dict):
                             for k3, v3 in sl.items():
                                 if not k3 or not v3:
@@ -4092,6 +4128,8 @@ def schools_api_list(
             with conn.cursor() as cur:
                 _ensure_arp_tables(cur)
                 schema = _require_safe_ident("ARP_SCHEMA", ARP_SCHEMA)
+                social_dir = _schools_static_dir() / "social_links"
+                social_cache: dict[str, dict[str, str]] = {}
                 cur.execute("SELECT to_regclass(%s);", (f"{schema}.schools",))
                 has_schools = cur.fetchone()[0] is not None  # type: ignore[index]
                 if not has_schools:
@@ -4167,6 +4205,45 @@ def schools_api_list(
                         programs,
                         has_evidence,
                     ) = row
+
+                    # Opportunistic backfill: if social_links are missing in DB, read from bundled JSON and persist.
+                    social_obj: dict[str, str] = social_links if isinstance(social_links, dict) else {}
+                    if not social_obj and social_dir.exists():
+                        sk = str(school_key or "").strip()
+                        if sk:
+                            if sk not in social_cache:
+                                p = social_dir / f"{sk}.json"
+                                links: dict[str, str] = {}
+                                if p.exists():
+                                    try:
+                                        raw = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+                                        if isinstance(raw, dict):
+                                            raw_links = raw.get("links")
+                                            if not isinstance(raw_links, dict):
+                                                raw_links = raw.get("social_links")
+                                            if isinstance(raw_links, dict):
+                                                for k, v in (raw_links or {}).items():
+                                                    kk = str(k or "").strip().lower()
+                                                    vv = str(v or "").strip()
+                                                    if kk and vv:
+                                                        links[kk] = vv
+                                    except Exception:
+                                        links = {}
+                                social_cache[sk] = links
+                            links2 = social_cache.get(sk) or {}
+                            if links2:
+                                social_obj = links2
+                                cur.execute(
+                                    _arp_schema(
+                                        """
+                                        UPDATE "__ARP_SCHEMA__".schools
+                                        SET social_links=%s::jsonb, updated_at=now()
+                                        WHERE school_key=%s AND (COALESCE(social_links,'{}'::jsonb)='{}'::jsonb);
+                                        """
+                                    ).strip(),
+                                    (json.dumps(links2), sk),
+                                )
+
                     review = str(overview_75w or "").strip()
                     if not review:
                         review = _truncate_words(str(narrative or "").strip(), 75)
@@ -4179,7 +4256,7 @@ def schools_api_list(
                             "last_crawled_at": last_crawled_at.isoformat() if last_crawled_at else None,
                             "tier": str(tier or ""),
                             "health_score": int(health_score or 0),
-                            "social_links": social_links if isinstance(social_links, dict) else {},
+                            "social_links": social_obj,
                             "review": review,
                             "programs": list(programs or []),
                             "has_evidence": bool(has_evidence),

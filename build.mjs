@@ -19,10 +19,7 @@ async function loadCss() {
 }
 
 const password = process.env.PASSWORD;
-if (!password) {
-  console.error("Missing PASSWORD env var (set this in Render Environment).");
-  process.exit(1);
-}
+const encrypt = Boolean(password && String(password).trim());
 
 const [html, css, appsJsonRaw] = await Promise.all([
   readFile("index.html", "utf8"),
@@ -48,5 +45,10 @@ merged = merged.replace(
 
 await mkdir("dist", { recursive: true });
 
-const encrypted = await encryptHTML(merged, password, 3e6);
-await writeFile("dist/index.html", encrypted, "utf8");
+if (encrypt) {
+  const encrypted = await encryptHTML(merged, String(password).trim(), 3e6);
+  await writeFile("dist/index.html", encrypted, "utf8");
+} else {
+  console.warn("PASSWORD env var not set; writing unencrypted dist/index.html");
+  await writeFile("dist/index.html", merged, "utf8");
+}

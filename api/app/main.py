@@ -2929,6 +2929,10 @@ def arp_ui(
           <div>
             <label>X-API-Key (for writes)</label>
             <input id="apiKey" type="password" placeholder="Paste ETI360_API_KEY here" />
+            <div class="muted" style="margin-top:6px;">
+              Render environment variables are server-side secrets (the browser can’t read them), so we can’t auto-fill this without exposing the key.
+              Paste once and it will be remembered on this device for this site.
+            </div>
           </div>
           <div class="muted" style="display:flex; align-items:end;">
             Required for import/prepare/generate unless <code>ALLOW_UNAUTH_WRITE=true</code>.
@@ -2943,9 +2947,9 @@ def arp_ui(
               <div class="muted">Expected: ActivityID, Activity Category, Activity Name, Context / Scope Notes, Status</div>
             </div>
             <div>
-              <label>Research CSV</label>
-              <input type="file" name="research_csv" accept=".csv" required />
-              <div class="muted">Expected: ActivityID, Title, Organization / Publisher, URL, etc.</div>
+              <label>Research CSV (optional)</label>
+              <input type="file" name="research_csv" accept=".csv" />
+              <div class="muted">Expected: ActivityID, Title, Organization / Publisher, URL, etc. You can import this later.</div>
             </div>
           </div>
           <div class="btnrow">
@@ -3074,6 +3078,8 @@ def arp_ui(
       async function doImport() {
         const form = document.getElementById('importForm');
         const fd = new FormData(form);
+        const researchEl = form.querySelector('input[name=\"research_csv\"]');
+        if (researchEl && researchEl.files && researchEl.files.length === 0) fd.delete('research_csv');
         const apiKey = String(document.getElementById('apiKey').value || localStorage.getItem('eti_x_api_key') || '').trim();
         if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
         const headers = {};
@@ -3146,13 +3152,15 @@ def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:
 def arp_import(
     request: Request,
     activities_csv: UploadFile = File(...),
-    research_csv: UploadFile = File(...),
+    research_csv: UploadFile | None = File(default=None),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
     _require_write_access(request=request, x_api_key=x_api_key, role="editor")
 
     activities_raw = activities_csv.file.read()
-    research_raw = research_csv.file.read()
+    research_raw = b""
+    if research_csv is not None:
+        research_raw = research_csv.file.read()
 
     _, activity_rows = _parse_csv_bytes(activities_raw)
     headers, research_rows = _parse_csv_bytes(research_raw)
@@ -3200,109 +3208,110 @@ def arp_import(
 
             # Research / sources
             sources_count = 0
-            for r in research_rows:
-                aid_raw = (r.get("ActivityID") or "").strip()
-                activity_name = (r.get("Activity") or "").strip()
-                if not aid_raw and not activity_name:
-                    continue
-                try:
-                    aid = int(float(aid_raw)) if aid_raw else None
-                except Exception:
-                    aid = None
-                url = (r.get("URL") or "").strip()
-                if not url:
-                    continue
+            if research_rows:
+                for r in research_rows:
+                    aid_raw = (r.get("ActivityID") or "").strip()
+                    activity_name = (r.get("Activity") or "").strip()
+                    if not aid_raw and not activity_name:
+                        continue
+                    try:
+                        aid = int(float(aid_raw)) if aid_raw else None
+                    except Exception:
+                        aid = None
+                    url = (r.get("URL") or "").strip()
+                    if not url:
+                        continue
 
-                # Fallback: create a placeholder activity if missing.
-                if aid is None:
-                    continue
+                    # Fallback: create a placeholder activity if missing.
+                    if aid is None:
+                        continue
 
-                # Ensure activity exists (some imports may only include research CSV).
-                cur.execute(_arp_schema('SELECT 1 FROM "__ARP_SCHEMA__".activities WHERE activity_id=%s;'), (aid,))
-                exists = cur.fetchone() is not None
-                if not exists:
-                    name = activity_name or f"Activity {aid}"
-                    slug = _stable_slug(name, max_len=64)
+                    # Ensure activity exists (some imports may only include research CSV).
+                    cur.execute(_arp_schema('SELECT 1 FROM "__ARP_SCHEMA__".activities WHERE activity_id=%s;'), (aid,))
+                    exists = cur.fetchone() is not None
+                    if not exists:
+                        name = activity_name or f"Activity {aid}"
+                        slug = _stable_slug(name, max_len=64)
+                        cur.execute(
+                            _arp_schema(
+                                """
+                                INSERT INTO "__ARP_SCHEMA__".activities
+                                  (activity_id, activity_slug, activity_name)
+                                VALUES (%s, %s, %s)
+                                ON CONFLICT (activity_id) DO NOTHING;
+                                """
+                            ).strip(),
+                            (aid, slug, name),
+                        )
+
+                    title = (r.get("Title") or "").strip()
+                    org = (r.get("Organization / Publisher") or "").strip()
+                    jurisdiction = (r.get("Country / Jurisdiction") or "").strip()
+                    source_type = (r.get("Source type") or "").strip()
+                    activities_covered_raw = (r.get("Activities covered") or "").strip()
+
+                    brief = (r.get("Brief focus (1–2 lines)") or r.get("Brief focus (1‚Äì2 lines)") or "").strip()
+                    if not brief:
+                        for k in headers:
+                            if str(k).strip().lower().startswith("brief focus"):
+                                brief = (r.get(k) or "").strip()
+                                if brief:
+                                    break
+
+                    authority_class = (r.get("Authority class (A/B/C)") or "").strip()
+                    publication_date = (r.get("Publication date (YYYY-MM-DD or YYYY)") or "").strip()
+
+                    # Stable source_id (activity + publisher + title)
+                    src_id = _stable_slug(activity_name or f"activity-{aid}", org, title, max_len=90)
+
                     cur.execute(
                         _arp_schema(
                             """
-                            INSERT INTO "__ARP_SCHEMA__".activities
-                              (activity_id, activity_slug, activity_name)
-                            VALUES (%s, %s, %s)
-                            ON CONFLICT (activity_id) DO NOTHING;
+                            INSERT INTO "__ARP_SCHEMA__".sources
+                              (source_id, activity_id, activity_name, title, organization, jurisdiction, url, source_type,
+                               activities_covered_raw, brief_focus, authority_class, publication_date)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (source_id) DO UPDATE SET
+                              activity_id=EXCLUDED.activity_id,
+                              activity_name=EXCLUDED.activity_name,
+                              title=EXCLUDED.title,
+                              organization=EXCLUDED.organization,
+                              jurisdiction=EXCLUDED.jurisdiction,
+                              url=EXCLUDED.url,
+                              source_type=EXCLUDED.source_type,
+                              activities_covered_raw=EXCLUDED.activities_covered_raw,
+                              brief_focus=EXCLUDED.brief_focus,
+                              authority_class=EXCLUDED.authority_class,
+                              publication_date=EXCLUDED.publication_date;
                             """
                         ).strip(),
-                        (aid, slug, name),
+                        (
+                            src_id,
+                            aid,
+                            activity_name,
+                            title,
+                            org,
+                            jurisdiction,
+                            url,
+                            source_type,
+                            activities_covered_raw,
+                            brief,
+                            authority_class,
+                            publication_date,
+                        ),
                     )
-
-                title = (r.get("Title") or "").strip()
-                org = (r.get("Organization / Publisher") or "").strip()
-                jurisdiction = (r.get("Country / Jurisdiction") or "").strip()
-                source_type = (r.get("Source type") or "").strip()
-                activities_covered_raw = (r.get("Activities covered") or "").strip()
-
-                brief = (r.get("Brief focus (1–2 lines)") or r.get("Brief focus (1‚Äì2 lines)") or "").strip()
-                if not brief:
-                    for k in headers:
-                        if str(k).strip().lower().startswith("brief focus"):
-                            brief = (r.get(k) or "").strip()
-                            if brief:
-                                break
-
-                authority_class = (r.get("Authority class (A/B/C)") or "").strip()
-                publication_date = (r.get("Publication date (YYYY-MM-DD or YYYY)") or "").strip()
-
-                # Stable source_id (activity + publisher + title)
-                src_id = _stable_slug(activity_name or f"activity-{aid}", org, title, max_len=90)
-
-                cur.execute(
-                    _arp_schema(
-                        """
-                        INSERT INTO "__ARP_SCHEMA__".sources
-                          (source_id, activity_id, activity_name, title, organization, jurisdiction, url, source_type,
-                           activities_covered_raw, brief_focus, authority_class, publication_date)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (source_id) DO UPDATE SET
-                          activity_id=EXCLUDED.activity_id,
-                          activity_name=EXCLUDED.activity_name,
-                          title=EXCLUDED.title,
-                          organization=EXCLUDED.organization,
-                          jurisdiction=EXCLUDED.jurisdiction,
-                          url=EXCLUDED.url,
-                          source_type=EXCLUDED.source_type,
-                          activities_covered_raw=EXCLUDED.activities_covered_raw,
-                          brief_focus=EXCLUDED.brief_focus,
-                          authority_class=EXCLUDED.authority_class,
-                          publication_date=EXCLUDED.publication_date;
-                        """
-                    ).strip(),
-                    (
-                        src_id,
-                        aid,
-                        activity_name,
-                        title,
-                        org,
-                        jurisdiction,
-                        url,
-                        source_type,
-                        activities_covered_raw,
-                        brief,
-                        authority_class,
-                        publication_date,
-                    ),
-                )
-                # Ensure documents row exists
-                cur.execute(
-                    _arp_schema(
-                        """
-                        INSERT INTO "__ARP_SCHEMA__".documents (source_id)
-                        VALUES (%s)
-                        ON CONFLICT (source_id) DO NOTHING;
-                        """
-                    ).strip(),
-                    (src_id,),
-                )
-                sources_count += 1
+                    # Ensure documents row exists
+                    cur.execute(
+                        _arp_schema(
+                            """
+                            INSERT INTO "__ARP_SCHEMA__".documents (source_id)
+                            VALUES (%s)
+                            ON CONFLICT (source_id) DO NOTHING;
+                            """
+                        ).strip(),
+                        (src_id,),
+                    )
+                    sources_count += 1
 
         conn.commit()
 

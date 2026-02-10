@@ -3738,6 +3738,144 @@ def _escape_html(s: str) -> str:
     )
 
 
+_URL_RE = re.compile(r"(https?://[^\s<>\"]+)", flags=re.IGNORECASE)
+
+
+def _escape_and_linkify(s: str) -> str:
+    """
+    Convert plaintext URLs to clickable links while preserving HTML escaping.
+    """
+    text = str(s or "")
+    if not text:
+        return ""
+    out: list[str] = []
+    last = 0
+    for m in _URL_RE.finditer(text):
+        if m.start() > last:
+            out.append(_escape_html(text[last : m.start()]))
+        url = text[m.start() : m.end()]
+        safe = _escape_html(url)
+        out.append(f'<a href="{safe}" target="_blank" rel="noopener">{safe}</a>')
+        last = m.end()
+    if last < len(text):
+        out.append(_escape_html(text[last:]))
+    return "".join(out)
+
+
+def _pretty_label(s: str) -> str:
+    raw = str(s or "").strip()
+    if not raw:
+        return ""
+    # Common normalization for snake_case keys/values.
+    raw = raw.replace("_", " ").replace("-", " ")
+    raw = re.sub(r"\s+", " ", raw).strip()
+    return raw[:1].upper() + raw[1:]
+
+
+def _render_llm_json_readable(llm_json: Any) -> str:
+    """
+    Render the stored `school_overviews.llm_json` into a readable HTML summary.
+
+    Expected shape is either:
+    - a `result` dict from the pipeline, or
+    - a dict with a nested `result` dict.
+    """
+    if not isinstance(llm_json, dict):
+        return '<p class="muted">No structured output available.</p>'
+
+    obj: dict[str, Any] = dict(llm_json)
+    res = obj.get("result")
+    if isinstance(res, dict):
+        obj = res
+
+    parts: list[str] = []
+
+    overview = obj.get("trip_overview_narrative")
+    if isinstance(overview, str) and overview.strip():
+        parts.append(f"<h3>Trip overview</h3><p>{_escape_and_linkify(overview.strip())}</p>")
+
+    programs = obj.get("programs")
+    if isinstance(programs, list) and programs:
+        rows: list[str] = []
+        for p in programs:
+            if not isinstance(p, dict):
+                continue
+            name = str(p.get("program_name") or "").strip() or "(Unnamed program)"
+            fmt = str(p.get("program_format") or "").strip()
+            trip_types = p.get("trip_types") if isinstance(p.get("trip_types"), list) else []
+            grade_bands = p.get("grade_bands") if isinstance(p.get("grade_bands"), list) else []
+            frequency = str(p.get("frequency") or "").strip()
+            duration = str(p.get("duration") or "").strip()
+            locations = p.get("locations") if isinstance(p.get("locations"), list) else []
+
+            chips: list[str] = []
+            for t in trip_types:
+                lab = _pretty_label(str(t))
+                if lab:
+                    chips.append(f'<span class="pill">{_escape_html(lab)}</span>')
+            for g in grade_bands:
+                lab = str(g or "").strip()
+                if lab:
+                    chips.append(f'<span class="pill">{_escape_html(lab)}</span>')
+
+            meta_bits: list[str] = []
+            if fmt:
+                meta_bits.append(_escape_html(fmt))
+            if frequency:
+                meta_bits.append(_escape_html(frequency))
+            if duration:
+                meta_bits.append(_escape_html(duration))
+            if locations:
+                locs = ", ".join([str(x or "").strip() for x in locations if str(x or "").strip()])
+                if locs:
+                    meta_bits.append(_escape_html(locs))
+            meta_line = " · ".join(meta_bits)
+
+            evidence_html = ""
+            evidence = p.get("evidence")
+            if isinstance(evidence, list) and evidence:
+                ev_items: list[str] = []
+                for ev in evidence:
+                    if not isinstance(ev, dict):
+                        continue
+                    src = str(ev.get("source_url") or "").strip()
+                    quote = str(ev.get("quote") or "").strip()
+                    src_html = f'<a href="{_escape_html(src)}" target="_blank" rel="noopener">Source</a>' if src else ""
+                    quote_html = _escape_and_linkify(quote) if quote else ""
+                    if src_html or quote_html:
+                        ev_items.append(f"<li>{src_html}{(' · ' if src_html and quote_html else '')}{quote_html}</li>")
+                if ev_items:
+                    evidence_html = "<div class=\"section\"><div class=\"muted\" style=\"margin-bottom:6px;\">Evidence</div><ul>" + "".join(ev_items) + "</ul></div>"
+
+            rows.append(
+                "<div class=\"section\" style=\"padding:12px 12px; border:1px solid var(--eti-border); border-radius:14px; background:var(--eti-bg);\">"
+                f"<div style=\"font-weight:650; color:var(--text-secondary);\">{_escape_html(name)}</div>"
+                + (f"<div class=\"muted\" style=\"margin-top:2px;\">{meta_line}</div>" if meta_line else "")
+                + (f"<div style=\"margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;\">{''.join(chips)}</div>" if chips else "")
+                + evidence_html
+                + "</div>"
+            )
+
+        if rows:
+            parts.append("<h3>Programs</h3>" + "".join(rows))
+
+    locations_all = obj.get("locations_all")
+    if isinstance(locations_all, list) and locations_all:
+        locs = [str(x or "").strip() for x in locations_all if str(x or "").strip()]
+        if locs:
+            parts.append("<h3>Locations mentioned</h3><p>" + _escape_html(", ".join(sorted(set(locs)))) + "</p>")
+
+    unknowns = obj.get("unknowns")
+    if isinstance(unknowns, list) and unknowns:
+        unks = [str(x or "").strip() for x in unknowns if str(x or "").strip()]
+        if unks:
+            parts.append("<h3>Unknowns</h3><ul>" + "".join([f"<li>{_escape_and_linkify(x)}</li>" for x in unks]) + "</ul>")
+
+    if not parts:
+        return '<p class="muted">No readable fields found in the stored LLM output.</p>'
+    return "".join(parts)
+
+
 def _schools_static_dir() -> Path:
     return _STATIC_DIR / "schools_research"
 
@@ -4530,12 +4668,6 @@ def school_llm_ui(
             ) = row2
         conn.commit()
 
-    llm_json_str = ""
-    try:
-        llm_json_str = json.dumps(llm_json or {}, indent=2, ensure_ascii=False, sort_keys=True)
-    except Exception:
-        llm_json_str = str(llm_json or "")
-
     usage_bits = []
     if model:
         usage_bits.append(f"Model: {model}")
@@ -4550,7 +4682,8 @@ def school_llm_ui(
     usage_line = " · ".join(usage_bits)
 
     overview_html = _escape_html(str(overview_75w or "")) if overview_75w else "<span class=\"muted\">—</span>"
-    narrative_html = _escape_html(str(narrative or "")) if narrative else ""
+    narrative_html = _escape_and_linkify(str(narrative or "")) if narrative else ""
+    extracted_html = _render_llm_json_readable(llm_json or {})
 
     body_html = f"""
       <div class="card">
@@ -4564,15 +4697,23 @@ def school_llm_ui(
         <p class="muted">{_escape_html(usage_line)}</p>
       </div>
 
+      <style>
+        /* Avoid horizontal scroll on this page: prefer wrapping everywhere. */
+        .llm-wrap, .llm-wrap * {{ word-break: break-word; }}
+        .llm-wrap ul {{ padding-left: 18px; margin: 6px 0; }}
+        .llm-wrap li {{ margin: 4px 0; }}
+        .llm-wrap h3 {{ margin: 12px 0 6px; font-size: 14px; }}
+      </style>
+
       <div class="card">
         <h2>Review</h2>
         <p>{overview_html}</p>
-        {f'<div class=\"section\"><h2>Narrative</h2><pre class=\"log\">{narrative_html}</pre></div>' if narrative_html else ''}
+        {f'<div class=\"section llm-wrap\"><h2>Narrative</h2><div style=\"white-space:pre-wrap;\">{narrative_html}</div></div>' if narrative_html else ''}
       </div>
 
       <div class="card">
-        <h2>Raw JSON</h2>
-        <pre class="log">{_escape_html(llm_json_str)}</pre>
+        <h2>Extracted details</h2>
+        <div class="llm-wrap">{extracted_html}</div>
       </div>
     """.strip()
     return _ui_shell(title=f"LLM — {str(name or key)}", active="apps", body_html=body_html, max_width_px=1100, user=user)

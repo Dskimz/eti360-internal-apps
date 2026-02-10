@@ -3036,23 +3036,9 @@ def arp_ui(
       <div class="card">
         <h1>Activity Risk Profiles (ARP)</h1>
         <p class="muted">Activities + resources live in Postgres under the ARP schema. Prepare evidence (S3) and generate reports (OpenAI) via background jobs.</p>
-      </div>
-
-      <div class="card">
-        <h2>Write access</h2>
-        <div class="muted">API key is stored in your browser localStorage (this page only).</div>
-        <div class="section grid-2">
-          <div>
-            <label>X-API-Key (for writes)</label>
-            <input id="apiKey" type="password" placeholder="Paste ETI360_API_KEY here" />
-            <div class="muted" style="margin-top:6px;">
-              Render environment variables are server-side secrets (the browser can’t read them), so we can’t auto-fill this without exposing the key.
-              Paste once and it will be remembered on this device for this site.
-            </div>
-          </div>
-          <div class="muted" style="display:flex; align-items:end;">
-            Required for create/prepare/generate unless <code>ALLOW_UNAUTH_WRITE=true</code>.
-          </div>
+        <div class="btnrow">
+          <a class="btn" href="/arp/schools">Schools</a>
+          <button id="btnApiKey" class="btn" type="button">API key</button>
         </div>
       </div>
 
@@ -3069,6 +3055,27 @@ def arp_ui(
         .eti-modal__body { padding: 10px 18px 18px 18px; }
         .eti-modal__close { border: 0; background: transparent; font-size: 22px; line-height: 1; cursor: pointer; color: var(--text-muted); }
       </style>
+
+      <dialog id="dlgApiKey" class="eti-modal">
+        <div class="eti-modal__header">
+          <div>
+            <h2 style="margin:0;">API key</h2>
+            <div class="muted">Stored in your browser localStorage for this site.</div>
+          </div>
+          <button id="btnCloseApiKey" class="eti-modal__close" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="eti-modal__body">
+          <label>X-API-Key (for writes)</label>
+          <input id="apiKey" type="password" placeholder="Paste ETI360_API_KEY here" />
+          <div class="muted" style="margin-top:6px;">
+            Required for create/prepare/generate unless <code>ALLOW_UNAUTH_WRITE=true</code>.
+          </div>
+          <div class="btnrow" style="margin-top:12px;">
+            <button class="btn primary" id="btnSaveApiKey" type="button">Save</button>
+            <button class="btn" id="btnCancelApiKey" type="button">Cancel</button>
+          </div>
+        </div>
+      </dialog>
 
       <dialog id="dlgCreate" class="eti-modal">
         <div class="eti-modal__header">
@@ -3127,13 +3134,12 @@ def arp_ui(
         </div>
 
         <div class="section" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <button id="btnPrepare" class="btn" type="button">Prepare evidence (S3 + chunks)</button>
-          <button id="btnGenerate" class="btn primary" type="button">Generate reports</button>
+          <button id="btnGenerate" class="btn primary" type="button">Prepare evidence &amp; generate report</button>
           <label class="muted" style="margin:0;">Top-k</label>
           <input id="topk" type="text" value="12" style="max-width:90px;" />
           <span class="muted" id="meta">Loading…</span>
         </div>
-        <div class="muted" style="margin-top:-4px;">Generate runs Prepare first (missing-only), then writes the report.</div>
+        <div class="muted" style="margin-top:-4px;">This runs Prepare first (missing-only), then writes the report.</div>
 
         <div class="section tablewrap">
           <table>
@@ -3162,9 +3168,15 @@ def arp_ui(
       const resetEl = document.getElementById('reset');
       const categoryEl = document.getElementById('category');
       const topkEl = document.getElementById('topk');
-      const btnPrepare = document.getElementById('btnPrepare');
       const btnGenerate = document.getElementById('btnGenerate');
       const btnCreate = document.getElementById('btnCreate');
+      const btnApiKey = document.getElementById('btnApiKey');
+      const dlgApiKey = document.getElementById('dlgApiKey');
+      const btnCloseApiKey = document.getElementById('btnCloseApiKey');
+      const btnCancelApiKey = document.getElementById('btnCancelApiKey');
+      const btnSaveApiKey = document.getElementById('btnSaveApiKey');
+      const apiKeyEl = document.getElementById('apiKey');
+
       const dlgCreate = document.getElementById('dlgCreate');
       const btnOpenCreate = document.getElementById('btnOpenCreate');
       const btnCloseCreate = document.getElementById('btnCloseCreate');
@@ -3228,21 +3240,15 @@ def arp_ui(
         render();
       }
       async function enqueue(url, payload) {
-        const apiKey = String(document.getElementById('apiKey').value || localStorage.getItem('eti_x_api_key') || '').trim();
-        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
+        const apiKey = String(localStorage.getItem('eti_x_api_key') || '').trim();
         const headers = { 'Content-Type':'application/json' };
         if (apiKey) headers['X-API-Key'] = apiKey;
         const res = await fetch(url, { method:'POST', headers, body: JSON.stringify(payload||{}) });
         const body = await res.json().catch(() => ({}));
+        if (res.status === 401) { openApiKey(); throw new Error(body.detail || body.error || 'Missing/invalid API key'); }
         if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
         window.location.href = `/jobs/ui?job_id=${encodeURIComponent(body.job_id)}`;
       }
-      btnPrepare.addEventListener('click', async () => {
-        const ids = selected();
-        if (!ids.length) { metaEl.textContent = 'Select at least one activity.'; return; }
-        btnPrepare.disabled = true;
-        try { await enqueue('/arp/api/prepare', { activity_ids: ids }); } finally { btnPrepare.disabled = false; }
-      });
       btnGenerate.addEventListener('click', async () => {
         const ids = selected();
         if (!ids.length) { metaEl.textContent = 'Select at least one activity.'; return; }
@@ -3250,10 +3256,23 @@ def arp_ui(
         btnGenerate.disabled = true;
         try { await enqueue('/arp/api/generate', { activity_ids: ids, top_k: topk }); } finally { btnGenerate.disabled = false; }
       });
-
-      const apiKeyEl = document.getElementById('apiKey');
-      apiKeyEl.value = localStorage.getItem('eti_x_api_key') || '';
-      // (CSV import removed from UI; Postgres is the source of truth.)
+      function openApiKey() {
+        if (!dlgApiKey) return;
+        apiKeyEl.value = localStorage.getItem('eti_x_api_key') || '';
+        try { dlgApiKey.showModal(); } catch (e) { dlgApiKey.setAttribute('open', 'open'); }
+        setTimeout(() => apiKeyEl.focus(), 0);
+      }
+      function closeApiKey() { if (dlgApiKey && dlgApiKey.open) dlgApiKey.close(); }
+      btnApiKey.addEventListener('click', openApiKey);
+      btnCloseApiKey.addEventListener('click', closeApiKey);
+      btnCancelApiKey.addEventListener('click', closeApiKey);
+      btnSaveApiKey.addEventListener('click', () => {
+        const v = String(apiKeyEl.value || '').trim();
+        if (v) localStorage.setItem('eti_x_api_key', v);
+        else localStorage.removeItem('eti_x_api_key');
+        closeApiKey();
+      });
+      dlgApiKey.addEventListener('click', (e) => { if (e.target === dlgApiKey) closeApiKey(); });
 
       function splitUrls(s) {
         const parts = String(s||'')
@@ -3281,8 +3300,7 @@ def arp_ui(
         };
         if (!payload.activity_name) { metaEl.textContent = 'Enter an activity name.'; return; }
 
-        const apiKey = String(document.getElementById('apiKey').value || localStorage.getItem('eti_x_api_key') || '').trim();
-        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
+        const apiKey = String(localStorage.getItem('eti_x_api_key') || '').trim();
         const headers = { 'Content-Type':'application/json' };
         if (apiKey) headers['X-API-Key'] = apiKey;
 
@@ -3291,6 +3309,7 @@ def arp_ui(
         try {
           const res = await fetch('/arp/api/create', { method:'POST', headers, body: JSON.stringify(payload) });
           const body = await res.json().catch(() => ({}));
+          if (res.status === 401) { openApiKey(); throw new Error(body.detail || body.error || 'Missing/invalid API key'); }
           if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
           metaEl.textContent = `Created activity ${body.activity_id} with ${body.sources || 0} resources.`;
           form.reset();

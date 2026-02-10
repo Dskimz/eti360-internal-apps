@@ -3070,6 +3070,49 @@ def apps_home(request: Request) -> str:
     return _ui_shell(title="ETI360 Projects", active="apps", body_html=body_html, max_width_px=1200, extra_script=script, user=user)
 
 
+@app.get("/travel_segments/v1", response_class=HTMLResponse)
+def travel_segments_v1(request: Request) -> str:
+    """
+    Human-readable contract page for Travel Segment Visualization (v1).
+    The canonical assets are served under /static/travel_segment_visualization/*.
+    """
+    user = _get_current_user(request)
+
+    md = f"""
+## Purpose
+Define the immutable v1 contracts and governance constraints for generating Travel Segment booklet pages (static maps + text) and injecting them into an InDesign template.
+
+## Key Links
+- Geometry & color rules (immutable): [/static/travel_segment_visualization/geometry_color_rules.md](/static/travel_segment_visualization/geometry_color_rules.md)
+- CSV input spec: [/static/travel_segment_visualization/csv_spec.md](/static/travel_segment_visualization/csv_spec.md)
+- InDesign Script Label contract: [/static/travel_segment_visualization/indesign_script_labels.md](/static/travel_segment_visualization/indesign_script_labels.md)
+- Booklet JSON schema: [/static/travel_segment_visualization/booklet.schema.json](/static/travel_segment_visualization/booklet.schema.json)
+- Booklet JSON example: [/static/travel_segment_visualization/booklet_example.json](/static/travel_segment_visualization/booklet_example.json)
+
+## Non-Negotiables (Summary)
+- ETI360 Blue means intentional student movement only:
+  - Allowed: route line; origin/destination marker outlines only
+  - Never: city names, roads, land/water, background elements
+- Geometry is representative, not operational:
+  - No station names, no line names
+  - No arrows/turn cues
+  - Rail fallback if transit routing unavailable: Mapbox driving corridor geometry, rail mode label preserved
+""".strip()
+
+    body_html = f"""
+      <div class="card">
+        <h1>Travel Segment Visualization (v1)</h1>
+        <p class="muted">Contracts for CSV input → static map/QR assets → booklet JSON → InDesign injection.</p>
+      </div>
+
+      <div class="card">
+        {_render_markdown_safe(md)}
+      </div>
+    """.strip()
+
+    return _ui_shell(title="Travel Segments (v1)", active="apps", body_html=body_html, max_width_px=980, user=user)
+
+
 @app.get("/jobs/ui", response_class=HTMLResponse)
 def jobs_ui(
     request: Request,
@@ -3171,6 +3214,10 @@ class ArpCreateIn(BaseModel):
     scope_notes: str | None = ""
     status: str | None = "active"
     resource_urls: str | None = ""
+
+
+class ArpDeleteIn(BaseModel):
+    activity_id: int
 
 
 @app.get("/arp/ui", response_class=HTMLResponse)
@@ -3289,12 +3336,14 @@ def arp_ui(
             <thead>
               <tr>
                 <th style="width:40px;"></th>
+                <th class="sortable" data-key="activity_id" style="width:64px;">ID</th>
                 <th class="sortable" data-key="activity_name">Activity</th>
                 <th class="sortable" data-key="activity_category">Category</th>
                 <th>Resources</th>
                 <th>Evidence</th>
                 <th>Chunks</th>
                 <th>Report</th>
+                <th style="width:120px;">Actions</th>
               </tr>
             </thead>
             <tbody id="rows"></tbody>
@@ -3334,6 +3383,9 @@ def arp_ui(
       function keyValue(it, key) { return String(it?.[key] ?? '').toLowerCase(); }
       function compare(a, b) {
         const dir = sortDir === 'desc' ? -1 : 1;
+        if (sortKey === 'activity_id') {
+          return (Number(a?.activity_id || 0) - Number(b?.activity_id || 0)) * dir;
+        }
         return keyValue(a, sortKey).localeCompare(keyValue(b, sortKey)) * dir;
       }
       function fillCategories() {
@@ -3347,7 +3399,7 @@ def arp_ui(
         const filtered = items.filter((it) => {
           if (cat && String(it.activity_category||'').toLowerCase() !== cat) return false;
           if (!q) return true;
-          const hay = [it.activity_name, it.activity_category, it.scope_notes].map(x => String(x||'').toLowerCase()).join(' | ');
+          const hay = [it.activity_id, it.activity_name, it.activity_category, it.scope_notes].map(x => String(x||'').toLowerCase()).join(' | ');
           return hay.includes(q);
         }).slice().sort(compare);
 
@@ -3359,16 +3411,23 @@ def arp_ui(
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td><input class="pick" type="checkbox" data-id="${esc(rid)}" /></td>
+            <td class="mono">#${esc(rid)}</td>
             <td><div style="font-weight:600; color:var(--text-secondary);">${esc(it.activity_name||'')}</div><div class="muted">${esc(it.scope_notes||'')}</div></td>
             <td>${esc(it.activity_category||'')}</td>
             <td><a href="${resUrl}">Resources (${Number(it.sources_count||0)})</a></td>
             <td><span class="pill">${esc(it.docs_status||'')}</span></td>
             <td class="mono">${Number(it.chunks_count||0)}</td>
             <td>${repUrl ? `<a href="${repUrl}">View</a>` : '<span class="muted">—</span>'}</td>
+            <td>
+              <button class="btn" type="button" data-action="delete" data-id="${esc(rid)}"
+                style="padding:6px 10px; border-radius:12px; color:#b42318; border-color: rgba(180,35,24,0.35);">
+                Delete
+              </button>
+            </td>
           `;
           rowsEl.appendChild(tr);
         }
-        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="7" class="muted">No matching activities.</td></tr>';
+        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="9" class="muted">No matching activities.</td></tr>';
         metaEl.textContent = `Activities: ${filtered.length}/${items.length} • Sort: ${sortKey} (${sortDir})`;
       }
       function selected() {
@@ -3390,6 +3449,17 @@ def arp_ui(
         if (res.status === 401) { openApiKey(); throw new Error(body.detail || body.error || 'Missing/invalid API key'); }
         if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
         window.location.href = `/jobs/ui?job_id=${encodeURIComponent(body.job_id)}`;
+      }
+
+      async function apiPost(url, payload) {
+        const apiKey = String(localStorage.getItem('eti_x_api_key') || '').trim();
+        const headers = { 'Content-Type':'application/json' };
+        if (apiKey) headers['X-API-Key'] = apiKey;
+        const res = await fetch(url, { method:'POST', headers, body: JSON.stringify(payload||{}) });
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 401) { openApiKey(); throw new Error(body.detail || body.error || 'Missing/invalid API key'); }
+        if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
+        return body;
       }
       btnGenerate.addEventListener('click', async () => {
         const ids = selected();
@@ -3476,6 +3546,29 @@ def arp_ui(
       btnCloseCreate.addEventListener('click', closeCreate);
       btnCancelCreate.addEventListener('click', closeCreate);
       dlgCreate.addEventListener('click', (e) => { if (e.target === dlgCreate) closeCreate(); });
+
+      rowsEl.addEventListener('click', async (e) => {
+        const btn = e.target?.closest ? e.target.closest('button[data-action="delete"]') : null;
+        if (!btn) return;
+        const rid = String(btn.getAttribute('data-id') || '').trim();
+        const aid = Number(rid || '0');
+        if (!aid) return;
+        const name = String((items.find(x => Number(x.activity_id||0) === aid) || {}).activity_name || '').trim();
+        const ok = window.confirm(`Delete activity #${aid}${name ? `: ${name}` : ''}?\\n\\nThis removes sources, documents, chunks, and reports for this activity.`);
+        if (!ok) return;
+        btn.disabled = true;
+        metaEl.textContent = `Deleting activity #${aid}…`;
+        try {
+          const body = await apiPost('/arp/api/delete', { activity_id: aid });
+          const del = body.deleted || {};
+          metaEl.textContent = `Deleted activity #${aid} (sources=${Number(del.sources||0)}, chunks=${Number(del.chunks||0)}, reports=${Number(del.reports||0)}).`;
+          await load();
+        } catch (err) {
+          metaEl.textContent = 'Error: ' + String(err?.message || err);
+        } finally {
+          btn.disabled = false;
+        }
+      });
 
       qEl.value = localStorage.getItem('eti_arpweb_q') || '';
       qEl.addEventListener('input', () => { localStorage.setItem('eti_arpweb_q', qEl.value); render(); });
@@ -4733,6 +4826,7 @@ def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:
 
 _CSV_KEY_CLEAN_RE = re.compile(r"[^a-z0-9]+")
 _NAME_CLEAN_RE = re.compile(r"[^a-z0-9]+")
+_URL_IN_TEXT_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 
 
 def _norm_csv_key(key: str) -> str:
@@ -4748,6 +4842,36 @@ def _row_get(nrow: dict[str, str], *keys: str) -> str:
         v = (nrow.get(_norm_csv_key(k)) or "").strip()
         if v:
             return v
+    return ""
+
+def _looks_like_url(s: str) -> bool:
+    u = (s or "").strip()
+    if not u:
+        return False
+    parsed = urlparse(u)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _coerce_url_from_row(*, url_raw: str, row: dict[str, str]) -> str:
+    """
+    Best-effort recovery for messy CSVs:
+    - If url_raw already looks like http(s), keep it.
+    - Else scan all cell values for the first http(s) URL.
+    """
+    u = (url_raw or "").strip().strip("<>").strip()
+    if _looks_like_url(u):
+        return u
+
+    # Scan for any embedded URL across the row (handles shifted columns / wrong header mapping).
+    for v in (row or {}).values():
+        txt = ("" if v is None else str(v)).strip()
+        if not txt:
+            continue
+        m = _URL_IN_TEXT_RE.search(txt)
+        if m:
+            cand = m.group(0).strip().strip("<>").strip()
+            if _looks_like_url(cand):
+                return cand
     return ""
 
 
@@ -4823,7 +4947,11 @@ def _arp_import_rows(
                     aid = int(float(aid_raw)) if aid_raw else None
                 except Exception:
                     aid = None
-                url = _row_get(nr, "URL", "Url", "Link", "Resource URL", "Source URL", "Resource")
+
+                # "Resource" is ambiguous (often a category like Government/NGO/Education).
+                # Accept it only if we can coerce a valid http(s) URL from the row.
+                url_raw = _row_get(nr, "URL", "Url", "Link", "Resource URL", "Source URL", "Resource")
+                url = _coerce_url_from_row(url_raw=url_raw, row=r)
                 if not url:
                     continue
 
@@ -4854,6 +4982,14 @@ def _arp_import_rows(
                 org = _row_get(nr, "Organization / Publisher", "Organization", "Publisher")
                 jurisdiction = _row_get(nr, "Country / Jurisdiction", "Jurisdiction", "Country")
                 source_type = _row_get(nr, "Source type", "Source Type", "Type")
+
+                # If the URL column accidentally contains the source type (common failure mode),
+                # and the real URL was recovered from another cell, backfill source_type.
+                if not source_type and url_raw and not _looks_like_url(url_raw):
+                    st = str(url_raw).strip()
+                    if st and st.lower() in {"education", "ngo", "government", "governing body"}:
+                        source_type = st
+
                 activities_covered_raw = _row_get(nr, "Activities covered", "Activities Covered")
 
                 brief = _row_get(
@@ -4960,6 +5096,10 @@ def arp_api_create(
         seen.add(u)
         urls.append(u)
 
+    invalid_urls = [u for u in urls if not _looks_like_url(u)]
+    if invalid_urls:
+        raise HTTPException(status_code=400, detail=f"Invalid URL(s): {', '.join(invalid_urls[:20])}")
+
     slug = _stable_slug(activity_name, max_len=64)
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -5022,6 +5162,50 @@ def arp_api_create(
         conn.commit()
 
     return {"ok": True, "activity_id": activity_id, "activity_slug": slug, "sources": sources_count}
+
+
+@app.post("/arp/api/delete")
+def arp_api_delete(
+    body: ArpDeleteIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_write_access(request=request, x_api_key=x_api_key, role="editor")
+    aid = int(body.activity_id)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+
+            cur.execute(
+                _arp_schema('SELECT activity_slug, activity_name FROM "__ARP_SCHEMA__".activities WHERE activity_id=%s;'),
+                (aid,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Activity not found")
+            activity_slug, activity_name = row
+
+            # Helpful counts; the delete cascades to sources/documents/chunks/reports/activity_icons, etc.
+            cur.execute(_arp_schema('SELECT COUNT(*) FROM "__ARP_SCHEMA__".sources WHERE activity_id=%s;'), (aid,))
+            (sources_n,) = cur.fetchone() or (0,)
+            cur.execute(_arp_schema('SELECT COUNT(*) FROM "__ARP_SCHEMA__".chunks WHERE activity_id=%s;'), (aid,))
+            (chunks_n,) = cur.fetchone() or (0,)
+            cur.execute(_arp_schema('SELECT COUNT(*) FROM "__ARP_SCHEMA__".reports WHERE activity_id=%s;'), (aid,))
+            (reports_n,) = cur.fetchone() or (0,)
+
+            cur.execute(_arp_schema('DELETE FROM "__ARP_SCHEMA__".activities WHERE activity_id=%s;'), (aid,))
+
+        conn.commit()
+
+    return {
+        "ok": True,
+        "activity_id": aid,
+        "activity_slug": str(activity_slug or ""),
+        "activity_name": str(activity_name or ""),
+        "deleted": {"sources": int(sources_n or 0), "chunks": int(chunks_n or 0), "reports": int(reports_n or 0)},
+        "note": "S3 objects (if any) are not deleted by this endpoint.",
+    }
 
 
 @app.post("/arp/import")

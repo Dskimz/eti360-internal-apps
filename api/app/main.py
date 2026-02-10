@@ -3174,6 +3174,7 @@ def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:
 
 
 _CSV_KEY_CLEAN_RE = re.compile(r"[^a-z0-9]+")
+_NAME_CLEAN_RE = re.compile(r"[^a-z0-9]+")
 
 
 def _norm_csv_key(key: str) -> str:
@@ -3190,6 +3191,10 @@ def _row_get(nrow: dict[str, str], *keys: str) -> str:
         if v:
             return v
     return ""
+
+
+def _norm_name(s: str) -> str:
+    return _NAME_CLEAN_RE.sub(" ", str(s or "").strip().lower()).strip()
 
 
 def _arp_import_rows(
@@ -3242,6 +3247,13 @@ def _arp_import_rows(
 
             # Research / sources
             sources_count = 0
+            cur.execute(_arp_schema('SELECT activity_id, activity_name FROM "__ARP_SCHEMA__".activities;'))
+            activity_name_to_id: dict[str, int] = {}
+            for aid, nm in cur.fetchall() or []:
+                if aid is None or not nm:
+                    continue
+                activity_name_to_id[_norm_name(str(nm))] = int(aid)
+
             for r in research_rows:
                 nr = _norm_row(r)
 
@@ -3257,6 +3269,8 @@ def _arp_import_rows(
                 if not url:
                     continue
 
+                if aid is None and activity_name:
+                    aid = activity_name_to_id.get(_norm_name(activity_name))
                 if aid is None:
                     continue
 

@@ -1,3 +1,51 @@
 ActivityID,Activity Category,Activity Name,Context / Scope Notes,Status
-1001,Outdoor,Day Hike,"Trail hiking with a guide; include altitude, weather, footwear, and group supervision requirements.",active
-1002,Water,Kayaking (Calm Water),"Flat-water kayaking; include PFD requirements, instructor ratio, and weather cutoff guidance.",active
+1,Water-Based,Kayaking – flatwater,"Lakes, calm rivers, sheltered environments",active
+2,Water-Based,Kayaking – coastal / open water,"Sea kayaking, exposed coastlines, currents",active
+3,Water-Based,"Snorkeling – shore-based, guided","Non-boat entry, shallow to moderate depth",active
+4,Water-Based,Swimming – supervised beaches,Lifeguarded or structured beach settings,active
+5,Water-Based,Swimming – open water,"Lakes, rivers, non-beach ocean swimming",active
+6,Outdoor / Adventure,Trekking / hiking – day hikes,"Return same day, maintained trails",active
+7,Outdoor / Adventure,Trekking / hiking – multi-day / remote,Overnight or limited access routes,active
+8,Outdoor / Adventure,"Camping – overnight, fixed-site","Campgrounds, established facilities",active
+9,Outdoor / Adventure,Camping – expedition-style / remote,"Backcountry, limited services",active
+10,Outdoor / Adventure,Rock climbing – indoor / artificial,"Gyms, climbing walls, controlled settings",active
+11,Outdoor / Adventure,Rock climbing – outdoor natural sites,"Crags, cliffs, variable environments",active
+12,Outdoor / Adventure,Ziplining / ropes courses,Commercial adventure facilities,active
+13,Urban / Mobility,Cycling – urban / traffic-exposed,"City streets, shared roads",active
+14,Urban / Mobility,Cycling – off-road / trail-based,"Trails, parks, non-traffic environments",active
+15,Urban / Mobility,Long-distance bus / coach travel,Intercity or multi-hour journeys,active
+16,Urban / Mobility,Overnight trains,"Sleeping berths, night travel",active
+17,Urban / Mobility,Domestic flights with student groups,Group air travel logistics,active
+18,Programmatic,Homestays,Students living with host families,active
+19,Programmatic,Independent student free time,Unstructured or semi-structured periods,active
+20,Programmatic,Community service projects,"Construction, teaching, outreach work",active
+21,Water-Based,Canoeing – flatwater,"Group boats, lakes, calm rivers",active
+22,Water-Based,Canoeing – moving water,"Mild current, guided sections",active
+23,Water-Based,Sailing – day sailing,"Instructional, coastal or inland",active
+24,Water-Based,Sailing – dinghy instruction,Student-operated small craft,active
+25,Water-Based,Rafting – guided commercial,"Non-expedition, controlled rapids",active
+26,Water-Based,Stand-up paddleboarding (SUP),Flatwater or sheltered coast,active
+27,Water-Based,Surfing – beginner instruction,"Beach-based, instructor-led",active
+28,Water-Based,Bodyboarding,Shore-based wave activity,active
+29,Water-Based,Scuba “discover” experiences,"Shallow water, instructor-led",active
+30,Water-Based,Free diving / breath-hold snorkeling,"Short-duration, non-certified",active
+31,Water-Based,Rowing – instructional,Shells or stable training boats,active
+32,Water-Based,Water polo / aquatic sports,Pools or controlled environments,active
+33,Water-Based,Whitewater tubing,"Guided, low-grade rivers",active
+34,Water-Based,Coastal rock pooling / intertidal study,"Slippery terrain, tide exposure",active
+35,Water-Based,Lake swimming (non-beach),"Designated swim zones, supervision",active
+36,Outdoor / Adventure,Orienteering / navigation,Map and compass-based activities,active
+37,Outdoor / Adventure,High-ropes courses,"Elevated, commercial facilities",active
+38,Outdoor / Adventure,Low-ropes / initiative courses,Team-based ground elements,active
+39,Outdoor / Adventure,Bouldering – outdoor,"Low-height climbing, no ropes",active
+40,Outdoor / Adventure,Via ferrata,Fixed-route protected climbing,active
+41,Outdoor / Adventure,Abseiling / rappelling,Instructor-led descents,active
+42,Outdoor / Adventure,Caving / cave exploration,"Guided, tourist-accessible caves",active
+43,Outdoor / Adventure,Scrambling,"Hands-on terrain, non-technical",active
+44,Outdoor / Adventure,Mountain biking – trail-based,"Off-road, guided riding",active
+45,Outdoor / Adventure,Downhill biking – controlled parks,"Lift-accessed, commercial parks",active
+46,Outdoor / Adventure,Snowshoeing,"Winter terrain, low technicality",active
+47,Outdoor / Adventure,Cross-country skiing,Groomed or semi-groomed trails,active
+48,Outdoor / Adventure,Glacier walks – guided,Non-technical ice travel,active
+49,Outdoor / Adventure,Survival skills workshops,"Fire, shelter, navigation basics",active
+50,Outdoor / Adventure,Outdoor leadership challenges,Structured adventure learning,active

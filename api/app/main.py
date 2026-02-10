@@ -907,10 +907,80 @@ def _run_job(*, job_id: str, kind: str, payload: dict[str, Any]) -> None:
                     with conn.cursor() as cur:
                         _job_append_log(cur, job_id=job_id, line=f"[{i}/{len(activity_ids)}] activity_id={aid}")
                     conn.commit()
-                results.append(_arp_prepare_activity(activity_id=int(aid), job_id=job_id))
+                results.append(_arp_prepare_activity(activity_id=int(aid), job_id=job_id, only_missing=True))
             with _connect() as conn:
                 with conn.cursor() as cur:
                     _job_finish_ok(cur, job_id=job_id, result={"ok": True, "results": results})
+                conn.commit()
+        except Exception as e:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_error(cur, job_id=job_id, error=str(getattr(e, "detail", e)))
+                conn.commit()
+        return
+
+    if kind == "arp_prepare_generate":
+        ids = payload.get("activity_ids") if isinstance(payload, dict) else None
+        top_k = int(payload.get("top_k") or 12) if isinstance(payload, dict) else 12
+        top_k = max(1, min(top_k, 50))
+        activity_ids = [int(x) for x in (ids or []) if str(x).strip().isdigit()]
+        if not activity_ids:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_error(cur, job_id=job_id, error="No activity_ids in job payload")
+                conn.commit()
+            return
+
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _job_append_log(
+                    cur,
+                    job_id=job_id,
+                    line=f"Starting arp_prepare_generate: {len(activity_ids)} activities (top_k={top_k})",
+                )
+            conn.commit()
+
+        prepare_results: list[dict[str, Any]] = []
+        generate_results: list[dict[str, Any]] = []
+        errors: list[str] = []
+
+        try:
+            # 1) Prepare evidence (missing-only, reuses existing S3)
+            for i, aid in enumerate(activity_ids, start=1):
+                with _connect() as conn:
+                    with conn.cursor() as cur:
+                        _job_append_log(cur, job_id=job_id, line=f"[{i}/{len(activity_ids)}] prepare activity_id={aid}")
+                    conn.commit()
+                prepare_results.append(_arp_prepare_activity(activity_id=int(aid), job_id=job_id, only_missing=True))
+
+            # 2) Generate reports
+            for i, aid in enumerate(activity_ids, start=1):
+                with _connect() as conn:
+                    with conn.cursor() as cur:
+                        _job_append_log(cur, job_id=job_id, line=f"[{i}/{len(activity_ids)}] generate activity_id={aid}")
+                    conn.commit()
+                try:
+                    generate_results.append(_arp_generate_activity(activity_id=int(aid), top_k=top_k, job_id=job_id))
+                except Exception as e:
+                    msg = str(getattr(e, "detail", e))
+                    errors.append(f"{aid}: {msg}")
+                    with _connect() as conn:
+                        with conn.cursor() as cur:
+                            _job_append_log(cur, job_id=job_id, line=f"ERROR: generate activity_id={aid}: {msg}")
+                        conn.commit()
+
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_ok(
+                        cur,
+                        job_id=job_id,
+                        result={
+                            "ok": True,
+                            "prepare_results": prepare_results,
+                            "generate_results": generate_results,
+                            "errors": errors,
+                        },
+                    )
                 conn.commit()
         except Exception as e:
             with _connect() as conn:
@@ -3066,6 +3136,7 @@ def arp_ui(
           <input id="topk" type="text" value="12" style="max-width:90px;" />
           <span class="muted" id="meta">Loading…</span>
         </div>
+        <div class="muted" style="margin-top:-4px;">Generate runs Prepare first (missing-only), then writes the report.</div>
 
         <div class="section tablewrap">
           <table>
@@ -4513,7 +4584,7 @@ def arp_generate(
     if not ids:
         raise HTTPException(status_code=400, detail="Select at least one activity")
     top_k = max(1, min(int(body.top_k or 12), 50))
-    job_id = _enqueue_job(kind="arp_generate", payload={"activity_ids": ids, "top_k": top_k})
+    job_id = _enqueue_job(kind="arp_prepare_generate", payload={"activity_ids": ids, "top_k": top_k})
     return {"ok": True, "job_id": job_id}
 
 

@@ -9,3 +9,5 @@ matplotlib>=3.9,<4
 astral>=3.2,<4
 Markdown>=3.6,<3.7
 bleach>=6.1,<7
+pypdf>=4.0,<5
+requests>=2.32,<3

@@ -2,6 +2,8 @@
 
 Minimal FastAPI service intended to run on Render (no Docker).
 
+UI styling is shared via `/static/eti360.css` (vendored from `@eti360/design-system`).
+
 ## Render settings
 
 - **Runtime:** Python

@@ -2,10 +2,14 @@
   "name": "eti360-internal-apps",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "@eti360/design-system": "github:Dskimz/eti360-design-system#main"
+  },
   "devDependencies": {
     "pagecrypt": "^5.0.0"
   },
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "sync:css": "node scripts/sync-design-system-css.mjs"
   }
 }

@@ -2,6 +2,8 @@
 
 Static directory page for internal tools.
 
+UI styling is aligned with the ETI360 marketing site via `@eti360/design-system`.
+
 ## Password-protected deploy (Render)
 
 This repo can be deployed as a password-protected static site by building an encrypted `dist/index.html` via PageCrypt.
@@ -17,3 +19,5 @@ This repo can be deployed as a password-protected static site by building an enc
 ### Notes
 
 - The build inlines `ui_style.css` + `apps.json` into the HTML before encrypting, so those files are not exposed when publishing `dist`.
+- If `@eti360/design-system` is installed, the build will inline `node_modules/@eti360/design-system/eti360.css` instead of `ui_style.css`.
+- To sync local copies (for the Python API static CSS + fallback directory CSS): `npm run sync:css`

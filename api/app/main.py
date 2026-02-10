@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import csv
 import json
 import os
 import re
 import tempfile
+import threading
+import time
 import uuid
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
 from hashlib import pbkdf2_hmac, sha256
+from io import StringIO
 from pathlib import Path
 from secrets import token_bytes
 from typing import Any
@@ -17,20 +21,41 @@ from urllib.request import urlopen
 import bleach
 import markdown as mdlib
 import psycopg
+import requests
 from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from app.arp_pipeline import (
+    ARP_EXTRACT_SCHEMA,
+    ARP_EXTRACT_SYSTEM,
+    ARP_WRITE_SYSTEM,
+    BM25Index,
+    arp_extract_user_prompt,
+    chunks_from_document,
+    guess_content_type,
+    parse_html_bytes,
+    parse_pdf_bytes,
+    render_arp_json_to_markdown,
+    sha256_hex,
+    tokenize,
+    validate_arp_json,
+)
 from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
-from app.weather.openai_chat import OpenAIResult, chat_text
+from app.weather.openai_chat import OpenAIResult, chat_json, chat_text
 from app.weather.s3 import get_bytes, get_s3_config, presign_get, presign_get_inline, put_bytes, put_png
 from app.weather.weather_chart import MONTHS, MonthlyWeather, render_weather_chart
 
 app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 WEATHER_SCHEMA = "weather"
+OPS_SCHEMA = os.environ.get("OPS_SCHEMA", "ops").strip() or "ops"
+ARP_SCHEMA = os.environ.get("ARP_SCHEMA", "arp").strip() or "arp"
 USAGE_SCHEMA = os.environ.get("USAGE_SCHEMA", "ops").strip() or "ops"
 AUTH_SCHEMA = os.environ.get("AUTH_SCHEMA", "ops").strip() or "ops"
 DOCS_SCHEMA = os.environ.get("DOCS_SCHEMA", "ops").strip() or "ops"
@@ -46,11 +71,13 @@ def _startup_reconcile() -> None:
     try:
         with _connect() as conn:
             with conn.cursor() as cur:
+                _apply_ops_migrations(cur)
                 _ensure_usage_tables(cur)
                 _ensure_prompts_tables(cur)
                 _ensure_documents_tables(cur)
             conn.commit()
         _reconcile_required_prompts(edited_by={"id": "startup", "username": "startup", "role": "admin"}, change_note="Startup reconcile")
+        _maybe_start_jobs_worker()
     except Exception as e:
         # Don't block the service from starting; surface via logs.
         print(f"[startup] reconcile skipped: {e}")
@@ -109,6 +136,16 @@ def _directory_schema(sql: str) -> str:
     return sql.replace("__SCHEMA__", schema)
 
 
+def _ops_schema(sql: str) -> str:
+    schema = _require_safe_ident("OPS_SCHEMA", OPS_SCHEMA)
+    return sql.replace("__OPS_SCHEMA__", schema)
+
+
+def _arp_schema(sql: str) -> str:
+    schema = _require_safe_ident("ARP_SCHEMA", ARP_SCHEMA)
+    return sql.replace("__ARP_SCHEMA__", schema)
+
+
 def _slugify(s: str) -> str:
     s = (s or "").strip().lower()
     out: list[str] = []
@@ -122,6 +159,18 @@ def _slugify(s: str) -> str:
                 out.append("-")
                 last_dash = True
     return ("".join(out).strip("-") or "location")[:64]
+
+
+def _stable_slug(*parts: str, max_len: int = 80) -> str:
+    raw = " ".join(p.strip() for p in parts if p and p.strip())
+    raw = re.sub(r"\s+", " ", raw).strip()
+    base = re.sub(r"[^a-zA-Z0-9]+", "-", raw).strip("-").lower()
+    if not base:
+        base = "source"
+    if len(base) <= max_len:
+        return base
+    digest = sha256(raw.encode("utf-8")).hexdigest()[:12]
+    return f"{base[: max_len - 13]}-{digest}"
 
 
 def _extract_url(s: str) -> str:
@@ -138,6 +187,740 @@ def _require_safe_ident(label: str, value: str) -> str:
     if not value or not _SAFE_IDENT_RE.match(value):
         raise HTTPException(status_code=400, detail=f"Invalid {label}")
     return value
+
+
+def _read_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _migrations_dir() -> Path:
+    return Path(__file__).resolve().parent / "migrations"
+
+
+def _list_sql_migrations() -> list[Path]:
+    d = _migrations_dir()
+    if not d.exists():
+        return []
+    files = [p for p in d.iterdir() if p.is_file() and p.name.endswith(".sql")]
+    files.sort(key=lambda p: p.name)
+    return files
+
+
+def _apply_ops_migrations(cur: psycopg.Cursor) -> None:
+    """
+    Lightweight SQL migration runner.
+
+    - Applies `api/app/migrations/*.sql` in filename order.
+    - Tracks applied migrations in `OPS_SCHEMA.schema_migrations`.
+    - Intended for small, internal systems where Docker/migration tooling is overkill.
+    """
+    schema = _require_safe_ident("OPS_SCHEMA", OPS_SCHEMA)
+    migrations = _list_sql_migrations()
+    if not migrations:
+        return
+
+    cur.execute("SELECT to_regclass(%s);", (f"{schema}.schema_migrations",))
+    has_table = cur.fetchone()[0] is not None  # type: ignore[index]
+
+    applied: set[str] = set()
+    if has_table:
+        cur.execute(f'SELECT version FROM "{schema}".schema_migrations;')
+        applied = {str(r[0]) for r in (cur.fetchall() or [])}  # type: ignore[index]
+
+    for p in migrations:
+        version = p.stem
+        if version in applied:
+            continue
+        sql = _read_text(p)
+        sql = _ops_schema(sql)
+        sql = _arp_schema(sql)
+        cur.execute(sql)
+        cur.execute(f'INSERT INTO "{schema}".schema_migrations(version) VALUES (%s) ON CONFLICT (version) DO NOTHING;', (version,))
+        applied.add(version)
+
+
+def _ensure_arp_tables(cur: psycopg.Cursor) -> None:
+    # ARP schema/tables are created via migrations.
+    _apply_ops_migrations(cur)
+
+
+_JOBS_THREAD: threading.Thread | None = None
+
+
+def _jobs_worker_mode() -> str:
+    return (os.environ.get("JOBS_WORKER_MODE", "thread") or "thread").strip().lower()
+
+
+def _maybe_start_jobs_worker() -> None:
+    global _JOBS_THREAD
+    mode = _jobs_worker_mode()
+    if mode in {"0", "false", "no", "off", "disabled"}:
+        return
+    if _JOBS_THREAD and _JOBS_THREAD.is_alive():
+        return
+
+    t = threading.Thread(target=_jobs_worker_loop, name="eti360-jobs-worker", daemon=True)
+    t.start()
+    _JOBS_THREAD = t
+
+
+def _jobs_poll_seconds() -> float:
+    try:
+        return float(os.environ.get("JOBS_POLL_SECONDS", "2").strip() or "2")
+    except Exception:
+        return 2.0
+
+
+def _jobs_schema_name() -> str:
+    return _require_safe_ident("OPS_SCHEMA", OPS_SCHEMA)
+
+
+def _enqueue_job(*, kind: str, payload: dict[str, Any], created_by: str = "") -> str:
+    kind = (kind or "").strip()
+    if not kind:
+        raise HTTPException(status_code=400, detail="Missing job kind")
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _apply_ops_migrations(cur)
+            schema = _jobs_schema_name()
+            cur.execute(
+                f'INSERT INTO "{schema}".jobs(kind, payload, created_by) VALUES (%s, %s::jsonb, %s) RETURNING id;',
+                (kind, json.dumps(payload), created_by),
+            )
+            (job_id,) = cur.fetchone()
+        conn.commit()
+    return str(job_id)
+
+
+def _get_job(job_id: str) -> dict[str, Any] | None:
+    job_id = (job_id or "").strip()
+    if not job_id:
+        return None
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _apply_ops_migrations(cur)
+            schema = _jobs_schema_name()
+            cur.execute(
+                f'SELECT id, kind, status, payload, result, error, log, created_by, created_at, started_at, finished_at, heartbeat_at '
+                f'FROM "{schema}".jobs WHERE id=%s;',
+                (job_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            (
+                jid,
+                kind,
+                status,
+                payload,
+                result,
+                err,
+                log,
+                created_by,
+                created_at,
+                started_at,
+                finished_at,
+                heartbeat_at,
+            ) = row
+            return {
+                "id": str(jid),
+                "kind": kind,
+                "status": status,
+                "payload": payload,
+                "result": result,
+                "error": err,
+                "log": log,
+                "created_by": created_by,
+                "created_at": created_at.isoformat() if created_at else None,
+                "started_at": started_at.isoformat() if started_at else None,
+                "finished_at": finished_at.isoformat() if finished_at else None,
+                "heartbeat_at": heartbeat_at.isoformat() if heartbeat_at else None,
+            }
+
+
+def _list_jobs(*, limit: int = 100) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit or 100), 500))
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _apply_ops_migrations(cur)
+            schema = _jobs_schema_name()
+            cur.execute(
+                f'SELECT id, kind, status, created_at, started_at, finished_at FROM "{schema}".jobs ORDER BY created_at DESC LIMIT %s;',
+                (limit,),
+            )
+            out: list[dict[str, Any]] = []
+            for jid, kind, status, created_at, started_at, finished_at in (cur.fetchall() or []):
+                out.append(
+                    {
+                        "id": str(jid),
+                        "kind": kind,
+                        "status": status,
+                        "created_at": created_at.isoformat() if created_at else None,
+                        "started_at": started_at.isoformat() if started_at else None,
+                        "finished_at": finished_at.isoformat() if finished_at else None,
+                    }
+                )
+            return out
+
+
+def _jobs_worker_loop() -> None:
+    while True:
+        try:
+            job = _claim_next_job()
+            if not job:
+                time.sleep(_jobs_poll_seconds())
+                continue
+            _run_job(job_id=job["id"], kind=job["kind"], payload=job["payload"])
+        except Exception as e:
+            print(f"[jobs] worker loop error: {e}")
+            time.sleep(2.0)
+
+
+def _claim_next_job() -> dict[str, Any] | None:
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _apply_ops_migrations(cur)
+            schema = _jobs_schema_name()
+            cur.execute(
+                f"""
+                WITH picked AS (
+                  SELECT id
+                  FROM "{schema}".jobs
+                  WHERE status='queued'
+                  ORDER BY created_at ASC
+                  LIMIT 1
+                  FOR UPDATE SKIP LOCKED
+                )
+                UPDATE "{schema}".jobs j
+                SET status='running', started_at=COALESCE(started_at, now()), heartbeat_at=now()
+                FROM picked
+                WHERE j.id=picked.id
+                RETURNING j.id, j.kind, j.payload;
+                """.strip()
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.commit()
+                return None
+            jid, kind, payload = row
+            conn.commit()
+            return {"id": str(jid), "kind": kind, "payload": payload or {}}
+
+
+def _job_append_log(cur: psycopg.Cursor, *, job_id: str, line: str) -> None:
+    schema = _jobs_schema_name()
+    cur.execute(
+        f'UPDATE "{schema}".jobs SET log = log || %s, heartbeat_at=now() WHERE id=%s;',
+        ((line.rstrip() + "\n"), job_id),
+    )
+
+
+def _job_finish_ok(cur: psycopg.Cursor, *, job_id: str, result: dict[str, Any]) -> None:
+    schema = _jobs_schema_name()
+    cur.execute(
+        f'UPDATE "{schema}".jobs SET status=%s, result=%s::jsonb, finished_at=now(), heartbeat_at=now() WHERE id=%s;',
+        ("ok", json.dumps(result), job_id),
+    )
+
+
+def _job_finish_error(cur: psycopg.Cursor, *, job_id: str, error: str, log: str = "") -> None:
+    schema = _jobs_schema_name()
+    cur.execute(
+        f'UPDATE "{schema}".jobs SET status=%s, error=%s, log = log || %s, finished_at=now(), heartbeat_at=now() WHERE id=%s;',
+        ("error", (error or "")[:20000], (log or ""), job_id),
+    )
+
+
+def _arp_s3_key(*, prefix: str, source_id: str, content_type: str) -> tuple[str, str]:
+    ext = "bin"
+    ct = (content_type or "").strip().lower()
+    if ct == "pdf":
+        ext = "pdf"
+        mime = "application/pdf"
+    elif ct == "html":
+        ext = "html"
+        mime = "text/html"
+    else:
+        mime = "application/octet-stream"
+    key = f"{prefix}arp/raw/{source_id}/original.{ext}"
+    key = re.sub(r"//+", "/", key)
+    return key, mime
+
+
+def _arp_fetch_and_store_source(
+    cur: psycopg.Cursor,
+    *,
+    source_id: str,
+    url: str,
+    job_id: str,
+    s3_prefix: str,
+) -> tuple[str, str, str, int]:
+    """
+    Returns (content_type, s3_bucket, s3_key, bytes_size)
+    """
+    cur.execute(
+        _arp_schema('SELECT status, s3_bucket, s3_key, content_type FROM "__ARP_SCHEMA__".documents WHERE source_id=%s;'),
+        (source_id,),
+    )
+    row = cur.fetchone()
+    if row and str(row[0] or "") == "fetched" and str(row[1] or "") and str(row[2] or ""):
+        return str(row[3] or ""), str(row[1] or ""), str(row[2] or ""), 0
+
+    _job_append_log(cur, job_id=job_id, line=f"Fetch: {source_id}")
+
+    try:
+        resp = requests.get(url, timeout=45, headers={"User-Agent": "ETI360/1.0"})
+        resp.raise_for_status()
+        raw = resp.content
+    except Exception as e:
+        cur.execute(
+            _arp_schema(
+                """
+                UPDATE "__ARP_SCHEMA__".documents
+                SET status='error', error=%s, fetched_at=now()
+                WHERE source_id=%s;
+                """
+            ).strip(),
+            (str(e), source_id),
+        )
+        raise
+
+    header_ct = str(resp.headers.get("Content-Type") or "")
+    ctype = guess_content_type(url=url, header_content_type=header_ct)
+    s3cfg = get_s3_config()
+    key, mime = _arp_s3_key(prefix=s3cfg.prefix or s3_prefix, source_id=source_id, content_type=ctype)
+    put_bytes(region=s3cfg.region, bucket=s3cfg.bucket, key=key, body=raw, content_type=mime)
+    digest = sha256_hex(raw)
+
+    cur.execute(
+        _arp_schema(
+            """
+            UPDATE "__ARP_SCHEMA__".documents
+            SET status='fetched',
+                content_type=%s,
+                fetched_at=now(),
+                sha256=%s,
+                bytes_size=%s,
+                s3_bucket=%s,
+                s3_key=%s,
+                error=''
+            WHERE source_id=%s;
+            """
+        ).strip(),
+        (ctype, digest, int(len(raw)), s3cfg.bucket, key, source_id),
+    )
+    return ctype, s3cfg.bucket, key, int(len(raw))
+
+
+def _arp_prepare_activity(*, activity_id: int, job_id: str) -> dict[str, Any]:
+    s3cfg = get_s3_config()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(_arp_schema('SELECT activity_name FROM "__ARP_SCHEMA__".activities WHERE activity_id=%s;'), (activity_id,))
+            row = cur.fetchone()
+            if not row:
+                raise RuntimeError("Unknown activity")
+            (activity_name,) = row
+
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT source_id, url, jurisdiction, authority_class, publication_date, source_type
+                    FROM "__ARP_SCHEMA__".sources
+                    WHERE activity_id=%s
+                    ORDER BY source_id ASC;
+                    """
+                ).strip(),
+                (activity_id,),
+            )
+            sources = list(cur.fetchall())
+
+        conn.commit()
+
+    prepared = 0
+    chunks_added = 0
+    errors: list[str] = []
+
+    for idx, (source_id, url, jurisdiction, authority_class, publication_date, source_type) in enumerate(sources, start=1):
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _ensure_arp_tables(cur)
+                _job_append_log(cur, job_id=job_id, line=f"[{idx}/{len(sources)}] {source_id}")
+                try:
+                    ctype, bucket, key, _ = _arp_fetch_and_store_source(
+                        cur, source_id=str(source_id), url=str(url), job_id=job_id, s3_prefix=s3cfg.prefix
+                    )
+                    raw = get_bytes(region=s3cfg.region, bucket=bucket, key=key, max_bytes=15 * 1024 * 1024)
+                    if ctype == "pdf":
+                        doc = parse_pdf_bytes(str(source_id), raw)
+                    else:
+                        doc = parse_html_bytes(str(source_id), raw)
+
+                    chunks = chunks_from_document(
+                        source_id=str(source_id),
+                        activity_id=int(activity_id),
+                        jurisdiction=str(jurisdiction or ""),
+                        authority_class=str(authority_class or ""),
+                        publication_date=str(publication_date or ""),
+                        doc=doc,
+                    )
+
+                    for c in chunks:
+                        cur.execute(
+                            _arp_schema(
+                                """
+                                INSERT INTO "__ARP_SCHEMA__".chunks
+                                  (chunk_id, activity_id, source_id, heading, text, jurisdiction, authority_class, publication_date, loc)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (chunk_id) DO UPDATE SET
+                                  text=EXCLUDED.text,
+                                  heading=EXCLUDED.heading,
+                                  jurisdiction=EXCLUDED.jurisdiction,
+                                  authority_class=EXCLUDED.authority_class,
+                                  publication_date=EXCLUDED.publication_date;
+                                """
+                            ).strip(),
+                            (
+                                c["chunk_id"],
+                                c["activity_id"],
+                                c["source_id"],
+                                c["heading"],
+                                c["text"],
+                                c["jurisdiction"],
+                                c["authority_class"],
+                                c["publication_date"],
+                                c["loc"],
+                            ),
+                        )
+                    prepared += 1
+                    chunks_added += len(chunks)
+                except Exception as e:
+                    errors.append(f"{source_id}: {e}")
+                    _job_append_log(cur, job_id=job_id, line=f"ERROR: {source_id}: {e}")
+                conn.commit()
+
+    return {
+        "activity_id": int(activity_id),
+        "activity_name": str(activity_name),
+        "sources_total": len(sources),
+        "sources_prepared": prepared,
+        "chunks_added": chunks_added,
+        "errors": errors,
+    }
+
+
+def _arp_writer_input_md(activity_name: str, extracted: dict[str, list[dict[str, str]]]) -> str:
+    def to_list(items: list[dict[str, str]]) -> str:
+        lines = []
+        for it in items:
+            text = (it.get("text") or "").strip()
+            if not text:
+                continue
+            jur = it.get("jurisdiction") or ""
+            cls = it.get("authority_class") or ""
+            pub = it.get("publication_date") or ""
+            meta = ", ".join([x for x in [f"class {cls}" if cls else "", jur, pub] if x])
+            suffix = f" ({meta})" if meta else ""
+            lines.append(f"- {text}{suffix}")
+        return "\n".join(lines) if lines else "- (no extracted items)"
+
+    parts = [f"# Extracted evidence (activity: {activity_name})", ""]
+    for title, key in [
+        ("Environment assumptions", "environment_assumptions"),
+        ("Participant assumptions", "participant_assumptions"),
+        ("Supervision assumptions", "supervision_assumptions"),
+        ("Common failure modes", "common_failure_modes"),
+        ("Explicit cautions / abort criteria", "explicit_cautions_abort_criteria"),
+        ("Explicit limitations stated by sources", "explicit_limitations_from_source"),
+    ]:
+        parts.append(f"## {title}")
+        parts.append(to_list(extracted.get(key) or []))
+        parts.append("")
+    return "\n".join(parts).strip() + "\n"
+
+
+def _arp_generate_activity(*, activity_id: int, top_k: int, job_id: str) -> dict[str, Any]:
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema('SELECT activity_slug, activity_name FROM "__ARP_SCHEMA__".activities WHERE activity_id=%s;'),
+                (activity_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise RuntimeError("Unknown activity")
+            activity_slug, activity_name = row
+
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT chunk_id, heading, text, jurisdiction, authority_class, publication_date
+                    FROM "__ARP_SCHEMA__".chunks
+                    WHERE activity_id=%s;
+                    """
+                ).strip(),
+                (activity_id,),
+            )
+            chunks = list(cur.fetchall())
+        conn.commit()
+
+    if not chunks:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _job_append_log(cur, job_id=job_id, line="No chunks found; run Prepare first.")
+            conn.commit()
+        raise RuntimeError("No chunks found (prepare evidence first).")
+
+    idx = BM25Index()
+    by_id: dict[str, dict[str, Any]] = {}
+    for chunk_id, heading, text, jurisdiction, authority_class, publication_date in chunks:
+        cid = str(chunk_id)
+        by_id[cid] = {
+            "chunk_id": cid,
+            "heading": str(heading or ""),
+            "text": str(text or ""),
+            "jurisdiction": str(jurisdiction or ""),
+            "authority_class": str(authority_class or ""),
+            "publication_date": str(publication_date or ""),
+        }
+        idx.add(cid, str(text or ""))
+
+    results = idx.query(str(activity_name), top_k=int(top_k))
+    selected_ids = [str(r.get("id")) for r in results if r.get("id")]
+    selected = [by_id[cid] for cid in selected_ids if cid in by_id]
+
+    model_extract = os.environ.get("OPENAI_MODEL_ARP_EXTRACT", "").strip() or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini"
+    model_write = os.environ.get("OPENAI_MODEL_ARP_WRITE", "").strip() or os.environ.get("OPENAI_MODEL", "").strip() or "gpt-5-mini"
+
+    extracted: dict[str, list[dict[str, str]]] = {
+        "environment_assumptions": [],
+        "participant_assumptions": [],
+        "supervision_assumptions": [],
+        "common_failure_modes": [],
+        "explicit_cautions_abort_criteria": [],
+        "explicit_limitations_from_source": [],
+    }
+
+    run_id = _create_run_id()
+    total_prompt = 0
+    total_completion = 0
+    total_tokens = 0
+
+    for i, c in enumerate(selected, start=1):
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _job_append_log(cur, job_id=job_id, line=f"Extract [{i}/{len(selected)}]: {c['chunk_id']}")
+            conn.commit()
+        try:
+            res = chat_json(
+                model=model_extract,
+                system=ARP_EXTRACT_SYSTEM,
+                user=arp_extract_user_prompt(activity=str(activity_name), heading=str(c["heading"]), excerpt=str(c["text"])),
+                temperature=0.1,
+            )
+            total_prompt += res.prompt_tokens
+            total_completion += res.completion_tokens
+            total_tokens += res.total_tokens
+            payload = res.payload or {}
+            for k in extracted.keys():
+                vals = payload.get(k) if isinstance(payload, dict) else None
+                if isinstance(vals, list):
+                    for v in vals:
+                        if isinstance(v, str) and v.strip():
+                            extracted[k].append(
+                                {
+                                    "text": v.strip(),
+                                    "jurisdiction": str(c["jurisdiction"]),
+                                    "authority_class": str(c["authority_class"]),
+                                    "publication_date": str(c["publication_date"]),
+                                }
+                            )
+        except Exception as e:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_append_log(cur, job_id=job_id, line=f"Extract error: {e}")
+                conn.commit()
+
+    _record_llm_usage(
+        run_id=run_id,
+        workflow="arp",
+        kind="extract",
+        prompt_key="arp_extract_v1",
+        app_key="arp",
+        prompt_workflow="arp",
+        provider="openai",
+        model=model_extract,
+        prompt_tokens=total_prompt,
+        completion_tokens=total_completion,
+        total_tokens=total_tokens,
+        locations_count=0,
+        ok_count=0,
+        fail_count=0,
+    )
+
+    writer_md = _arp_writer_input_md(str(activity_name), extracted)
+
+    write = chat_json(model=model_write, system=ARP_WRITE_SYSTEM, user=writer_md, temperature=0.2)
+    arp_json = write.payload or {}
+    ok, err = validate_arp_json(arp_json)
+    if not ok:
+        # One retry to fix structure.
+        fix_prompt = writer_md + "\n\nFix output to valid JSON with required keys. Error: " + err
+        write = chat_json(model=model_write, system=ARP_WRITE_SYSTEM, user=fix_prompt, temperature=0.2)
+        arp_json = write.payload or {}
+        ok, err = validate_arp_json(arp_json)
+        if not ok:
+            raise RuntimeError(f"Writer output invalid: {err}")
+
+    report_md = render_arp_json_to_markdown(str(activity_name), arp_json)
+
+    _record_llm_usage(
+        run_id=run_id,
+        workflow="arp",
+        kind="write",
+        prompt_key="arp_write_v1",
+        app_key="arp",
+        prompt_workflow="arp",
+        provider="openai",
+        model=write.model,
+        prompt_tokens=write.prompt_tokens,
+        completion_tokens=write.completion_tokens,
+        total_tokens=write.total_tokens,
+        locations_count=0,
+        ok_count=0,
+        fail_count=0,
+    )
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema(
+                    """
+                    INSERT INTO "__ARP_SCHEMA__".reports (activity_id, activity_slug, status, report_json, report_md, model, error)
+                    VALUES (%s, %s, 'draft', %s::jsonb, %s, %s, '')
+                    ON CONFLICT (activity_id) DO UPDATE SET
+                      activity_slug=EXCLUDED.activity_slug,
+                      report_json=EXCLUDED.report_json,
+                      report_md=EXCLUDED.report_md,
+                      model=EXCLUDED.model,
+                      error='',
+                      updated_at=now();
+                    """
+                ).strip(),
+                (int(activity_id), str(activity_slug), json.dumps(arp_json), report_md, str(write.model)),
+            )
+        conn.commit()
+
+    return {"activity_id": int(activity_id), "activity_slug": str(activity_slug), "report_url": f"/arp/report/{quote(str(activity_slug))}"}
+
+
+def _run_job(*, job_id: str, kind: str, payload: dict[str, Any]) -> None:
+    if kind == "weather_auto_batch":
+        locations = payload.get("locations") if isinstance(payload, dict) else None
+        force_refresh = bool(payload.get("force_refresh")) if isinstance(payload, dict) else False
+        locs = [str(x).strip() for x in (locations or []) if str(x).strip()]
+        if not locs:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_error(cur, job_id=job_id, error="No locations in job payload")
+                conn.commit()
+            return
+
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _job_append_log(cur, job_id=job_id, line=f"Starting weather_auto_batch: {len(locs)} locations")
+            conn.commit()
+
+        try:
+            result = _run_weather_auto_batch(locations=locs, force_refresh=force_refresh, job_id=job_id)
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_ok(cur, job_id=job_id, result=result)
+                conn.commit()
+        except Exception as e:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_error(cur, job_id=job_id, error=str(getattr(e, "detail", e)))
+                conn.commit()
+        return
+
+    if kind == "arp_prepare":
+        ids = payload.get("activity_ids") if isinstance(payload, dict) else None
+        activity_ids = [int(x) for x in (ids or []) if str(x).strip().isdigit()]
+        if not activity_ids:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_error(cur, job_id=job_id, error="No activity_ids in job payload")
+                conn.commit()
+            return
+
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _job_append_log(cur, job_id=job_id, line=f"Starting arp_prepare: {len(activity_ids)} activities")
+            conn.commit()
+
+        try:
+            results = []
+            for i, aid in enumerate(activity_ids, start=1):
+                with _connect() as conn:
+                    with conn.cursor() as cur:
+                        _job_append_log(cur, job_id=job_id, line=f"[{i}/{len(activity_ids)}] activity_id={aid}")
+                    conn.commit()
+                results.append(_arp_prepare_activity(activity_id=int(aid), job_id=job_id))
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_ok(cur, job_id=job_id, result={"ok": True, "results": results})
+                conn.commit()
+        except Exception as e:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_error(cur, job_id=job_id, error=str(getattr(e, "detail", e)))
+                conn.commit()
+        return
+
+    if kind == "arp_generate":
+        ids = payload.get("activity_ids") if isinstance(payload, dict) else None
+        top_k = int(payload.get("top_k") or 12) if isinstance(payload, dict) else 12
+        top_k = max(1, min(top_k, 50))
+        activity_ids = [int(x) for x in (ids or []) if str(x).strip().isdigit()]
+        if not activity_ids:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_error(cur, job_id=job_id, error="No activity_ids in job payload")
+                conn.commit()
+            return
+
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                _job_append_log(cur, job_id=job_id, line=f"Starting arp_generate: {len(activity_ids)} activities (top_k={top_k})")
+            conn.commit()
+
+        try:
+            results = []
+            for i, aid in enumerate(activity_ids, start=1):
+                with _connect() as conn:
+                    with conn.cursor() as cur:
+                        _job_append_log(cur, job_id=job_id, line=f"[{i}/{len(activity_ids)}] activity_id={aid}")
+                    conn.commit()
+                results.append(_arp_generate_activity(activity_id=int(aid), top_k=top_k, job_id=job_id))
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_ok(cur, job_id=job_id, result={"ok": True, "results": results})
+                conn.commit()
+        except Exception as e:
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _job_finish_error(cur, job_id=job_id, error=str(getattr(e, "detail", e)))
+                conn.commit()
+        return
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _job_finish_error(cur, job_id=job_id, error=f"Unknown job kind: {kind}")
+        conn.commit()
 
 
 def _ensure_usage_tables(cur: psycopg.Cursor) -> None:
@@ -404,6 +1187,36 @@ def _require_access(
     """
     if _auth_disabled():
         return {"id": "disabled", "username": "disabled", "display_name": "Auth disabled", "role": "admin"}
+
+    user = _get_current_user(request)
+    if user:
+        if _role_ge(str(user.get("role") or ""), required=role):
+            return user
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    _require_api_key(x_api_key)
+    return {"id": "api_key", "username": "api_key", "display_name": "API key", "role": "admin"}
+
+
+def _allow_unauth_write() -> bool:
+    v = os.environ.get("ALLOW_UNAUTH_WRITE", "").strip().lower()
+    return v in {"1", "true", "yes", "on"}
+
+
+def _require_write_access(
+    *,
+    request: Request,
+    x_api_key: str | None,
+    role: str = "editor",
+) -> dict[str, Any] | None:
+    """
+    Write/cost-incurring access check.
+
+    Unlike `_require_access`, this does NOT automatically bypass when auth is disabled,
+    unless `ALLOW_UNAUTH_WRITE=true` is set explicitly.
+    """
+    if _allow_unauth_write():
+        return {"id": "disabled", "username": "disabled", "display_name": "Unauth writes allowed", "role": "admin"}
 
     user = _get_current_user(request)
     if user:
@@ -1080,116 +1893,18 @@ def _reconcile_required_prompts(*, edited_by: dict[str, Any] | None, change_note
     return {"created": created, "updated": updated}
 
 
-_UI_CSS = """
-:root {
-  color-scheme: light;
-  --primary: #002b4f;
-  --accent: #ffc300;
-  --text: #000814;
-  --muted: rgba(0, 8, 20, 0.6);
-  --bg: #F5F6F7;
-  --surface: #ffffff;
-  --band: #f7f7f8;
-  --border: #F2F2F2;
-  --tint: rgba(0, 43, 79, 0.12);
-  --radius: 16px;
-}
-
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font-family: Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  color: var(--text);
-  background: var(--bg);
-  line-height: 1.8;
-}
-a { color: var(--primary); text-decoration: none; }
-a:hover { text-decoration: underline; }
-code, .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-.muted { color: var(--muted); font-size: 13px; }
-.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-.topbar { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--border); }
-.topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 0; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: 0.2px; }
-.brand-dot { width: 10px; height: 10px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 4px var(--tint); }
-.badge { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--tint); color: var(--primary); border: 1px solid var(--border); }
-.nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.nav a { font-size: 13px; padding: 6px 12px; border-radius: 999px; color: var(--muted); }
-.nav a.active { background: var(--tint); color: var(--primary); }
-.goldline { height: 2px; background: var(--accent); }
-main { padding: 22px 0 40px; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
-.card + .card { margin-top: 16px; }
-h1 { margin: 0; font-size: 20px; line-height: 1.25; }
-h2 { margin: 0; font-size: 14px; letter-spacing: 0.2px; }
-.section { margin-top: 16px; }
-.divider { border-top: 1px solid var(--border); margin: 16px 0; }
-
-.btnrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-.btn {
-  border-radius: 999px;
-  padding: 10px 16px;
-  font-size: 14px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--primary);
-  cursor: pointer;
-}
-.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
-.btn:hover { background: var(--band); text-decoration: none; }
-.btn.primary:hover { opacity: 0.92; }
-.btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-label { display: block; font-size: 12px; color: rgba(0, 8, 20, 0.75); margin-bottom: 6px; }
-input[type="text"], textarea, select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  font-size: 14px;
-  background: var(--surface);
-  outline: none;
-}
-input[type="text"]:focus, textarea:focus, select:focus {
-  border-color: rgba(0, 43, 79, 0.35);
-  box-shadow: 0 0 0 4px rgba(0, 43, 79, 0.10);
-}
-textarea { min-height: 220px; resize: vertical; }
-
-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
-th, td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-th { font-size: 12px; letter-spacing: 0.2px; color: rgba(0, 8, 20, 0.65); background: var(--band); }
-.tablewrap { overflow: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
-.tablewrap table th { position: sticky; top: 0; z-index: 1; }
-.right { text-align: right; }
-.pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); background: var(--band); color: rgba(0, 8, 20, 0.75); }
-
-.grid-2 { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
-@media (min-width: 1100px) { .grid-2 { grid-template-columns: 1fr 1.4fr; } }
-.grid-sidebar { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
-@media (max-width: 900px) { .grid-sidebar { grid-template-columns: 1fr; } }
-
-.statusbox {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--band);
-  font-size: 12px;
-  white-space: pre-wrap;
-}
-""".strip()
+_UI_CSS = ""  # legacy (replaced by /static/eti360.css)
 
 
 def _ui_nav(*, active: str) -> str:
     items = [
         ("Apps", "/apps", "apps"),
+        ("ARP", "/arp/ui", "arp"),
         ("Trip Providers", "/trip_providers_research", "trip_providers"),
         ("Countries", "/trip_providers/countries", "trip_providers_countries"),
         ("Weather", "/weather/ui", "weather"),
         ("Usage", "/usage/ui", "usage"),
+        ("Jobs", "/jobs/ui", "jobs"),
         ("DB", "/db/ui", "db"),
         ("Docs", "/docs", "docs"),
         ("Health", "/health/db", "health"),
@@ -1227,10 +1942,10 @@ def _ui_shell(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
-    <style>{_UI_CSS}</style>
+    <link rel="stylesheet" href="/static/eti360.css" />
     {extra_head}
   </head>
-  <body>
+  <body class="eti-app">
     <header class="topbar">
       <div class="container" style="max-width:{max_width_px}px;">
         <div class="topbar-inner">
@@ -1944,74 +2659,991 @@ def apps_home(request: Request) -> str:
     user = _get_current_user(request)
     body_html = """
       <div class="card">
-        <h1>ETI360 Internal Apps</h1>
-        <p class="muted">Internal tools running inside a single Render service. Auth can be enabled via login sessions and/or <code>X-API-Key</code>. Fast iteration mode: set <code>AUTH_MODE=disabled</code>.</p>
+        <h1>Projects</h1>
+        <p class="muted">One place to track internal tools, prototypes, and deployed surfaces. Edit <code>api/app/static/projects.json</code> and redeploy to update this list.</p>
       </div>
 
       <div class="card">
-        <h2>Directory</h2>
+        <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
+          <h2>Directory</h2>
+          <div class="btnrow" style="margin-top:0;">
+            <input id="q" type="text" placeholder="Search (name / description / tags)" style="max-width:420px;" />
+            <select id="category" style="max-width:220px;">
+              <option value="">All categories</option>
+            </select>
+            <button id="reset" class="btn" type="button">Clear</button>
+          </div>
+        </div>
+
         <div class="section tablewrap">
           <table>
             <thead>
               <tr>
-                <th>App</th>
+                <th class="sortable" data-key="name">Project</th>
+                <th class="sortable" data-key="category">Category</th>
+                <th class="sortable" data-key="status">Status</th>
                 <th>Description</th>
-                <th>Link</th>
+                <th>Links</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="muted" id="meta" style="margin-top:10px;">Loading…</div>
+      </div>
+    """.strip()
+
+    script = """
+    <script>
+      const rowsEl = document.getElementById('rows');
+      const metaEl = document.getElementById('meta');
+      const qEl = document.getElementById('q');
+      const resetEl = document.getElementById('reset');
+      const categoryEl = document.getElementById('category');
+
+      let items = [];
+      let sortKey = localStorage.getItem('eti_projects_sortKey') || 'name';
+      let sortDir = localStorage.getItem('eti_projects_sortDir') || 'asc';
+
+      function esc(s) {
+        return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
+      }
+
+      function keyValue(it, key) { return String(it?.[key] ?? '').toLowerCase(); }
+
+      function compare(a, b) {
+        const dir = sortDir === 'desc' ? -1 : 1;
+        const av = keyValue(a, sortKey);
+        const bv = keyValue(b, sortKey);
+        return av.localeCompare(bv) * dir;
+      }
+
+      function normalizeTags(it) {
+        const t = it?.tags;
+        if (Array.isArray(t)) return t.map(x => String(x||'').trim()).filter(Boolean);
+        return [];
+      }
+
+      function render() {
+        const q = String(qEl.value || '').trim().toLowerCase();
+        const cat = String(categoryEl.value || '').trim().toLowerCase();
+
+        const filtered = items.filter((it) => {
+          if (cat && String(it.category || '').toLowerCase() !== cat) return false;
+          if (!q) return true;
+          const tags = normalizeTags(it).join(' ');
+          const hay = [it.name, it.description, it.category, it.status, tags, it.notes].map(x => String(x||'').toLowerCase()).join(' | ');
+          return hay.includes(q);
+        }).slice().sort(compare);
+
+        rowsEl.innerHTML = '';
+        for (const it of filtered) {
+          const url = String(it.url || '').trim();
+          const repo = String(it.repo_url || '').trim();
+          const docs = String(it.docs_url || '').trim();
+          const links = [];
+          links.push(url ? `<a href="${esc(url)}">Open</a>` : `<span class="muted">No UI</span>`);
+          if (repo) links.push(`<a href="${esc(repo)}" target="_blank" rel="noopener">Repo</a>`);
+          if (docs) links.push(`<a href="${esc(docs)}" target="_blank" rel="noopener">Docs</a>`);
+          const tags = normalizeTags(it);
+          const tagsHtml = tags.length ? `<div class="muted" style="margin-top:2px;">${tags.map(t => `<span class="pill">${esc(t)}</span>`).join(' ')}</div>` : '';
+          const notesHtml = it.notes ? `<div class="muted" style="margin-top:4px;">${esc(it.notes)}</div>` : '';
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><div style="font-weight:600; color:var(--text-secondary);">${esc(it.name || '')}</div>${tagsHtml}</td>
+            <td>${esc(it.category || '')}</td>
+            <td><span class="pill">${esc(it.status || '')}</span></td>
+            <td>${esc(it.description || '')}${notesHtml}</td>
+            <td>${links.join(' · ')}</td>
+          `;
+          rowsEl.appendChild(tr);
+        }
+        if (filtered.length === 0) {
+          rowsEl.innerHTML = '<tr><td colspan="5" class="muted">No matching projects.</td></tr>';
+        }
+        metaEl.textContent = `Projects: ${filtered.length}/${items.length} • Sort: ${sortKey} (${sortDir})`;
+      }
+
+      function fillCategories() {
+        const cats = new Set(items.map(it => String(it.category || '').trim()).filter(Boolean));
+        const sorted = Array.from(cats).sort((a,b) => a.localeCompare(b));
+        categoryEl.innerHTML = '<option value=\"\">All categories</option>' + sorted.map(c => `<option value=\"${esc(c)}\">${esc(c)}</option>`).join('');
+      }
+
+      async function load() {
+        try {
+          const res = await fetch('/static/projects.json', { cache: 'no-store' });
+          const body = await res.json().catch(() => ([]));
+          items = Array.isArray(body) ? body : [];
+          fillCategories();
+          metaEl.textContent = `Projects: ${items.length}`;
+          render();
+        } catch (e) {
+          metaEl.textContent = 'Failed to load projects.json';
+        }
+      }
+
+      qEl.value = localStorage.getItem('eti_projects_q') || '';
+      qEl.addEventListener('input', () => { localStorage.setItem('eti_projects_q', qEl.value); render(); });
+      categoryEl.value = localStorage.getItem('eti_projects_category') || '';
+      categoryEl.addEventListener('change', () => { localStorage.setItem('eti_projects_category', categoryEl.value); render(); });
+      resetEl.addEventListener('click', () => {
+        qEl.value = '';
+        categoryEl.value = '';
+        localStorage.setItem('eti_projects_q', '');
+        localStorage.setItem('eti_projects_category', '');
+        render();
+      });
+
+      document.querySelectorAll('th.sortable').forEach((th) => {
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-key');
+          if (!key) return;
+          if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          else { sortKey = key; sortDir = 'asc'; }
+          localStorage.setItem('eti_projects_sortKey', sortKey);
+          localStorage.setItem('eti_projects_sortDir', sortDir);
+          render();
+        });
+      });
+
+      load();
+    </script>
+    """.strip()
+
+    return _ui_shell(title="ETI360 Projects", active="apps", body_html=body_html, max_width_px=1200, extra_script=script, user=user)
+
+
+@app.get("/jobs/ui", response_class=HTMLResponse)
+def jobs_ui(
+    request: Request,
+    job_id: str = Query(default=""),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+
+    jid = (job_id or "").strip()
+    if jid:
+        body_html = f"""
+          <div class="card">
+            <h1>Job</h1>
+            <p class="muted mono">{jid}</p>
+          </div>
+
+          <div class="card">
+            <div class="muted" id="status">Loading…</div>
+            <pre class="statusbox mono" id="payload" style="margin-top:12px; max-height: 220px; overflow:auto;"></pre>
+            <pre class="statusbox mono" id="log" style="margin-top:12px; max-height: 360px; overflow:auto;"></pre>
+          </div>
+        """.strip()
+
+        script = f"""
+        <script>
+          const statusEl = document.getElementById('status');
+          const payloadEl = document.getElementById('payload');
+          const logEl = document.getElementById('log');
+
+          async function tick() {{
+            const res = await fetch('/jobs/api/{jid}', {{ cache: 'no-store' }});
+            const body = await res.json().catch(() => ({{}}));
+            if (!res.ok || !body.ok) {{
+              statusEl.textContent = body.detail || body.error || `HTTP ${{res.status}}`;
+              return;
+            }}
+            const j = body.job || {{}};
+            statusEl.textContent = `Status: ${{j.status}} • Kind: ${{j.kind}} • Created: ${{j.created_at}}`;
+            payloadEl.textContent = JSON.stringify(j.payload || {{}}, null, 2);
+            logEl.textContent = String(j.log || '');
+            if (j.status === 'queued' || j.status === 'running') setTimeout(tick, 1200);
+          }}
+          tick();
+        </script>
+        """.strip()
+
+        return _ui_shell(title="ETI360 Jobs", active="jobs", body_html=body_html, extra_script=script, user=user)
+
+    jobs = _list_jobs(limit=200)
+    rows = []
+    for j in jobs:
+        jid = str(j.get("id") or "")
+        kind = str(j.get("kind") or "")
+        status = str(j.get("status") or "")
+        created_at = str(j.get("created_at") or "")
+        rows.append(
+            f"<tr><td class=\"mono\"><a href=\"/jobs/ui?job_id={quote(jid)}\">{jid}</a></td><td>{kind}</td><td><span class=\"pill\">{status}</span></td><td class=\"muted\">{created_at}</td></tr>"
+        )
+
+    body_html = f"""
+      <div class="card">
+        <h1>Jobs</h1>
+        <p class="muted">Background jobs (long-running workflows).</p>
+      </div>
+
+      <div class="card">
+        <div class="section tablewrap">
+          <table>
+            <thead><tr><th>Job</th><th>Kind</th><th>Status</th><th>Created</th></tr></thead>
+            <tbody>{''.join(rows) if rows else '<tr><td colspan=\"4\" class=\"muted\">No jobs yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    """.strip()
+    return _ui_shell(title="ETI360 Jobs", active="jobs", body_html=body_html, max_width_px=1200, user=user)
+
+
+@app.get("/jobs/api/{job_id}")
+def jobs_api_item(
+    job_id: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    job = _get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Unknown job")
+    return {"ok": True, "job": job}
+
+
+class ArpRunIn(BaseModel):
+    activity_ids: list[int] = Field(default_factory=list)
+    top_k: int = 12
+
+
+@app.get("/arp/ui", response_class=HTMLResponse)
+def arp_ui(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    body_html = """
+      <div class="card">
+        <h1>Activity Risk Profiles (ARP)</h1>
+        <p class="muted">Import your activity directory + research CSVs, then prepare evidence (S3) and generate reports (OpenAI). Data is stored in Postgres under the ARP schema.</p>
+      </div>
+
+      <div class="card">
+        <h2>Import CSVs</h2>
+        <div class="muted">API key is stored in your browser localStorage (this page only).</div>
+        <div class="section grid-2">
+          <div>
+            <label>X-API-Key (for writes)</label>
+            <input id="apiKey" type="password" placeholder="Paste ETI360_API_KEY here" />
+          </div>
+          <div class="muted" style="display:flex; align-items:end;">
+            Required for import/prepare/generate unless <code>ALLOW_UNAUTH_WRITE=true</code>.
+          </div>
+        </div>
+
+        <form id="importForm" enctype="multipart/form-data">
+          <div class="grid-2">
+            <div>
+              <label>Activities CSV</label>
+              <input type="file" name="activities_csv" accept=".csv" required />
+              <div class="muted">Expected: ActivityID, Activity Category, Activity Name, Context / Scope Notes, Status</div>
+            </div>
+            <div>
+              <label>Research CSV</label>
+              <input type="file" name="research_csv" accept=".csv" required />
+              <div class="muted">Expected: ActivityID, Title, Organization / Publisher, URL, etc.</div>
+            </div>
+          </div>
+          <div class="btnrow">
+            <button class="btn primary" id="btnImport" type="button">Import / Update</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
+          <h2>Activities</h2>
+          <div class="btnrow" style="margin-top:0;">
+            <input id="q" type="text" placeholder="Search (name / category / scope)" style="max-width:420px;" />
+            <select id="category" style="max-width:220px;">
+              <option value="">All categories</option>
+            </select>
+            <button id="reset" class="btn" type="button">Clear</button>
+          </div>
+        </div>
+
+        <div class="section" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button id="btnPrepare" class="btn" type="button">Prepare evidence (S3 + chunks)</button>
+          <button id="btnGenerate" class="btn primary" type="button">Generate reports</button>
+          <label class="muted" style="margin:0;">Top-k</label>
+          <input id="topk" type="text" value="12" style="max-width:90px;" />
+          <span class="muted" id="meta">Loading…</span>
+        </div>
+
+        <div class="section tablewrap">
+          <table>
+            <thead>
               <tr>
-                <td>Trip Providers (Research)</td>
-                <td class="muted">Search and review educational trip provider profiles.</td>
-                <td><a href="/trip_providers_research">Open</a></td>
+                <th style="width:40px;"></th>
+                <th class="sortable" data-key="activity_name">Activity</th>
+                <th class="sortable" data-key="activity_category">Category</th>
+                <th>Resources</th>
+                <th>Evidence</th>
+                <th>Chunks</th>
+                <th>Report</th>
               </tr>
-              <tr>
-                <td>Weather + Sunlight</td>
-                <td class="muted">Batch-generate climate + daylight charts to S3.</td>
-                <td><a href="/weather/ui">Open</a></td>
-              </tr>
-              <tr>
-                <td>API Usage Log</td>
-                <td class="muted">Token + cost log by workflow/provider/model.</td>
-                <td><a href="/usage/ui">Open</a></td>
-              </tr>
-              <tr>
-                <td>DB Schema</td>
-                <td class="muted">Browse tables/fields (requires API key unless auth is disabled).</td>
-                <td><a href="/db/ui">Open</a></td>
-              </tr>
-              <tr>
-                <td>API Docs</td>
-                <td class="muted">Interactive docs for JSON endpoints.</td>
-                <td><a href="/docs">Open</a></td>
-              </tr>
-              <tr>
-                <td>Health</td>
-                <td class="muted">Service + DB connectivity checks.</td>
-                <td><a href="/health">/health</a> · <a href="/health/db">/health/db</a></td>
-              </tr>
-              <tr>
-                <td>Admin</td>
-                <td class="muted">User management (roles/permissions).</td>
-                <td><a href="/admin/users/ui">Open</a></td>
-              </tr>
-              <tr>
-                <td>Prompts</td>
-                <td class="muted">Review/edit prompts and audit prompt changes.</td>
-                <td><a href="/prompts/ui">Open</a></td>
-              </tr>
-              <tr>
-                <td>Documents</td>
-                <td class="muted">Upload/download project notes (stored in Postgres).</td>
-                <td><a href="/documents/ui">Open</a></td>
-              </tr>
-            </tbody>
+            </thead>
+            <tbody id="rows"></tbody>
           </table>
         </div>
       </div>
     """.strip()
 
-    return _ui_shell(title="ETI360 Apps", active="apps", body_html=body_html, max_width_px=1100, user=user)
+    script = """
+    <script>
+      const rowsEl = document.getElementById('rows');
+      const metaEl = document.getElementById('meta');
+      const qEl = document.getElementById('q');
+      const resetEl = document.getElementById('reset');
+      const categoryEl = document.getElementById('category');
+      const topkEl = document.getElementById('topk');
+      const btnPrepare = document.getElementById('btnPrepare');
+      const btnGenerate = document.getElementById('btnGenerate');
+
+      let items = [];
+      let sortKey = localStorage.getItem('eti_arpweb_sortKey') || 'activity_name';
+      let sortDir = localStorage.getItem('eti_arpweb_sortDir') || 'asc';
+
+      function esc(s) {
+        return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
+      }
+      function keyValue(it, key) { return String(it?.[key] ?? '').toLowerCase(); }
+      function compare(a, b) {
+        const dir = sortDir === 'desc' ? -1 : 1;
+        return keyValue(a, sortKey).localeCompare(keyValue(b, sortKey)) * dir;
+      }
+      function fillCategories() {
+        const cats = new Set(items.map(it => String(it.activity_category || '').trim()).filter(Boolean));
+        const sorted = Array.from(cats).sort((a,b) => a.localeCompare(b));
+        categoryEl.innerHTML = '<option value=\"\">All categories</option>' + sorted.map(c => `<option value=\"${esc(c)}\">${esc(c)}</option>`).join('');
+      }
+      function render() {
+        const q = String(qEl.value || '').trim().toLowerCase();
+        const cat = String(categoryEl.value || '').trim().toLowerCase();
+        const filtered = items.filter((it) => {
+          if (cat && String(it.activity_category||'').toLowerCase() !== cat) return false;
+          if (!q) return true;
+          const hay = [it.activity_name, it.activity_category, it.scope_notes].map(x => String(x||'').toLowerCase()).join(' | ');
+          return hay.includes(q);
+        }).slice().sort(compare);
+
+        rowsEl.innerHTML = '';
+        for (const it of filtered) {
+          const rid = String(it.activity_id || '');
+          const resUrl = `/arp/resources/${encodeURIComponent(rid)}`;
+          const repUrl = it.has_report ? `/arp/report/${encodeURIComponent(it.activity_slug)}` : '';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><input class="pick" type="checkbox" data-id="${esc(rid)}" /></td>
+            <td><div style="font-weight:600; color:var(--text-secondary);">${esc(it.activity_name||'')}</div><div class="muted">${esc(it.scope_notes||'')}</div></td>
+            <td>${esc(it.activity_category||'')}</td>
+            <td><a href="${resUrl}">Resources (${Number(it.sources_count||0)})</a></td>
+            <td><span class="pill">${esc(it.docs_status||'')}</span></td>
+            <td class="mono">${Number(it.chunks_count||0)}</td>
+            <td>${repUrl ? `<a href="${repUrl}">View</a>` : '<span class="muted">—</span>'}</td>
+          `;
+          rowsEl.appendChild(tr);
+        }
+        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="7" class="muted">No matching activities.</td></tr>';
+        metaEl.textContent = `Activities: ${filtered.length}/${items.length} • Sort: ${sortKey} (${sortDir})`;
+      }
+      function selected() {
+        return Array.from(document.querySelectorAll('input.pick:checked')).map(x => Number(x.getAttribute('data-id'))).filter(Boolean);
+      }
+      async function load() {
+        const res = await fetch('/arp/api/activities', { cache:'no-store' });
+        const body = await res.json().catch(() => ({}));
+        items = Array.isArray(body.activities) ? body.activities : [];
+        fillCategories();
+        render();
+      }
+      async function enqueue(url, payload) {
+        const apiKey = String(document.getElementById('apiKey').value || localStorage.getItem('eti_x_api_key') || '').trim();
+        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
+        const headers = { 'Content-Type':'application/json' };
+        if (apiKey) headers['X-API-Key'] = apiKey;
+        const res = await fetch(url, { method:'POST', headers, body: JSON.stringify(payload||{}) });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
+        window.location.href = `/jobs/ui?job_id=${encodeURIComponent(body.job_id)}`;
+      }
+      async function doImport() {
+        const form = document.getElementById('importForm');
+        const fd = new FormData(form);
+        const apiKey = String(document.getElementById('apiKey').value || localStorage.getItem('eti_x_api_key') || '').trim();
+        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
+        const headers = {};
+        if (apiKey) headers['X-API-Key'] = apiKey;
+        metaEl.textContent = 'Importing…';
+        const res = await fetch('/arp/import', { method:'POST', headers, body: fd });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
+        metaEl.textContent = `Imported. Activities: ${body.activities || 0}, Sources: ${body.sources || 0}`;
+        await load();
+      }
+      btnPrepare.addEventListener('click', async () => {
+        const ids = selected();
+        if (!ids.length) { metaEl.textContent = 'Select at least one activity.'; return; }
+        btnPrepare.disabled = true;
+        try { await enqueue('/arp/api/prepare', { activity_ids: ids }); } finally { btnPrepare.disabled = false; }
+      });
+      btnGenerate.addEventListener('click', async () => {
+        const ids = selected();
+        if (!ids.length) { metaEl.textContent = 'Select at least one activity.'; return; }
+        const topk = Number(topkEl.value || '12');
+        btnGenerate.disabled = true;
+        try { await enqueue('/arp/api/generate', { activity_ids: ids, top_k: topk }); } finally { btnGenerate.disabled = false; }
+      });
+
+      const apiKeyEl = document.getElementById('apiKey');
+      apiKeyEl.value = localStorage.getItem('eti_x_api_key') || '';
+      document.getElementById('btnImport').addEventListener('click', async () => {
+        try { await doImport(); } catch (e) { metaEl.textContent = 'Error: ' + String(e?.message || e); }
+      });
+
+      qEl.value = localStorage.getItem('eti_arpweb_q') || '';
+      qEl.addEventListener('input', () => { localStorage.setItem('eti_arpweb_q', qEl.value); render(); });
+      categoryEl.value = localStorage.getItem('eti_arpweb_category') || '';
+      categoryEl.addEventListener('change', () => { localStorage.setItem('eti_arpweb_category', categoryEl.value); render(); });
+      resetEl.addEventListener('click', () => { qEl.value=''; categoryEl.value=''; localStorage.setItem('eti_arpweb_q',''); localStorage.setItem('eti_arpweb_category',''); render(); });
+      document.querySelectorAll('th.sortable').forEach((th) => {
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-key');
+          if (!key) return;
+          if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          else { sortKey = key; sortDir = 'asc'; }
+          localStorage.setItem('eti_arpweb_sortKey', sortKey);
+          localStorage.setItem('eti_arpweb_sortDir', sortDir);
+          render();
+        });
+      });
+
+      load();
+    </script>
+    """.strip()
+
+    return _ui_shell(title="ETI360 ARP", active="arp", body_html=body_html, max_width_px=1200, extra_script=script, user=user)
+
+
+def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:
+    text = (raw or b"").decode("utf-8-sig", errors="replace")
+    f = StringIO(text)
+    reader = csv.DictReader(f)
+    fieldnames = list(reader.fieldnames or [])
+    rows: list[dict[str, str]] = []
+    for r in reader:
+        if not isinstance(r, dict):
+            continue
+        rows.append({str(k): ("" if v is None else str(v)).strip() for k, v in r.items() if k})
+    return fieldnames, rows
+
+
+@app.post("/arp/import")
+def arp_import(
+    request: Request,
+    activities_csv: UploadFile = File(...),
+    research_csv: UploadFile = File(...),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_write_access(request=request, x_api_key=x_api_key, role="editor")
+
+    activities_raw = activities_csv.file.read()
+    research_raw = research_csv.file.read()
+
+    _, activity_rows = _parse_csv_bytes(activities_raw)
+    headers, research_rows = _parse_csv_bytes(research_raw)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+
+            # Activities
+            activities_count = 0
+            for r in activity_rows:
+                aid_raw = (r.get("ActivityID") or "").strip()
+                if not aid_raw:
+                    continue
+                try:
+                    aid = int(float(aid_raw))
+                except Exception:
+                    continue
+                name = (r.get("Activity Name") or r.get("Activity") or "").strip()
+                if not name:
+                    continue
+                slug = _stable_slug(name, max_len=64)
+                category = (r.get("Activity Category") or "").strip()
+                scope = (r.get("Context / Scope Notes") or "").strip()
+                status = (r.get("Status") or "").strip()
+
+                cur.execute(
+                    _arp_schema(
+                        """
+                        INSERT INTO "__ARP_SCHEMA__".activities
+                          (activity_id, activity_slug, activity_name, activity_category, scope_notes, status)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (activity_id) DO UPDATE SET
+                          activity_slug=EXCLUDED.activity_slug,
+                          activity_name=EXCLUDED.activity_name,
+                          activity_category=EXCLUDED.activity_category,
+                          scope_notes=EXCLUDED.scope_notes,
+                          status=EXCLUDED.status,
+                          updated_at=now();
+                        """
+                    ).strip(),
+                    (aid, slug, name, category, scope, status),
+                )
+                activities_count += 1
+
+            # Research / sources
+            sources_count = 0
+            for r in research_rows:
+                aid_raw = (r.get("ActivityID") or "").strip()
+                activity_name = (r.get("Activity") or "").strip()
+                if not aid_raw and not activity_name:
+                    continue
+                try:
+                    aid = int(float(aid_raw)) if aid_raw else None
+                except Exception:
+                    aid = None
+                url = (r.get("URL") or "").strip()
+                if not url:
+                    continue
+
+                # Fallback: create a placeholder activity if missing.
+                if aid is None:
+                    continue
+
+                # Ensure activity exists (some imports may only include research CSV).
+                cur.execute(_arp_schema('SELECT 1 FROM "__ARP_SCHEMA__".activities WHERE activity_id=%s;'), (aid,))
+                exists = cur.fetchone() is not None
+                if not exists:
+                    name = activity_name or f"Activity {aid}"
+                    slug = _stable_slug(name, max_len=64)
+                    cur.execute(
+                        _arp_schema(
+                            """
+                            INSERT INTO "__ARP_SCHEMA__".activities
+                              (activity_id, activity_slug, activity_name)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (activity_id) DO NOTHING;
+                            """
+                        ).strip(),
+                        (aid, slug, name),
+                    )
+
+                title = (r.get("Title") or "").strip()
+                org = (r.get("Organization / Publisher") or "").strip()
+                jurisdiction = (r.get("Country / Jurisdiction") or "").strip()
+                source_type = (r.get("Source type") or "").strip()
+                activities_covered_raw = (r.get("Activities covered") or "").strip()
+
+                brief = (r.get("Brief focus (1–2 lines)") or r.get("Brief focus (1‚Äì2 lines)") or "").strip()
+                if not brief:
+                    for k in headers:
+                        if str(k).strip().lower().startswith("brief focus"):
+                            brief = (r.get(k) or "").strip()
+                            if brief:
+                                break
+
+                authority_class = (r.get("Authority class (A/B/C)") or "").strip()
+                publication_date = (r.get("Publication date (YYYY-MM-DD or YYYY)") or "").strip()
+
+                # Stable source_id (activity + publisher + title)
+                src_id = _stable_slug(activity_name or f"activity-{aid}", org, title, max_len=90)
+
+                cur.execute(
+                    _arp_schema(
+                        """
+                        INSERT INTO "__ARP_SCHEMA__".sources
+                          (source_id, activity_id, activity_name, title, organization, jurisdiction, url, source_type,
+                           activities_covered_raw, brief_focus, authority_class, publication_date)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (source_id) DO UPDATE SET
+                          activity_id=EXCLUDED.activity_id,
+                          activity_name=EXCLUDED.activity_name,
+                          title=EXCLUDED.title,
+                          organization=EXCLUDED.organization,
+                          jurisdiction=EXCLUDED.jurisdiction,
+                          url=EXCLUDED.url,
+                          source_type=EXCLUDED.source_type,
+                          activities_covered_raw=EXCLUDED.activities_covered_raw,
+                          brief_focus=EXCLUDED.brief_focus,
+                          authority_class=EXCLUDED.authority_class,
+                          publication_date=EXCLUDED.publication_date;
+                        """
+                    ).strip(),
+                    (
+                        src_id,
+                        aid,
+                        activity_name,
+                        title,
+                        org,
+                        jurisdiction,
+                        url,
+                        source_type,
+                        activities_covered_raw,
+                        brief,
+                        authority_class,
+                        publication_date,
+                    ),
+                )
+                # Ensure documents row exists
+                cur.execute(
+                    _arp_schema(
+                        """
+                        INSERT INTO "__ARP_SCHEMA__".documents (source_id)
+                        VALUES (%s)
+                        ON CONFLICT (source_id) DO NOTHING;
+                        """
+                    ).strip(),
+                    (src_id,),
+                )
+                sources_count += 1
+
+        conn.commit()
+
+    return {"ok": True, "activities": activities_count, "sources": sources_count}
+
+
+@app.get("/arp/api/activities")
+def arp_api_activities(request: Request) -> dict[str, Any]:
+    _ = request
+    out: list[dict[str, Any]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT
+                      a.activity_id,
+                      a.activity_slug,
+                      a.activity_name,
+                      a.activity_category,
+                      a.scope_notes,
+                      a.status,
+                      COALESCE(s.sources_count, 0) AS sources_count,
+                      COALESCE(d.docs_fetched, 0) AS docs_fetched,
+                      COALESCE(d.docs_total, 0) AS docs_total,
+                      COALESCE(c.chunks_count, 0) AS chunks_count,
+                      (r.activity_id IS NOT NULL) AS has_report
+                    FROM "__ARP_SCHEMA__".activities a
+                    LEFT JOIN (
+                      SELECT activity_id, COUNT(*) AS sources_count
+                      FROM "__ARP_SCHEMA__".sources
+                      GROUP BY activity_id
+                    ) s ON s.activity_id = a.activity_id
+                    LEFT JOIN (
+                      SELECT
+                        s.activity_id,
+                        SUM(CASE WHEN d.status='fetched' THEN 1 ELSE 0 END) AS docs_fetched,
+                        COUNT(*) AS docs_total
+                      FROM "__ARP_SCHEMA__".sources s
+                      LEFT JOIN "__ARP_SCHEMA__".documents d ON d.source_id = s.source_id
+                      GROUP BY s.activity_id
+                    ) d ON d.activity_id = a.activity_id
+                    LEFT JOIN (
+                      SELECT activity_id, COUNT(*) AS chunks_count
+                      FROM "__ARP_SCHEMA__".chunks
+                      GROUP BY activity_id
+                    ) c ON c.activity_id = a.activity_id
+                    LEFT JOIN "__ARP_SCHEMA__".reports r ON r.activity_id = a.activity_id
+                    ORDER BY a.activity_name ASC;
+                    """
+                ).strip()
+            )
+            for row in cur.fetchall():
+                (
+                    activity_id,
+                    activity_slug,
+                    activity_name,
+                    activity_category,
+                    scope_notes,
+                    status,
+                    sources_count,
+                    docs_fetched,
+                    docs_total,
+                    chunks_count,
+                    has_report,
+                ) = row
+                docs_status = "missing"
+                if int(docs_total or 0) == 0:
+                    docs_status = "no_sources"
+                elif int(docs_fetched or 0) == int(docs_total or 0):
+                    docs_status = "ready"
+                elif int(docs_fetched or 0) > 0:
+                    docs_status = "partial"
+                out.append(
+                    {
+                        "activity_id": int(activity_id),
+                        "activity_slug": str(activity_slug),
+                        "activity_name": str(activity_name),
+                        "activity_category": str(activity_category or ""),
+                        "scope_notes": str(scope_notes or ""),
+                        "status": str(status or ""),
+                        "sources_count": int(sources_count or 0),
+                        "docs_status": docs_status,
+                        "chunks_count": int(chunks_count or 0),
+                        "has_report": bool(has_report),
+                    }
+                )
+    return {"ok": True, "activities": out}
+
+
+@app.get("/arp/resources/{activity_id}", response_class=HTMLResponse)
+def arp_resources_ui(
+    activity_id: int,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(_arp_schema('SELECT activity_name FROM "__ARP_SCHEMA__".activities WHERE activity_id=%s;'), (activity_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Unknown activity")
+            (activity_name,) = row
+
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT s.source_id, s.title, s.organization, s.jurisdiction, s.url, s.source_type, s.brief_focus,
+                           d.status, d.s3_bucket, d.s3_key, d.content_type
+                    FROM "__ARP_SCHEMA__".sources s
+                    LEFT JOIN "__ARP_SCHEMA__".documents d ON d.source_id = s.source_id
+                    WHERE s.activity_id=%s
+                    ORDER BY s.title ASC;
+                    """
+                ).strip(),
+                (activity_id,),
+            )
+            rows = list(cur.fetchall())
+
+    s3cfg = None
+    try:
+        s3cfg = get_s3_config()
+    except Exception:
+        s3cfg = None
+
+    trs = []
+    for source_id, title, org, jur, url, source_type, brief, d_status, s3_bucket, s3_key, content_type in rows:
+        raw_link = ""
+        if s3cfg and s3_bucket and s3_key and str(d_status) == "fetched":
+            try:
+                raw_link = presign_get_inline(
+                    region=s3cfg.region,
+                    bucket=str(s3_bucket),
+                    key=str(s3_key),
+                    filename=f"{source_id}",
+                    content_type=str(content_type or ""),
+                    expires_in=3600,
+                )
+            except Exception:
+                raw_link = ""
+        raw_html = f'<a href="{raw_link}" target="_blank" rel="noopener">S3</a>' if raw_link else '<span class="muted">—</span>'
+        src_html = f'<a href="{url}" target="_blank" rel="noopener">Source</a>' if url else '<span class="muted">—</span>'
+        trs.append(
+            "<tr>"
+            f"<td class=\"mono\">{source_id}</td>"
+            f"<td>{title}</td>"
+            f"<td class=\"muted\">{org}</td>"
+            f"<td class=\"muted\">{jur}</td>"
+            f"<td><span class=\"pill\">{d_status}</span></td>"
+            f"<td>{src_html} · {raw_html}</td>"
+            "</tr>"
+        )
+
+    body_html = f"""
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <h1>Resources</h1>
+          <a class="btn" href="/arp/ui">Back</a>
+        </div>
+        <p class="muted">{activity_name}</p>
+      </div>
+      <div class="card">
+        <div class="section tablewrap">
+          <table>
+            <thead><tr><th>Source ID</th><th>Title</th><th>Publisher</th><th>Jurisdiction</th><th>Fetched</th><th>Links</th></tr></thead>
+            <tbody>{''.join(trs) if trs else '<tr><td colspan=\"6\" class=\"muted\">No sources.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    """.strip()
+    return _ui_shell(title="ARP Resources", active="arp", body_html=body_html, max_width_px=1200, user=user)
+
+
+@app.post("/arp/api/prepare")
+def arp_prepare(
+    body: ArpRunIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_write_access(request=request, x_api_key=x_api_key, role="editor")
+    ids = [int(x) for x in (body.activity_ids or []) if int(x) > 0]
+    if not ids:
+        raise HTTPException(status_code=400, detail="Select at least one activity")
+    job_id = _enqueue_job(kind="arp_prepare", payload={"activity_ids": ids})
+    return {"ok": True, "job_id": job_id}
+
+
+@app.post("/arp/api/generate")
+def arp_generate(
+    body: ArpRunIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_write_access(request=request, x_api_key=x_api_key, role="editor")
+    ids = [int(x) for x in (body.activity_ids or []) if int(x) > 0]
+    if not ids:
+        raise HTTPException(status_code=400, detail="Select at least one activity")
+    top_k = max(1, min(int(body.top_k or 12), 50))
+    job_id = _enqueue_job(kind="arp_generate", payload={"activity_ids": ids, "top_k": top_k})
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/arp/report/{activity_slug}", response_class=HTMLResponse)
+def arp_report_ui(
+    activity_slug: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    slug = _slugify(activity_slug)
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT a.activity_name, r.report_md, r.updated_at
+                    FROM "__ARP_SCHEMA__".reports r
+                    JOIN "__ARP_SCHEMA__".activities a ON a.activity_id = r.activity_id
+                    WHERE r.activity_slug=%s;
+                    """
+                ).strip(),
+                (slug,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Report not found")
+            activity_name, report_md, updated_at = row
+
+    html = _render_markdown_safe(str(report_md or ""))
+    body_html = f"""
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <h1>ARP Report</h1>
+          <div class="btnrow" style="margin-top:0;">
+            <a class="btn" href="/arp/ui">Activities</a>
+            <a class="btn" href="/arp/report/{quote(slug)}/edit">Edit</a>
+          </div>
+        </div>
+        <p class="muted">{activity_name} · Updated: {updated_at}</p>
+      </div>
+      <div class="card">
+        {html}
+      </div>
+    """.strip()
+    return _ui_shell(title="ARP Report", active="arp", body_html=body_html, max_width_px=900, user=user)
+
+
+@app.get("/arp/report/{activity_slug}/edit", response_class=HTMLResponse)
+def arp_report_edit_ui(
+    activity_slug: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    slug = _slugify(activity_slug)
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(_arp_schema('SELECT report_md FROM "__ARP_SCHEMA__".reports WHERE activity_slug=%s;'), (slug,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Report not found")
+            (report_md,) = row
+
+    md_esc = (
+        str(report_md or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+    body_html = f"""
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <h1>Edit ARP</h1>
+          <div class="btnrow" style="margin-top:0;">
+            <a class="btn" href="/arp/report/{quote(slug)}">View</a>
+            <a class="btn" href="/arp/ui">Activities</a>
+          </div>
+        </div>
+        <p class="muted">Saves update the report markdown stored in Postgres.</p>
+      </div>
+      <div class="card">
+        <textarea id="md" class="mono">{md_esc}</textarea>
+        <div class="btnrow">
+          <button id="save" class="btn primary" type="button">Save</button>
+          <span class="muted" id="status">Ready.</span>
+        </div>
+      </div>
+    """.strip()
+    script = f"""
+    <script>
+      const mdEl = document.getElementById('md');
+      const statusEl = document.getElementById('status');
+      document.getElementById('save').addEventListener('click', async () => {{
+        statusEl.textContent = 'Saving…';
+        const apiKey = String(localStorage.getItem('eti_x_api_key') || '').trim();
+        const headers = {{ 'Content-Type':'application/json' }};
+        if (apiKey) headers['X-API-Key'] = apiKey;
+        const res = await fetch('/arp/report/{quote(slug)}', {{ method:'POST', headers, body: JSON.stringify({{ report_md: mdEl.value || '' }}) }});
+        const body = await res.json().catch(() => ({{}}));
+        if (!res.ok || !body.ok) {{ statusEl.textContent = body.detail || body.error || `HTTP ${{res.status}}`; return; }}
+        statusEl.textContent = 'Saved.';
+      }});
+    </script>
+    """.strip()
+    return _ui_shell(title="Edit ARP", active="arp", body_html=body_html, max_width_px=900, extra_script=script, user=user)
+
+
+@app.post("/arp/report/{activity_slug}")
+def arp_report_save(
+    activity_slug: str,
+    body: dict[str, Any],
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_write_access(request=request, x_api_key=x_api_key, role="editor")
+    slug = _slugify(activity_slug)
+    report_md = str(body.get("report_md") or "")
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema(
+                    """
+                    UPDATE "__ARP_SCHEMA__".reports
+                    SET report_md=%s, updated_at=now()
+                    WHERE activity_slug=%s;
+                    """
+                ).strip(),
+                (report_md, slug),
+            )
+            if cur.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Report not found")
+        conn.commit()
+    return {"ok": True}
 
 
 def _safe_provider_key(provider_key: str) -> str:
@@ -6259,26 +7891,8 @@ def _auto_generate_one(
     )
 
 
-@app.post("/weather/auto")
-def auto_weather(
-    body: AutoWeatherIn,
-    request: Request,
-    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> dict[str, Any]:
-    _require_access(request=request, x_api_key=x_api_key, role="editor")
-    batch = AutoBatchIn(locations=[body.location_query], force_refresh=body.force_refresh)
-    return auto_weather_batch(batch, request=request, x_api_key=x_api_key)
-
-
-@app.post("/weather/auto_batch")
-def auto_weather_batch(
-    body: AutoBatchIn,
-    request: Request,
-    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> dict[str, Any]:
-    _require_access(request=request, x_api_key=x_api_key, role="editor")
-
-    locations = [str(x).strip() for x in (body.locations or []) if str(x).strip()]
+def _run_weather_auto_batch(*, locations: list[str], force_refresh: bool, job_id: str | None = None) -> dict[str, Any]:
+    locations = [str(x).strip() for x in (locations or []) if str(x).strip()]
     if not locations:
         raise HTTPException(status_code=400, detail="Provide at least one location")
 
@@ -6297,9 +7911,18 @@ def auto_weather_batch(
     openai_daylight_total = 0
     openai_daylight_model = ""
 
-    for q in locations:
+    for i, q in enumerate(locations, start=1):
+        if job_id:
+            try:
+                with _connect() as conn:
+                    with conn.cursor() as cur:
+                        _job_append_log(cur, job_id=job_id, line=f"[{i}/{len(locations)}] {q}")
+                    conn.commit()
+            except Exception:
+                pass
+
         try:
-            res, tok, model, wtok, wmodel, dtok, dmodel = _auto_generate_one(location_query=q, force_refresh=body.force_refresh)
+            res, tok, model, wtok, wmodel, dtok, dmodel = _auto_generate_one(location_query=q, force_refresh=force_refresh)
             results.append(res)
             perplexity_prompt += int(tok.get("prompt_tokens") or 0)
             perplexity_completion += int(tok.get("completion_tokens") or 0)
@@ -6380,7 +8003,6 @@ def auto_weather_batch(
 
     run_cost_usd = float(sum(r.get("cost_usd", 0.0) for r in usage_rows))
 
-    # Cumulative total cost (all runs).
     cumulative_total = 0.0
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -6396,6 +8018,37 @@ def auto_weather_batch(
         "run_cost_usd": run_cost_usd,
         "cumulative_total_cost_usd": float(cumulative_total),
     }
+
+
+@app.post("/weather/auto")
+def auto_weather(
+    body: AutoWeatherIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
+    batch = AutoBatchIn(locations=[body.location_query], force_refresh=body.force_refresh)
+    return auto_weather_batch(batch, request=request, x_api_key=x_api_key)
+
+
+@app.post("/weather/auto_batch")
+def auto_weather_batch(
+    body: AutoBatchIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    enqueue: bool = Query(default=False),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="editor")
+
+    locations = [str(x).strip() for x in (body.locations or []) if str(x).strip()]
+    if not locations:
+        raise HTTPException(status_code=400, detail="Provide at least one location")
+
+    if enqueue:
+        job_id = _enqueue_job(kind="weather_auto_batch", payload={"locations": locations, "force_refresh": bool(body.force_refresh)})
+        return {"ok": True, "enqueued": True, "job_id": job_id, "job_url": f"/jobs/ui?job_id={job_id}"}
+
+    return _run_weather_auto_batch(locations=locations, force_refresh=bool(body.force_refresh))
 
 
 @app.get("/weather/ui", response_class=HTMLResponse)

@@ -2,6 +2,14 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { encryptHTML } from "pagecrypt";
 
+async function loadCss() {
+  try {
+    return await readFile("node_modules/@eti360/design-system/eti360.css", "utf8");
+  } catch {
+    return await readFile("ui_style.css", "utf8");
+  }
+}
+
 const password = process.env.PASSWORD;
 if (!password) {
   console.error("Missing PASSWORD env var (set this in Render Environment).");
@@ -10,7 +18,7 @@ if (!password) {
 
 const [html, css, appsJsonRaw] = await Promise.all([
   readFile("index.html", "utf8"),
-  readFile("ui_style.css", "utf8"),
+  loadCss(),
   readFile("apps.json", "utf8"),
 ]);
 

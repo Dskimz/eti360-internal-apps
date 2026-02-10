@@ -1,0 +1,250 @@
+/*
+  ETI360 Design System CSS
+  Source of truth: @eti360/design-system (eti360-design-system repo)
+
+  This file is vendored for the Python/FastAPI service so it can serve stable CSS
+  without relying on Node tooling at runtime.
+*/
+
+:root {
+  color-scheme: light;
+
+  /* Typography */
+  --eti-font-sans: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --eti-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Brand core (matches marketing site tokens) */
+  --eti-primary: #002b4f; /* navy */
+  --eti-accent: #ffc300;  /* gold */
+  --eti-tint: rgba(0, 43, 79, 0.12);
+
+  /* Surfaces */
+  --eti-bg: #ffffff;
+  --eti-band: #f7f7f8;
+  --eti-page: #f5f6f7;
+
+  /* Borders + text */
+  --eti-border: #e5e7eb;
+  --eti-text: #000814;
+  --eti-text-2: #002b4f;
+  --eti-muted: rgba(0, 8, 20, 0.6);
+
+  /* Status */
+  --eti-success: #2f6f4f;
+  --eti-danger: #b03a2e;
+  --eti-warn: #8a6d1d;
+
+  /* Radii */
+  --eti-radius-lg: 16px;
+  --eti-radius-md: 12px;
+  --eti-radius-pill: 999px;
+
+  /* Layout */
+  --eti-container-max: 1200px;
+  --eti-gutter: 24px;
+
+  /* Form focus */
+  --eti-focus: rgba(0, 43, 79, 0.35);
+  --eti-focus-ring: rgba(0, 43, 79, 0.10);
+
+  /*
+    Compatibility aliases
+    Keep these stable to reduce friction when porting between UIs.
+  */
+  --primary: var(--eti-primary);
+  --accent: var(--eti-accent);
+  --secondary: var(--eti-tint);
+
+  --page-background: var(--eti-bg);
+  --band-background: var(--eti-band);
+  --border-color: var(--eti-border);
+
+  --text-primary: var(--eti-text);
+  --text-secondary: var(--eti-text-2);
+  --text-tertiary: var(--eti-muted);
+
+  --font-sans: var(--eti-font-sans);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--eti-font-sans);
+  background: var(--page-background);
+  color: var(--eti-text);
+  line-height: 1.8;
+}
+
+/* Internal app pages (default Render/FastAPI + directory pages) */
+body.eti-app {
+  background: var(--eti-page);
+}
+
+a { color: var(--eti-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, .mono { font-family: var(--eti-font-mono); }
+.muted { color: var(--eti-muted); font-size: 13px; }
+
+.container {
+  max-width: var(--eti-container-max);
+  margin: 0 auto;
+  padding: 0 var(--eti-gutter);
+}
+
+/* Top chrome */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--eti-bg);
+  border-bottom: 1px solid var(--eti-border);
+}
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  flex-wrap: wrap;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  color: var(--eti-text-2);
+}
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--eti-accent);
+  box-shadow: 0 0 0 4px var(--eti-tint);
+}
+.badge {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: var(--eti-radius-pill);
+  background: var(--eti-tint);
+  color: var(--eti-primary);
+  border: 1px solid var(--eti-border);
+}
+.nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nav a { font-size: 13px; padding: 6px 12px; border-radius: var(--eti-radius-pill); color: var(--eti-muted); }
+.nav a.active { background: var(--eti-tint); color: var(--eti-primary); }
+.goldline { height: 2px; background: var(--eti-accent); }
+
+main { padding: 22px 0 40px; }
+
+/* Surfaces */
+.card {
+  background: var(--eti-bg);
+  border: 1px solid var(--eti-border);
+  border-radius: var(--eti-radius-lg);
+  padding: 16px;
+}
+.card + .card { margin-top: 16px; }
+.divider { border-top: 1px solid var(--eti-border); margin: 16px 0; }
+
+h1 { margin: 0; font-size: 20px; line-height: 1.25; color: var(--eti-text-2); }
+h2 { margin: 0; font-size: 14px; letter-spacing: 0.2px; color: var(--eti-text-2); }
+.section { margin-top: 16px; }
+
+/* Buttons */
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.btn {
+  border-radius: var(--eti-radius-pill);
+  padding: 10px 16px;
+  font-size: 14px;
+  border: 1px solid var(--eti-border);
+  background: var(--eti-bg);
+  color: var(--eti-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn.primary { background: var(--eti-primary); border-color: var(--eti-primary); color: #fff; }
+.btn:hover { background: var(--eti-band); text-decoration: none; }
+.btn.primary:hover { opacity: 0.92; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Forms */
+label { display: block; font-size: 12px; color: rgba(0, 8, 20, 0.75); margin-bottom: 6px; }
+input[type="text"], input[type="password"], textarea, select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--eti-border);
+  border-radius: var(--eti-radius-md);
+  font-size: 14px;
+  background: var(--eti-bg);
+  outline: none;
+  color: var(--eti-text);
+}
+textarea { min-height: 220px; resize: vertical; }
+input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
+  border-color: var(--eti-focus);
+  box-shadow: 0 0 0 4px var(--eti-focus-ring);
+}
+
+/* Tables */
+.tablewrap {
+  overflow: auto;
+  border: 1px solid var(--eti-border);
+  border-radius: 14px;
+  background: var(--eti-bg);
+}
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+th, td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--eti-border); vertical-align: top; }
+th {
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  color: rgba(0, 8, 20, 0.65);
+  background: var(--eti-band);
+  user-select: none;
+}
+.sortable { cursor: pointer; }
+.tablewrap table th { position: sticky; top: 0; z-index: 1; }
+.right { text-align: right; }
+.pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--eti-radius-pill);
+  font-size: 12px;
+  border: 1px solid var(--eti-border);
+  background: var(--eti-band);
+  color: rgba(0, 8, 20, 0.75);
+}
+
+/* Status */
+.statusbox {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--eti-border);
+  background: var(--eti-band);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.ok {
+  color: var(--eti-success);
+  background: #e8f2ec;
+  border: 1px solid #c9e0d2;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+.err {
+  color: var(--eti-danger);
+  background: #fbeaea;
+  border: 1px solid #f1c9c4;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+/* Basic grids */
+.grid-2 { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1100px) { .grid-2 { grid-template-columns: 1fr 1.4fr; } }
+.grid-sidebar { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid-sidebar { grid-template-columns: 1fr; } }

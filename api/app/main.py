@@ -2951,45 +2951,68 @@ def arp_ui(
         </div>
       </div>
 
-      <div class="card">
-        <h2>Add activity</h2>
-        <div class="muted">This writes directly to Postgres (no CSV needed).</div>
-        <form id="createForm">
-          <div class="grid-2">
-            <div>
-              <label>Activity name</label>
-              <input type="text" name="activity_name" placeholder="e.g., Stand-up paddleboarding (SUP)" required />
-            </div>
-            <div>
-              <label>Category</label>
-              <input type="text" name="activity_category" placeholder="e.g., Water-Based" />
-            </div>
-          </div>
-          <div class="grid-2">
-            <div>
-              <label>Status</label>
-              <input type="text" name="status" value="active" />
-            </div>
-            <div>
-              <label>Resources (comma-separated URLs)</label>
-              <input type="text" name="resource_urls" placeholder="https://… , https://… , https://…" />
-              <div class="muted">Tip: you can paste multiple URLs separated by commas or new lines.</div>
-            </div>
-          </div>
+      <style>
+        dialog.eti-modal {
+          border: 1px solid rgba(0,0,0,0.08);
+          border-radius: 14px;
+          padding: 0;
+          width: min(900px, calc(100vw - 40px));
+          box-shadow: 0 18px 60px rgba(0,0,0,0.18);
+        }
+        dialog.eti-modal::backdrop { background: rgba(15, 23, 42, 0.55); }
+        .eti-modal__header { padding: 18px 18px 0 18px; display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+        .eti-modal__body { padding: 10px 18px 18px 18px; }
+        .eti-modal__close { border: 0; background: transparent; font-size: 22px; line-height: 1; cursor: pointer; color: var(--text-muted); }
+      </style>
+
+      <dialog id="dlgCreate" class="eti-modal">
+        <div class="eti-modal__header">
           <div>
-            <label>Context / scope notes</label>
-            <textarea name="scope_notes" rows="3" placeholder="Optional notes to show in the table"></textarea>
+            <h2 style="margin:0;">Add activity</h2>
+            <div class="muted">Writes directly to Postgres.</div>
           </div>
-          <div class="btnrow">
-            <button class="btn primary" id="btnCreate" type="button">Create activity</button>
-          </div>
-        </form>
-      </div>
+          <button id="btnCloseCreate" class="eti-modal__close" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="eti-modal__body">
+          <form id="createForm">
+            <div class="grid-2">
+              <div>
+                <label>Activity name</label>
+                <input type="text" name="activity_name" placeholder="e.g., Stand-up paddleboarding (SUP)" required />
+              </div>
+              <div>
+                <label>Category</label>
+                <input type="text" name="activity_category" placeholder="e.g., Water-Based" />
+              </div>
+            </div>
+            <div class="grid-2">
+              <div>
+                <label>Status</label>
+                <input type="text" name="status" value="active" />
+              </div>
+              <div>
+                <label>Resources (comma-separated URLs)</label>
+                <input type="text" name="resource_urls" placeholder="https://… , https://… , https://…" />
+                <div class="muted">Tip: you can paste multiple URLs separated by commas or new lines.</div>
+              </div>
+            </div>
+            <div>
+              <label>Context / scope notes</label>
+              <textarea name="scope_notes" rows="3" placeholder="Optional notes to show in the table"></textarea>
+            </div>
+            <div class="btnrow">
+              <button class="btn primary" id="btnCreate" type="button">Create activity</button>
+              <button class="btn" id="btnCancelCreate" type="button">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
 
       <div class="card">
         <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
           <h2>Activities</h2>
           <div class="btnrow" style="margin-top:0;">
+            <button id="btnOpenCreate" class="btn" type="button">Add activities</button>
             <input id="q" type="text" placeholder="Search (name / category / scope)" style="max-width:420px;" />
             <select id="category" style="max-width:220px;">
               <option value="">All categories</option>
@@ -3036,6 +3059,10 @@ def arp_ui(
       const btnPrepare = document.getElementById('btnPrepare');
       const btnGenerate = document.getElementById('btnGenerate');
       const btnCreate = document.getElementById('btnCreate');
+      const dlgCreate = document.getElementById('dlgCreate');
+      const btnOpenCreate = document.getElementById('btnOpenCreate');
+      const btnCloseCreate = document.getElementById('btnCloseCreate');
+      const btnCancelCreate = document.getElementById('btnCancelCreate');
 
       let items = [];
       let sortKey = localStorage.getItem('eti_arpweb_sortKey') || 'activity_name';
@@ -3162,6 +3189,7 @@ def arp_ui(
           metaEl.textContent = `Created activity ${body.activity_id} with ${body.sources || 0} resources.`;
           form.reset();
           form.querySelector('input[name=\"status\"]').value = 'active';
+          if (dlgCreate && dlgCreate.open) dlgCreate.close();
           await load();
         } catch (e) {
           metaEl.textContent = 'Error: ' + String(e?.message || e);
@@ -3169,6 +3197,19 @@ def arp_ui(
           btnCreate.disabled = false;
         }
       });
+
+      function openCreate() {
+        if (!dlgCreate) return;
+        try { dlgCreate.showModal(); } catch (e) { dlgCreate.setAttribute('open', 'open'); }
+        const first = document.querySelector('#createForm input[name=\"activity_name\"]');
+        if (first) setTimeout(() => first.focus(), 0);
+      }
+      function closeCreate() { if (dlgCreate && dlgCreate.open) dlgCreate.close(); }
+
+      btnOpenCreate.addEventListener('click', openCreate);
+      btnCloseCreate.addEventListener('click', closeCreate);
+      btnCancelCreate.addEventListener('click', closeCreate);
+      dlgCreate.addEventListener('click', (e) => { if (e.target === dlgCreate) closeCreate(); });
 
       qEl.value = localStorage.getItem('eti_arpweb_q') || '';
       qEl.addEventListener('input', () => { localStorage.setItem('eti_arpweb_q', qEl.value); render(); });

@@ -2910,6 +2910,14 @@ class ArpRunIn(BaseModel):
     top_k: int = 12
 
 
+class ArpCreateIn(BaseModel):
+    activity_name: str
+    activity_category: str | None = ""
+    scope_notes: str | None = ""
+    status: str | None = "active"
+    resource_urls: str | None = ""
+
+
 @app.get("/arp/ui", response_class=HTMLResponse)
 def arp_ui(
     request: Request,
@@ -2964,6 +2972,41 @@ def arp_ui(
       </div>
 
       <div class="card">
+        <h2>Add activity</h2>
+        <div class="muted">This writes directly to Postgres (no CSV needed).</div>
+        <form id="createForm">
+          <div class="grid-2">
+            <div>
+              <label>Activity name</label>
+              <input type="text" name="activity_name" placeholder="e.g., Stand-up paddleboarding (SUP)" required />
+            </div>
+            <div>
+              <label>Category</label>
+              <input type="text" name="activity_category" placeholder="e.g., Water-Based" />
+            </div>
+          </div>
+          <div class="grid-2">
+            <div>
+              <label>Status</label>
+              <input type="text" name="status" value="active" />
+            </div>
+            <div>
+              <label>Resources (comma-separated URLs)</label>
+              <input type="text" name="resource_urls" placeholder="https://… , https://… , https://…" />
+              <div class="muted">Tip: you can paste multiple URLs separated by commas or new lines.</div>
+            </div>
+          </div>
+          <div>
+            <label>Context / scope notes</label>
+            <textarea name="scope_notes" rows="3" placeholder="Optional notes to show in the table"></textarea>
+          </div>
+          <div class="btnrow">
+            <button class="btn primary" id="btnCreate" type="button">Create activity</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
         <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
           <h2>Activities</h2>
           <div class="btnrow" style="margin-top:0;">
@@ -3013,6 +3056,7 @@ def arp_ui(
       const btnPrepare = document.getElementById('btnPrepare');
       const btnGenerate = document.getElementById('btnGenerate');
       const btnImportRepo = document.getElementById('btnImportRepo');
+      const btnCreate = document.getElementById('btnCreate');
 
       let items = [];
       let sortKey = localStorage.getItem('eti_arpweb_sortKey') || 'activity_name';
@@ -3133,6 +3177,54 @@ def arp_ui(
           metaEl.textContent = 'Error: ' + String(e?.message || e);
         } finally {
           btnImportRepo.disabled = false;
+        }
+      });
+
+      function splitUrls(s) {
+        const parts = String(s||'')
+          .replaceAll('\\n', ',')
+          .replaceAll('\\r', ',')
+          .split(',')
+          .map(x => x.trim())
+          .filter(Boolean);
+        // de-dupe, keep order
+        const seen = new Set();
+        const out = [];
+        for (const p of parts) { if (!seen.has(p)) { seen.add(p); out.push(p); } }
+        return out;
+      }
+
+      btnCreate.addEventListener('click', async () => {
+        const form = document.getElementById('createForm');
+        const fd = new FormData(form);
+        const payload = {
+          activity_name: String(fd.get('activity_name')||'').trim(),
+          activity_category: String(fd.get('activity_category')||'').trim(),
+          scope_notes: String(fd.get('scope_notes')||'').trim(),
+          status: String(fd.get('status')||'').trim(),
+          resource_urls: splitUrls(String(fd.get('resource_urls')||'')).join(', '),
+        };
+        if (!payload.activity_name) { metaEl.textContent = 'Enter an activity name.'; return; }
+
+        const apiKey = String(document.getElementById('apiKey').value || localStorage.getItem('eti_x_api_key') || '').trim();
+        if (apiKey) localStorage.setItem('eti_x_api_key', apiKey);
+        const headers = { 'Content-Type':'application/json' };
+        if (apiKey) headers['X-API-Key'] = apiKey;
+
+        metaEl.textContent = 'Creating…';
+        btnCreate.disabled = true;
+        try {
+          const res = await fetch('/arp/api/create', { method:'POST', headers, body: JSON.stringify(payload) });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
+          metaEl.textContent = `Created activity ${body.activity_id} with ${body.sources || 0} resources.`;
+          form.reset();
+          form.querySelector('input[name=\"status\"]').value = 'active';
+          await load();
+        } catch (e) {
+          metaEl.textContent = 'Error: ' + String(e?.message || e);
+        } finally {
+          btnCreate.disabled = false;
         }
       });
 
@@ -3374,6 +3466,96 @@ def _arp_import_rows(
 
         conn.commit()
     return activities_count, sources_count
+
+
+@app.post("/arp/api/create")
+def arp_api_create(
+    body: ArpCreateIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_write_access(request=request, x_api_key=x_api_key, role="editor")
+    activity_name = (body.activity_name or "").strip()
+    if not activity_name:
+        raise HTTPException(status_code=400, detail="Missing activity_name")
+
+    category = (body.activity_category or "").strip()
+    scope = (body.scope_notes or "").strip()
+    status = (body.status or "active").strip()
+
+    urls_raw = (body.resource_urls or "").strip()
+    parts = [p.strip() for p in re.split(r"[,\n\r]+", urls_raw) if p and p.strip()]
+    # de-dupe while preserving order
+    urls: list[str] = []
+    seen = set()
+    for u in parts:
+        if u in seen:
+            continue
+        seen.add(u)
+        urls.append(u)
+
+    slug = _stable_slug(activity_name, max_len=64)
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
+            cur.execute(_arp_schema('SELECT COALESCE(MAX(activity_id), 0) + 1 FROM "__ARP_SCHEMA__".activities;'))
+            (new_id,) = cur.fetchone() or (1,)
+            activity_id = int(new_id or 1)
+
+            cur.execute(
+                _arp_schema(
+                    """
+                    INSERT INTO "__ARP_SCHEMA__".activities
+                      (activity_id, activity_slug, activity_name, activity_category, scope_notes, status)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (activity_id) DO UPDATE SET
+                      activity_slug=EXCLUDED.activity_slug,
+                      activity_name=EXCLUDED.activity_name,
+                      activity_category=EXCLUDED.activity_category,
+                      scope_notes=EXCLUDED.scope_notes,
+                      status=EXCLUDED.status,
+                      updated_at=now();
+                    """
+                ).strip(),
+                (activity_id, slug, activity_name, category, scope, status),
+            )
+
+            sources_count = 0
+            for url in urls:
+                if not url:
+                    continue
+                src_id = _stable_slug(activity_name, url, max_len=90)
+                cur.execute(
+                    _arp_schema(
+                        """
+                        INSERT INTO "__ARP_SCHEMA__".sources
+                          (source_id, activity_id, activity_name, title, organization, jurisdiction, url, source_type,
+                           activities_covered_raw, brief_focus, authority_class, publication_date)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (source_id) DO UPDATE SET
+                          activity_id=EXCLUDED.activity_id,
+                          activity_name=EXCLUDED.activity_name,
+                          url=EXCLUDED.url,
+                          source_type=EXCLUDED.source_type;
+                        """
+                    ).strip(),
+                    (src_id, activity_id, activity_name, "", "", "", url, "manual", "", "", "", ""),
+                )
+                cur.execute(
+                    _arp_schema(
+                        """
+                        INSERT INTO "__ARP_SCHEMA__".documents (source_id)
+                        VALUES (%s)
+                        ON CONFLICT (source_id) DO NOTHING;
+                        """
+                    ).strip(),
+                    (src_id,),
+                )
+                sources_count += 1
+
+        conn.commit()
+
+    return {"ok": True, "activity_id": activity_id, "activity_slug": slug, "sources": sources_count}
 
 
 @app.post("/arp/import")

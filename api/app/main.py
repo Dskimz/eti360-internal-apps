@@ -3550,14 +3550,14 @@ def schools_ui(
           overflow: hidden;
         }
 
-        @media (max-width: 1100px) {
-          /* Hide Programs first on smaller screens. */
-          table.schools-table th:nth-child(5),
-          table.schools-table td:nth-child(5) { display:none; }
-        }
-        @media (max-width: 920px) {
-          /* Then hide Score. */
-          table.schools-table th:nth-child(3),
+	        @media (max-width: 1100px) {
+	          /* Hide Programs first on smaller screens. */
+	          table.schools-table th:nth-child(4),
+	          table.schools-table td:nth-child(4) { display:none; }
+	        }
+	        @media (max-width: 920px) {
+	          /* Then hide Score. */
+	          table.schools-table th:nth-child(3),
           table.schools-table td:nth-child(3) { display:none; }
         }
       </style>
@@ -3575,16 +3575,15 @@ def schools_ui(
         </div>
         <div class="section tablewrap schools-wrap">
           <table class="schools-table">
-            <thead>
-              <tr>
-                <th style="width:28%;">School</th>
-                <th style="width:9%;">Tier</th>
-                <th class="mono" style="width:6%;">Score</th>
-                <th style="width:10%;">Social</th>
-                <th style="width:17%;">Programs</th>
-                <th style="width:30%;">LLM review</th>
-              </tr>
-            </thead>
+	            <thead>
+	              <tr>
+	                <th style="width:32%;">School</th>
+	                <th style="width:9%;">Tier</th>
+	                <th class="mono" style="width:6%;">Score</th>
+	                <th style="width:18%;">Programs</th>
+	                <th style="width:35%;">LLM review</th>
+	              </tr>
+	            </thead>
             <tbody id="rows"></tbody>
           </table>
         </div>
@@ -3621,7 +3620,7 @@ def schools_ui(
 	        return hay.includes(q);
 	      }
 
-	      function normalizeSocial(obj) {
+		      function normalizeSocial(obj) {
 	        const out = {};
 	        if (!obj || typeof obj !== 'object') return out;
 	        for (const [k,v] of Object.entries(obj)) {
@@ -3631,10 +3630,15 @@ def schools_ui(
 	          out[key] = url;
 	        }
 	        return out;
-	      }
+		      }
 
-	      function renderSocial(obj) {
-	        const sl = normalizeSocial(obj);
+		      function hasSocial(obj) {
+		        const sl = normalizeSocial(obj);
+		        return Object.keys(sl).length > 0;
+		      }
+
+		      function renderSocial(obj) {
+		        const sl = normalizeSocial(obj);
 	        const order = [
 	          ['instagram','IG'],
 	          ['facebook','FB'],
@@ -3661,60 +3665,61 @@ def schools_ui(
 	        }
 	        return parts.length ? parts.join(' · ') : '<span class="muted">—</span>';
 	      }
-	      function render() {
-        const q = String(qEl.value || '').trim().toLowerCase();
-        const filtered = items.filter((it) => matches(it, q));
-        rowsEl.innerHTML = '';
-	        for (const it of filtered) {
+		      function render() {
+	        const q = String(qEl.value || '').trim().toLowerCase();
+	        const filtered = items.filter((it) => matches(it, q));
+	        rowsEl.innerHTML = '';
+		        for (const it of filtered) {
 	          const key = String(it.school_key || '');
 	          const home = String(it.homepage_url || '');
 	          const detailUrl = `/schools/${encodeURIComponent(key)}`;
 	          const llmUrl = `/schools/${encodeURIComponent(key)}/llm`;
-	          const links = [
-	            it.has_evidence ? `<a href="${detailUrl}">Evidence</a>` : '<span class="muted">Evidence —</span>',
-	            it.has_llm ? `<a href="${llmUrl}">LLM</a>` : '<span class="muted">LLM —</span>',
-	          ].join(' · ');
-	          const nameText = esc(it.name||'(missing)');
-          const nameHtml = home ? `<a href="${esc(home)}" target="_blank" rel="noopener">${nameText}</a>` : nameText;
-          const schoolCell = `
-            <div style="font-weight:600; color:var(--text-secondary);" class="clamp-2">${nameHtml}</div>
-            <div class="muted clamp-2">
-              ${home ? `${esc(it.primary_domain||home)}` : esc(it.primary_domain||'')}
-            </div>
-            <div class="muted" style="margin-top:2px;">${links}</div>
-          `;
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${schoolCell}</td>
-            <td><span class="pill">${esc(it.tier || '')}</span></td>
-            <td class="mono">${Number(it.health_score||0)}</td>
-            <td>${renderSocial(it.social_links)}</td>
-            <td><div class="clamp-2">${pickPrograms(it.programs||[]) || '<span class="muted">—</span>'}</div></td>
-            <td><div class="clamp-3">${esc(it.review || '') || '<span class="muted">—</span>'}</div></td>
-          `;
-          rowsEl.appendChild(tr);
-        }
-        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="6" class="muted">No matching schools.</td></tr>';
-        metaEl.textContent = `Schools: ${filtered.length}/${items.length}`;
-      }
+		          const links = [
+		            it.has_evidence ? `<a href="${detailUrl}">Evidence</a>` : '<span class="muted">Evidence —</span>',
+		            it.has_llm ? `<a href="${llmUrl}">LLM</a>` : '<span class="muted">LLM —</span>',
+		          ].join(' · ');
+		          const socialLine = hasSocial(it.social_links) ? `<div class="muted" style="margin-top:2px;">${renderSocial(it.social_links)}</div>` : '';
+		          const nameText = esc(it.name||'(missing)');
+	          const nameHtml = home ? `<a href="${esc(home)}" target="_blank" rel="noopener">${nameText}</a>` : nameText;
+	          const schoolCell = `
+	            <div style="font-weight:600; color:var(--text-secondary);" class="clamp-2">${nameHtml}</div>
+	            <div class="muted clamp-2">
+	              ${home ? `${esc(it.primary_domain||home)}` : esc(it.primary_domain||'')}
+	            </div>
+	            <div class="muted" style="margin-top:2px;">${links}</div>
+	            ${socialLine}
+	          `;
+	          const tr = document.createElement('tr');
+	          tr.innerHTML = `
+	            <td>${schoolCell}</td>
+	            <td><span class="pill">${esc(it.tier || '')}</span></td>
+	            <td class="mono">${Number(it.health_score||0)}</td>
+	            <td><div class="clamp-2">${pickPrograms(it.programs||[]) || '<span class="muted">—</span>'}</div></td>
+	            <td><div>${esc(it.review || '') || '<span class="muted">—</span>'}</div></td>
+	          `;
+	          rowsEl.appendChild(tr);
+	        }
+	        if (filtered.length === 0) rowsEl.innerHTML = '<tr><td colspan="5" class="muted">No matching schools.</td></tr>';
+	        metaEl.textContent = `Schools: ${filtered.length}/${items.length}`;
+	      }
 	      async function load() {
 	        const includeAll = includeAllEl.checked ? '1' : '0';
 	        try {
 	          const res = await fetch(`/schools/api/list?include_all=${encodeURIComponent(includeAll)}`, { cache:'no-store' });
 	          const body = await res.json().catch(() => ({}));
-          if (!res.ok || !body.ok) {
-            metaEl.textContent = body.detail || body.error || `Failed to load schools (HTTP ${res.status})`;
-            rowsEl.innerHTML = '<tr><td colspan="6" class="muted">Failed to load.</td></tr>';
-            return;
-          }
+	          if (!res.ok || !body.ok) {
+	            metaEl.textContent = body.detail || body.error || `Failed to load schools (HTTP ${res.status})`;
+	            rowsEl.innerHTML = '<tr><td colspan="5" class="muted">Failed to load.</td></tr>';
+	            return;
+	          }
 	          if (body.fallback_used) metaEl.textContent = 'Showing all tiers (no Healthy/Partial matches found).';
 	          items = Array.isArray(body.schools) ? body.schools : [];
 	          render();
-        } catch (e) {
-          metaEl.textContent = 'Failed to load: ' + String(e?.message || e);
-          rowsEl.innerHTML = '<tr><td colspan="6" class="muted">Failed to load.</td></tr>';
-        }
-      }
+	        } catch (e) {
+	          metaEl.textContent = 'Failed to load: ' + String(e?.message || e);
+	          rowsEl.innerHTML = '<tr><td colspan="5" class="muted">Failed to load.</td></tr>';
+	        }
+	      }
       qEl.value = localStorage.getItem('eti_schools_q') || '';
       qEl.addEventListener('input', () => { localStorage.setItem('eti_schools_q', qEl.value); render(); });
       includeAllEl.checked = (localStorage.getItem('eti_schools_includeAll') || '') === '1';

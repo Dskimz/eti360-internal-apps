@@ -2928,6 +2928,9 @@ def arp_ui(
       <div class="card">
         <h1>Activity Risk Profiles (ARP)</h1>
         <p class="muted">Import your activity directory + research CSVs, then prepare evidence (S3) and generate reports (OpenAI). Data is stored in Postgres under the ARP schema.</p>
+        <div class="btnrow">
+          <a class="btn" href="/arp/schools">Schools</a>
+        </div>
       </div>
 
       <div class="card">
@@ -3250,6 +3253,54 @@ def arp_ui(
     """.strip()
 
     return _ui_shell(title="ETI360 ARP", active="arp", body_html=body_html, max_width_px=1200, extra_script=script, user=user)
+
+
+@app.get("/arp/schools", response_class=HTMLResponse)
+def arp_schools_ui(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+
+    def esc(s: str) -> str:
+        return (
+            (s or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    # Placeholder list (prove-out page wiring). Swap to DB table / CSV import later.
+    schools = [
+        "Example Elementary School",
+        "Example Middle School",
+        "Example High School",
+    ]
+    rows_html = "".join(f"<tr><td>{esc(name)}</td></tr>" for name in schools)
+
+    body_html = f"""
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <h1>Schools</h1>
+          <div class="btnrow" style="margin-top:0;">
+            <a class="btn" href="/arp/ui">Back to ARP</a>
+          </div>
+        </div>
+        <p class="muted">Simple proof-of-concept page. School names are currently hard-coded in the server route.</p>
+      </div>
+
+      <div class="card">
+        <div class="section tablewrap">
+          <table>
+            <thead><tr><th>School name</th></tr></thead>
+            <tbody>{rows_html or '<tr><td class="muted">No schools yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    """.strip()
+    return _ui_shell(title="Schools", active="arp", body_html=body_html, max_width_px=900, user=user)
 
 
 def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:
@@ -3625,9 +3676,32 @@ def arp_import_from_repo(
 def arp_api_activities(request: Request) -> dict[str, Any]:
     _ = request
     out: list[dict[str, Any]] = []
+    bootstrapped = False
     with _connect() as conn:
         with conn.cursor() as cur:
             _ensure_arp_tables(cur)
+            # Optional bootstrap: if DB is empty, import the bundled repo CSVs once.
+            # This avoids confusion where the UI shows 0–2 items because no import was run yet.
+            v = os.environ.get("ARP_BOOTSTRAP_FROM_REPO", "").strip().lower()
+            if v in {"1", "true", "yes", "on"}:
+                cur.execute(_arp_schema('SELECT COUNT(*) FROM "__ARP_SCHEMA__".activities;'))
+                (cnt,) = cur.fetchone() or (0,)
+                if int(cnt or 0) == 0:
+                    base = _STATIC_DIR / "arp_data"
+                    activities_path = base / "activities.csv"
+                    research_path = base / "research.csv"
+                    if activities_path.exists():
+                        activities_raw = activities_path.read_bytes()
+                        research_raw = research_path.read_bytes() if research_path.exists() else b""
+                        _, activity_rows = _parse_csv_bytes(activities_raw)
+                        headers, research_rows = _parse_csv_bytes(research_raw)
+                        _arp_import_rows(
+                            activity_rows=activity_rows,
+                            research_headers=headers,
+                            research_rows=research_rows,
+                        )
+                        bootstrapped = True
+
             cur.execute(
                 _arp_schema(
                     """
@@ -3703,7 +3777,7 @@ def arp_api_activities(request: Request) -> dict[str, Any]:
                         "has_report": bool(has_report),
                     }
                 )
-    return {"ok": True, "activities": out}
+    return {"ok": True, "activities": out, "bootstrapped": bootstrapped}
 
 
 @app.get("/arp/resources/{activity_id}", response_class=HTMLResponse)

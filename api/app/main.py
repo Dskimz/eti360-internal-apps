@@ -3036,9 +3036,6 @@ def arp_ui(
       <div class="card">
         <h1>Activity Risk Profiles (ARP)</h1>
         <p class="muted">Activities + resources live in Postgres under the ARP schema. Prepare evidence (S3) and generate reports (OpenAI) via background jobs.</p>
-        <div class="btnrow">
-          <a class="btn" href="/arp/schools">Schools</a>
-        </div>
       </div>
 
       <div class="card">
@@ -3345,7 +3342,13 @@ def arp_ui(
 
 
 @app.get("/arp/schools", response_class=HTMLResponse)
-def arp_schools_ui(
+def arp_schools_ui_redirect(request: Request) -> Response:
+    _ = request
+    return RedirectResponse(url="/schools", status_code=307)
+
+
+@app.get("/schools", response_class=HTMLResponse)
+def schools_ui(
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> str:
@@ -3356,7 +3359,7 @@ def arp_schools_ui(
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
           <h1>Schools</h1>
           <div class="btnrow" style="margin-top:0;">
-            <a class="btn" href="/arp/ui">Back to ARP</a>
+            <a class="btn" href="/apps">Back to Apps</a>
           </div>
         </div>
         <p class="muted">Browse schools with trip/travel evidence (official websites only), extracted program names, and overview narratives.</p>
@@ -3426,7 +3429,7 @@ def arp_schools_ui(
         for (const it of filtered) {
           const key = String(it.school_key || '');
           const home = String(it.homepage_url || '');
-          const detailUrl = `/arp/schools/${encodeURIComponent(key)}`;
+          const detailUrl = `/schools/${encodeURIComponent(key)}`;
           const ev = it.has_evidence ? `<a href="${detailUrl}">View</a>` : '<span class="muted">—</span>';
           const schoolCell = `
             <div style="font-weight:600; color:var(--text-secondary);">${esc(it.name||key||'(missing)')}</div>
@@ -3451,7 +3454,7 @@ def arp_schools_ui(
       }
       async function load() {
         const includeAll = includeAllEl.checked ? '1' : '0';
-        const res = await fetch(`/arp/api/schools?include_all=${encodeURIComponent(includeAll)}`, { cache:'no-store' });
+        const res = await fetch(`/schools/api/list?include_all=${encodeURIComponent(includeAll)}`, { cache:'no-store' });
         const body = await res.json().catch(() => ({}));
         items = Array.isArray(body.schools) ? body.schools : [];
         render();
@@ -3465,7 +3468,7 @@ def arp_schools_ui(
     </script>
     """.strip()
 
-    return _ui_shell(title="Schools", active="arp", body_html=body_html, max_width_px=1200, extra_script=script, user=user)
+    return _ui_shell(title="Schools", active="apps", body_html=body_html, max_width_px=1200, extra_script=script, user=user)
 
 
 def _escape_html(s: str) -> str:
@@ -3754,7 +3757,13 @@ def _truncate_words(s: str, max_words: int) -> str:
 
 
 @app.get("/arp/api/schools")
-def arp_api_schools(
+def arp_api_schools_redirect(request: Request) -> Response:
+    _ = request
+    return RedirectResponse(url="/schools/api/list", status_code=307)
+
+
+@app.get("/schools/api/list")
+def schools_api_list(
     request: Request,
     include_all: bool = Query(default=False),
 ) -> dict[str, Any]:
@@ -3825,7 +3834,13 @@ def arp_api_schools(
 
 
 @app.get("/arp/schools/{school_key}", response_class=HTMLResponse)
-def arp_school_detail_ui(
+def arp_school_detail_ui_redirect(school_key: str, request: Request) -> Response:
+    _ = request
+    return RedirectResponse(url=f"/schools/{quote(_safe_school_key(school_key))}", status_code=307)
+
+
+@app.get("/schools/{school_key}", response_class=HTMLResponse)
+def school_detail_ui(
     school_key: str,
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
@@ -3959,7 +3974,7 @@ def arp_school_detail_ui(
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
           <h1>{_escape_html(str(name or key))}</h1>
           <div class="btnrow" style="margin-top:0;">
-            <a class="btn" href="/arp/schools">Back</a>
+            <a class="btn" href="/schools">Back</a>
             {home_link}
           </div>
         </div>
@@ -3994,7 +4009,7 @@ def arp_school_detail_ui(
         {evidence_html}
       </div>
     """.strip()
-    return _ui_shell(title=f"School — {str(name or key)}", active="arp", body_html=body_html, max_width_px=1100, user=user)
+    return _ui_shell(title=f"School — {str(name or key)}", active="apps", body_html=body_html, max_width_px=1100, user=user)
 
 
 def _parse_csv_bytes(raw: bytes) -> tuple[list[str], list[dict[str, str]]]:

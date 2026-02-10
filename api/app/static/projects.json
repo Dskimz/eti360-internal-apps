@@ -120,16 +120,16 @@
     "notes": "Web UI backed by Postgres + S3 (evidence storage)."
   },
   {
-    "name": "Schools (ARP)",
+    "name": "Schools Research",
     "category": "Internal Tool",
     "status": "pilot",
     "owner": "ETI360",
-    "description": "Simple table page for school names (proof of concept).",
-    "url": "/arp/schools",
+    "description": "Browse school trip/travel program evidence + extracted signals (official websites only).",
+    "url": "/schools",
     "repo_url": "",
     "docs_url": "",
-    "tags": ["arp", "schools"],
-    "notes": "Currently hard-coded server-side list; intended to be replaced with real data."
+    "tags": ["schools", "research"],
+    "notes": "Backed by Postgres + bundled crawl artifacts."
   },
   {
     "name": "Marketing Website",

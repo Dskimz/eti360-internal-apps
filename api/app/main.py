@@ -6405,7 +6405,13 @@ def health() -> dict[str, bool]:
 
 
 @app.get("/health/db")
-def health_db() -> dict[str, bool]:
+def health_db() -> dict[str, Any]:
+    """
+    DB diagnostics (safe to share):
+    - verifies DB connectivity
+    - shows which ARP tables exist + row counts
+    - shows applied migration versions (OPS_SCHEMA.schema_migrations)
+    """
     try:
         with _connect() as conn:
             with conn.cursor() as cur:
@@ -6414,7 +6420,58 @@ def health_db() -> dict[str, bool]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB connection failed: {e}") from e
 
-    return {"ok": True}
+    arp_schema = _require_safe_ident("ARP_SCHEMA", ARP_SCHEMA)
+    ops_schema = _require_safe_ident("OPS_SCHEMA", OPS_SCHEMA)
+
+    tables = [
+        "activities",
+        "sources",
+        "documents",
+        "chunks",
+        "reports",
+        "activity_icons",
+    ]
+
+    exists: dict[str, bool] = {}
+    counts: dict[str, int] = {}
+    migrations: list[str] = []
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            # Table existence (to_regclass returns NULL when missing)
+            for t in tables:
+                cur.execute("SELECT to_regclass(%s);", (f"{arp_schema}.{t}",))
+                exists[t] = cur.fetchone()[0] is not None  # type: ignore[index]
+
+            # Row counts (best effort)
+            for t in tables:
+                if not exists.get(t):
+                    continue
+                try:
+                    cur.execute(f'SELECT COUNT(*) FROM "{arp_schema}".{t};')
+                    counts[t] = int(cur.fetchone()[0] or 0)  # type: ignore[index]
+                except Exception:
+                    counts[t] = -1
+
+            # Applied migrations (best effort)
+            try:
+                cur.execute("SELECT to_regclass(%s);", (f"{ops_schema}.schema_migrations",))
+                has_m = cur.fetchone()[0] is not None  # type: ignore[index]
+                if has_m:
+                    cur.execute(f'SELECT version FROM "{ops_schema}".schema_migrations ORDER BY applied_at ASC;')
+                    migrations = [str(r[0]) for r in (cur.fetchall() or [])]  # type: ignore[index]
+            except Exception:
+                migrations = []
+
+        conn.commit()
+
+    return {
+        "ok": True,
+        "schemas": {"arp": arp_schema, "ops": ops_schema},
+        "tables_exist": exists,
+        "row_counts": counts,
+        "migrations_applied": migrations,
+    }
 
 
 class LoginIn(BaseModel):

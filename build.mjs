@@ -1,6 +1,14 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
-import { encryptHTML } from "pagecrypt";
+// pagecrypt has a Node ESM bug where it references `window` even when running on the server.
+// Shim a minimal `window` so the import works reliably in Render's Node build environment.
+if (typeof globalThis.window === "undefined") {
+  // Node 20+ has globalThis.crypto; fall back to crypto.webcrypto.
+  const cryptoMod = await import("node:crypto");
+  globalThis.window = { crypto: globalThis.crypto || cryptoMod.webcrypto };
+}
+
+const { encryptHTML } = await import("pagecrypt");
 
 async function loadCss() {
   try {

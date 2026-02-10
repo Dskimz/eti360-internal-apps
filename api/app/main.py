@@ -3183,10 +3183,6 @@ def arp_ui(
       <div class="card">
         <h1>Activity Risk Profiles (ARP)</h1>
         <p class="muted">Activities + resources live in Postgres under the ARP schema. Prepare evidence (S3) and generate reports (OpenAI) via background jobs.</p>
-        <div class="btnrow">
-          <a class="btn" href="/arp/schools">Schools</a>
-          <button id="btnApiKey" class="btn" type="button">API key</button>
-        </div>
       </div>
 
       <style>
@@ -3314,15 +3310,14 @@ def arp_ui(
       const qEl = document.getElementById('q');
       const resetEl = document.getElementById('reset');
       const categoryEl = document.getElementById('category');
-      const topkEl = document.getElementById('topk');
-      const btnGenerate = document.getElementById('btnGenerate');
-      const btnCreate = document.getElementById('btnCreate');
-      const btnApiKey = document.getElementById('btnApiKey');
-      const dlgApiKey = document.getElementById('dlgApiKey');
-      const btnCloseApiKey = document.getElementById('btnCloseApiKey');
-      const btnCancelApiKey = document.getElementById('btnCancelApiKey');
-      const btnSaveApiKey = document.getElementById('btnSaveApiKey');
-      const apiKeyEl = document.getElementById('apiKey');
+	      const topkEl = document.getElementById('topk');
+	      const btnGenerate = document.getElementById('btnGenerate');
+	      const btnCreate = document.getElementById('btnCreate');
+	      const dlgApiKey = document.getElementById('dlgApiKey');
+	      const btnCloseApiKey = document.getElementById('btnCloseApiKey');
+	      const btnCancelApiKey = document.getElementById('btnCancelApiKey');
+	      const btnSaveApiKey = document.getElementById('btnSaveApiKey');
+	      const apiKeyEl = document.getElementById('apiKey');
 
       const dlgCreate = document.getElementById('dlgCreate');
       const btnOpenCreate = document.getElementById('btnOpenCreate');
@@ -3403,23 +3398,22 @@ def arp_ui(
         btnGenerate.disabled = true;
         try { await enqueue('/arp/api/generate', { activity_ids: ids, top_k: topk }); } finally { btnGenerate.disabled = false; }
       });
-      function openApiKey() {
-        if (!dlgApiKey) return;
-        apiKeyEl.value = localStorage.getItem('eti_x_api_key') || '';
-        try { dlgApiKey.showModal(); } catch (e) { dlgApiKey.setAttribute('open', 'open'); }
-        setTimeout(() => apiKeyEl.focus(), 0);
-      }
-      function closeApiKey() { if (dlgApiKey && dlgApiKey.open) dlgApiKey.close(); }
-      btnApiKey.addEventListener('click', openApiKey);
-      btnCloseApiKey.addEventListener('click', closeApiKey);
-      btnCancelApiKey.addEventListener('click', closeApiKey);
-      btnSaveApiKey.addEventListener('click', () => {
-        const v = String(apiKeyEl.value || '').trim();
-        if (v) localStorage.setItem('eti_x_api_key', v);
-        else localStorage.removeItem('eti_x_api_key');
-        closeApiKey();
-      });
-      dlgApiKey.addEventListener('click', (e) => { if (e.target === dlgApiKey) closeApiKey(); });
+	      function openApiKey() {
+	        if (!dlgApiKey) return;
+	        apiKeyEl.value = localStorage.getItem('eti_x_api_key') || '';
+	        try { dlgApiKey.showModal(); } catch (e) { dlgApiKey.setAttribute('open', 'open'); }
+	        setTimeout(() => apiKeyEl.focus(), 0);
+	      }
+	      function closeApiKey() { if (dlgApiKey && dlgApiKey.open) dlgApiKey.close(); }
+	      if (btnCloseApiKey) btnCloseApiKey.addEventListener('click', closeApiKey);
+	      if (btnCancelApiKey) btnCancelApiKey.addEventListener('click', closeApiKey);
+	      if (btnSaveApiKey) btnSaveApiKey.addEventListener('click', () => {
+	        const v = String(apiKeyEl.value || '').trim();
+	        if (v) localStorage.setItem('eti_x_api_key', v);
+	        else localStorage.removeItem('eti_x_api_key');
+	        closeApiKey();
+	      });
+	      if (dlgApiKey) dlgApiKey.addEventListener('click', (e) => { if (e.target === dlgApiKey) closeApiKey(); });
 
       function splitUrls(s) {
         const parts = String(s||'')

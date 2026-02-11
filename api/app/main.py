@@ -3609,11 +3609,12 @@ def travel_segments_v1(request: Request) -> str:
                 <th>#</th>
                 <th>Segment</th>
                 <th>Mode</th>
+                <th>Distance</th>
                 <th>Map</th>
               </tr>
             </thead>
             <tbody id="saved_rows">
-              <tr><td colspan="6" class="muted">Load maps by trip to view saved assets.</td></tr>
+              <tr><td colspan="7" class="muted">Load maps by trip to view saved assets.</td></tr>
             </tbody>
           </table>
         </div>
@@ -3796,7 +3797,7 @@ def travel_segments_v1(request: Request) -> str:
 
       function renderSavedTable(items) {
         if (!items.length) {
-          savedRowsEl.innerHTML = '<tr><td colspan="6" class="muted">No saved maps for this filter.</td></tr>';
+          savedRowsEl.innerHTML = '<tr><td colspan="7" class="muted">No saved maps for this filter.</td></tr>';
           return;
         }
         savedRowsEl.innerHTML = '';
@@ -3804,12 +3805,17 @@ def travel_segments_v1(request: Request) -> str:
           const tr = document.createElement('tr');
           const mapLink = String(it.view_url || '').trim();
           const createdLabel = String(it.created_at_display || '').trim() || fmtDateTime(it.created_at);
+          const meters = Number(it.distance_m || 0);
+          const km = meters > 0 ? (meters / 1000).toFixed(2) : '';
+          const mi = meters > 0 ? (meters / 1609.344).toFixed(2) : '';
+          const distanceLabel = meters > 0 ? `${km} km / ${mi} mi` : '';
           tr.innerHTML = `
             <td><span class="datetime">${esc(createdLabel)}</span></td>
             <td>${esc(it.trip_id || '')}</td>
             <td>${esc(it.segment_order || '')}</td>
             <td>${esc(it.segment_name || '')}</td>
             <td>${esc(it.mode || '')}</td>
+            <td>${esc(distanceLabel)}</td>
             <td>${mapLink ? `<a href="${esc(mapLink)}" target="_blank" rel="noopener">Open</a>` : '<span class="muted">Missing</span>'}</td>
           `;
           savedRowsEl.appendChild(tr);
@@ -3910,8 +3916,12 @@ def travel_segments_v1(request: Request) -> str:
             const key = String(it.segment_order ?? '');
             const dataUrl = String(it.map_data_url || '');
             const note = String(it.note || '');
+            const meters = Number(it.distance_m || 0);
+            const km = meters > 0 ? (meters / 1000).toFixed(2) : '';
+            const mi = meters > 0 ? (meters / 1609.344).toFixed(2) : '';
+            const distanceLabel = meters > 0 ? `Distance: ${km} km / ${mi} mi` : '';
             if (dataUrl) {
-              generatedMaps[key] = `<a href="${esc(dataUrl)}" target="_blank" rel="noopener"><img alt="map preview" src="${esc(dataUrl)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" /></a><div class="muted" style="margin-top:4px;">${esc(note)}</div>`;
+              generatedMaps[key] = `<a href="${esc(dataUrl)}" target="_blank" rel="noopener"><img alt="map preview" src="${esc(dataUrl)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" /></a><div class="muted" style="margin-top:4px;">${esc(distanceLabel)}</div><div class="muted" style="margin-top:2px;">${esc(note)}</div>`;
             } else {
               generatedMaps[key] = `<span class="muted">Failed</span><div class="muted" style="margin-top:4px;">${esc(note)}</div>`;
             }
@@ -4112,6 +4122,8 @@ def travel_segments_list_maps(
     t = (trip_id or "").strip()
     out: list[dict[str, Any]] = []
     cfg = get_s3_config()
+    # Include stored distance for table-level scale reference.
+    rows2: list[tuple[Any, ...]] = []
     with _connect() as conn:
         with conn.cursor() as cur:
             _apply_ops_migrations(cur)
@@ -4119,7 +4131,7 @@ def travel_segments_list_maps(
             if t:
                 cur.execute(
                     f"""
-                    SELECT id, trip_id, segment_order, segment_name, mode, source, profile_used, is_fallback, note, s3_bucket, s3_key, created_at
+                    SELECT id, trip_id, segment_order, segment_name, mode, source, profile_used, is_fallback, note, distance_m, s3_bucket, s3_key, created_at
                     FROM "{_jobs_schema_name()}".travel_segment_maps
                     WHERE trip_id=%s
                     ORDER BY created_at DESC
@@ -4130,15 +4142,16 @@ def travel_segments_list_maps(
             else:
                 cur.execute(
                     f"""
-                    SELECT id, trip_id, segment_order, segment_name, mode, source, profile_used, is_fallback, note, s3_bucket, s3_key, created_at
+                    SELECT id, trip_id, segment_order, segment_name, mode, source, profile_used, is_fallback, note, distance_m, s3_bucket, s3_key, created_at
                     FROM "{_jobs_schema_name()}".travel_segment_maps
                     ORDER BY created_at DESC
                     LIMIT %s;
                     """,
                     (int(limit),),
                 )
-            rows = cur.fetchall()
-    for rid, trip, seg_order, seg_name, mode, source, profile, is_fb, note, bucket, key, created_at in rows:
+            rows2 = cur.fetchall()
+
+    for rid, trip, seg_order, seg_name, mode, source, profile, is_fb, note, dist_m, bucket, key, created_at in rows2:
         b = str(bucket or cfg.bucket)
         k = str(key or "")
         view_url = presign_get(region=cfg.region, bucket=b, key=k, expires_in=3600) if k else ""
@@ -4153,6 +4166,7 @@ def travel_segments_list_maps(
                 "profile_used": str(profile or ""),
                 "is_fallback": bool(is_fb),
                 "note": str(note or ""),
+                "distance_m": float(dist_m or 0.0),
                 "s3_bucket": b,
                 "s3_key": k,
                 "view_url": view_url,

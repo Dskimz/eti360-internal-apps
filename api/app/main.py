@@ -2864,6 +2864,7 @@ def usage_log(
     ]
 
     totals_by_provider: dict[str, dict[str, int]] = {}
+    totals_by_workflow: dict[str, dict[str, Any]] = {}
     for r in items:
         p = r["provider"]
         t = totals_by_provider.setdefault(
@@ -2872,12 +2873,23 @@ def usage_log(
         t["prompt_tokens"] += int(r["prompt_tokens"])
         t["completion_tokens"] += int(r["completion_tokens"])
         t["total_tokens"] += int(r["total_tokens"])
+        wf = str(r.get("prompt_workflow") or r.get("workflow") or "").strip() or "unknown"
+        w = totals_by_workflow.setdefault(
+            wf,
+            {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost_usd": 0.0, "rows": 0},
+        )
+        w["prompt_tokens"] += int(r["prompt_tokens"])
+        w["completion_tokens"] += int(r["completion_tokens"])
+        w["total_tokens"] += int(r["total_tokens"])
+        w["cost_usd"] += float(r["cost_usd"])
+        w["rows"] += 1
 
     return {
         "ok": True,
         "items": items,
         "cumulative_total_cost_usd": float(cumulative_total),
         "totals_by_provider": totals_by_provider,
+        "totals_by_workflow": totals_by_workflow,
     }
 
 
@@ -2946,12 +2958,15 @@ def usage_ui(request: Request) -> str:
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
 
           const totals = body.totals_by_provider || {};
+          const workflows = body.totals_by_workflow || {};
           const p = totals.perplexity || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
           const o = totals.openai || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+          const arp = workflows.arp || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost_usd: 0, rows: 0 };
           summaryEl.textContent =
             `Cumulative total: ${money(body.cumulative_total_cost_usd)} (rows: ${(body.items || []).length}) | ` +
             `Perplexity in/out: ${p.prompt_tokens}/${p.completion_tokens} | ` +
-            `OpenAI in/out: ${o.prompt_tokens}/${o.completion_tokens}`;
+            `OpenAI in/out: ${o.prompt_tokens}/${o.completion_tokens} | ` +
+            `ARP in/out: ${arp.prompt_tokens}/${arp.completion_tokens} (rows: ${arp.rows}, cost: ${money(arp.cost_usd)})`;
 
           const items = body.items || [];
           rowsEl.innerHTML = '';

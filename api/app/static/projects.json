@@ -96,6 +96,18 @@
     "notes": ""
   },
   {
+    "name": "Icons Pipeline",
+    "category": "Internal Tool",
+    "status": "pilot",
+    "owner": "ETI360",
+    "description": "Governed icon intake form with single + batch parsing workflow.",
+    "url": "/icons/ui",
+    "repo_url": "",
+    "docs_url": "",
+    "tags": ["icons", "governance", "batch"],
+    "notes": "Entry point for icon intake and validation workflow."
+  },
+  {
     "name": "Flight Tracking Dashboard (Pilot)",
     "category": "Prototype",
     "status": "pilot",

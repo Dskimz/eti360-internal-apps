@@ -6920,6 +6920,154 @@ def build_icon_generation_prompt(
     }
 
 
+@app.get("/icons/ui", response_class=HTMLResponse)
+def icons_ui(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    body_html = """
+      <div class="card">
+        <h1>Icons Pipeline</h1>
+        <p class="muted">Classify intent into strict schema, then compile deterministic prompt text.</p>
+      </div>
+
+      <div class="card">
+        <div class="form-grid two">
+          <div>
+            <label class="label">Activity / object name</label>
+            <input id="activityName" type="text" placeholder="Kayaking - Flatwater" />
+          </div>
+          <div>
+            <label class="label">API key (optional if auth is disabled)</label>
+            <input id="apiKey" type="text" placeholder="ETI360 API key" autocomplete="off" />
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <label class="label">Context note (1-3 sentences)</label>
+          <textarea id="contextNote" class="mono" style="min-height:100px;" placeholder="Short factual context for classification."></textarea>
+        </div>
+        <div style="margin-top:10px;">
+          <label class="label">Batch lines (optional; one item per line)</label>
+          <textarea id="batchText" class="mono" style="min-height:140px;" placeholder="Kayaking - Flatwater | Guided paddling activity on calm river water with safety briefing."></textarea>
+          <div class="muted">Format: <span class="mono">Activity | Context note</span> (or tab-separated).</div>
+        </div>
+        <div class="btnrow" style="margin-top:12px;">
+          <button id="btnRunSingle" class="btn primary" type="button">Run single</button>
+          <button id="btnRunBatch" class="btn" type="button">Run batch</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Results</h2>
+        <pre id="output" class="mono" style="white-space:pre-wrap;">Ready.</pre>
+      </div>
+    """.strip()
+
+    script = """
+    <script>
+      const apiKeyEl = document.getElementById('apiKey');
+      const activityEl = document.getElementById('activityName');
+      const contextEl = document.getElementById('contextNote');
+      const batchEl = document.getElementById('batchText');
+      const outEl = document.getElementById('output');
+
+      function headers() {
+        const h = { 'Content-Type': 'application/json' };
+        const k = String(apiKeyEl.value || '').trim();
+        if (k) h['X-API-Key'] = k;
+        return h;
+      }
+
+      function setOut(v) {
+        outEl.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+      }
+
+      function saveLocal() {
+        localStorage.setItem('eti_icons_api_key', apiKeyEl.value || '');
+        localStorage.setItem('eti_icons_activity', activityEl.value || '');
+        localStorage.setItem('eti_icons_context', contextEl.value || '');
+        localStorage.setItem('eti_icons_batch', batchEl.value || '');
+      }
+
+      function loadLocal() {
+        apiKeyEl.value = localStorage.getItem('eti_icons_api_key') || '';
+        activityEl.value = localStorage.getItem('eti_icons_activity') || '';
+        contextEl.value = localStorage.getItem('eti_icons_context') || '';
+        batchEl.value = localStorage.getItem('eti_icons_batch') || '';
+      }
+
+      [apiKeyEl, activityEl, contextEl, batchEl].forEach((el) => el.addEventListener('input', saveLocal));
+      loadLocal();
+
+      async function runSingle() {
+        const activity_name = String(activityEl.value || '').trim();
+        const context_note = String(contextEl.value || '').trim();
+        if (!activity_name || !context_note) { setOut('Enter activity name and context note.'); return; }
+        try {
+          setOut('Validating input...');
+          const res = await fetch('/icons/form/validate', {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ activity_name, context_note }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+          setOut({
+            ok: true,
+            note: 'Input validated. This page currently runs form governance checks and batch parsing.',
+            validated_input: body.validated_input || { activity_name, context_note },
+          });
+        } catch (e) {
+          setOut('Error: ' + String(e?.message || e));
+        }
+      }
+
+      async function runBatch() {
+        const raw = String(batchEl.value || '').trim();
+        if (!raw) { setOut('Enter batch lines first.'); return; }
+        const lines = raw.split(/\\r?\\n/).map((x) => x.trim()).filter(Boolean).filter((x) => !x.startsWith('#'));
+        const out = [];
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const parts = line.includes('|') ? line.split('|') : (line.includes('\\t') ? line.split('\\t') : []);
+          if (parts.length < 2) {
+            out.push({ line: i + 1, ok: false, error: 'Missing delimiter (use | or tab)' });
+            continue;
+          }
+          const activity_name = String(parts[0] || '').trim();
+          const context_note = String(parts.slice(1).join('|') || '').trim();
+          try {
+            const res = await fetch('/icons/form/validate', {
+              method: 'POST',
+              headers: headers(),
+              body: JSON.stringify({ activity_name, context_note }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+            out.push({ line: i + 1, ok: true, activity_name });
+          } catch (e) {
+            out.push({ line: i + 1, ok: false, error: String(e?.message || e) });
+          }
+        }
+        setOut({ processed: out.length, succeeded: out.filter((x) => x.ok).length, failed: out.filter((x) => !x.ok).length, rows: out });
+      }
+
+      document.getElementById('btnRunSingle').addEventListener('click', runSingle);
+      document.getElementById('btnRunBatch').addEventListener('click', runBatch);
+    </script>
+    """.strip()
+
+    return _ui_shell(
+        title="ETI360 Icons",
+        active="apps",
+        body_html=body_html,
+        max_width_px=1100,
+        extra_script=script,
+        user=user,
+    )
+
+
 @app.get("/health/db")
 def health_db() -> JSONResponse:
     """

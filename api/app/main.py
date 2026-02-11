@@ -832,18 +832,22 @@ def _arp_generate_activity(*, activity_id: int, top_k: int, job_id: str) -> dict
     writer_md = _arp_writer_input_md(str(activity_name), extracted)
 
     write = chat_json(model=model_write, system=ARP_WRITE_SYSTEM, user=writer_md, temperature=0.2)
+    write_model = write.model
+    write_prompt_tokens = int(write.prompt_tokens or 0)
+    write_completion_tokens = int(write.completion_tokens or 0)
+    write_total_tokens = int(write.total_tokens or 0)
     arp_json = write.payload or {}
     ok, err = validate_arp_json(arp_json)
     if not ok:
         # One retry to fix structure.
         fix_prompt = writer_md + "\n\nFix output to valid JSON with required keys. Error: " + err
         write = chat_json(model=model_write, system=ARP_WRITE_SYSTEM, user=fix_prompt, temperature=0.2)
+        write_model = write.model or write_model
+        write_prompt_tokens += int(write.prompt_tokens or 0)
+        write_completion_tokens += int(write.completion_tokens or 0)
+        write_total_tokens += int(write.total_tokens or 0)
         arp_json = write.payload or {}
         ok, err = validate_arp_json(arp_json)
-        if not ok:
-            raise RuntimeError(f"Writer output invalid: {err}")
-
-    report_md = render_arp_json_to_markdown(str(activity_name), arp_json)
 
     _record_llm_usage(
         run_id=run_id,
@@ -853,14 +857,19 @@ def _arp_generate_activity(*, activity_id: int, top_k: int, job_id: str) -> dict
         app_key="arp",
         prompt_workflow="arp",
         provider="openai",
-        model=write.model,
-        prompt_tokens=write.prompt_tokens,
-        completion_tokens=write.completion_tokens,
-        total_tokens=write.total_tokens,
+        model=write_model or model_write,
+        prompt_tokens=write_prompt_tokens,
+        completion_tokens=write_completion_tokens,
+        total_tokens=write_total_tokens,
         locations_count=0,
         ok_count=0,
         fail_count=0,
     )
+
+    if not ok:
+        raise RuntimeError(f"Writer output invalid: {err}")
+
+    report_md = render_arp_json_to_markdown(str(activity_name), arp_json)
 
     with _connect() as conn:
         with conn.cursor() as cur:

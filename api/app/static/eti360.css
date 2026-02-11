@@ -252,3 +252,52 @@ th {
 @media (min-width: 1100px) { .grid-2 { grid-template-columns: 1fr 1.4fr; } }
 .grid-sidebar { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
 @media (max-width: 900px) { .grid-sidebar { grid-template-columns: 1fr; } }
+
+/* Trip providers — Continents + Countries */
+.continent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+.continent-card {
+  background: var(--eti-bg);
+  border: 1px solid var(--eti-border);
+  border-radius: var(--eti-radius-lg);
+  padding: 14px;
+}
+.continent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.continent-title {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  color: var(--eti-text-2);
+}
+.continent-toplist,
+.continent-country-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px 18px;
+}
+.continent-toplist li,
+.continent-country-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.continent-toplist a,
+.continent-country-list a { flex: 1; min-width: 0; }
+.continent-toplist .count,
+.continent-country-list .count { color: var(--eti-muted); font-size: 12px; white-space: nowrap; }
+.continent-toplist .viewall { justify-content: flex-start; }
+.continent-toplist .viewall a { font-weight: 600; }
+@media (min-width: 1100px) { .continent-country-list { grid-template-columns: 1fr 1fr; } }

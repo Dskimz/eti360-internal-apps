@@ -1036,6 +1036,18 @@ def _run_job(*, job_id: str, kind: str, payload: dict[str, Any]) -> None:
 
     if kind == "arp_prepare":
         ids = payload.get("activity_ids") if isinstance(payload, dict) else None
+        top_k_raw = payload.get("top_k") if isinstance(payload, dict) else 12
+        auto_generate_raw = payload.get("auto_generate") if isinstance(payload, dict) else False
+        try:
+            top_k = int(top_k_raw or 12)
+        except Exception:
+            top_k = 12
+        top_k = max(1, min(top_k, 50))
+        if isinstance(auto_generate_raw, bool):
+            auto_generate = auto_generate_raw
+        else:
+            auto_generate = str(auto_generate_raw or "").strip().lower() in {"1", "true", "yes", "on"}
+
         activity_ids = [int(x) for x in (ids or []) if str(x).strip().isdigit()]
         if not activity_ids:
             with _connect() as conn:
@@ -1046,20 +1058,54 @@ def _run_job(*, job_id: str, kind: str, payload: dict[str, Any]) -> None:
 
         with _connect() as conn:
             with conn.cursor() as cur:
-                _job_append_log(cur, job_id=job_id, line=f"Starting arp_prepare: {len(activity_ids)} activities")
+                _job_append_log(
+                    cur,
+                    job_id=job_id,
+                    line=f"Starting arp_prepare: {len(activity_ids)} activities (auto_generate={str(auto_generate).lower()}, top_k={top_k})",
+                )
             conn.commit()
 
         try:
-            results = []
+            prepare_results = []
+            generate_results: list[dict[str, Any]] = []
+            errors: list[str] = []
             for i, aid in enumerate(activity_ids, start=1):
                 with _connect() as conn:
                     with conn.cursor() as cur:
                         _job_append_log(cur, job_id=job_id, line=f"[{i}/{len(activity_ids)}] activity_id={aid}")
                     conn.commit()
-                results.append(_arp_prepare_activity(activity_id=int(aid), job_id=job_id, only_missing=True))
+                prepare_results.append(_arp_prepare_activity(activity_id=int(aid), job_id=job_id, only_missing=True))
+
+            if auto_generate:
+                for i, aid in enumerate(activity_ids, start=1):
+                    with _connect() as conn:
+                        with conn.cursor() as cur:
+                            _job_append_log(cur, job_id=job_id, line=f"[{i}/{len(activity_ids)}] generate activity_id={aid}")
+                        conn.commit()
+                    try:
+                        generate_results.append(_arp_generate_activity(activity_id=int(aid), top_k=top_k, job_id=job_id))
+                    except Exception as e:
+                        msg = str(getattr(e, "detail", e))
+                        errors.append(f"{aid}: {msg}")
+                        with _connect() as conn:
+                            with conn.cursor() as cur:
+                                _job_append_log(cur, job_id=job_id, line=f"ERROR: generate activity_id={aid}: {msg}")
+                            conn.commit()
+
             with _connect() as conn:
                 with conn.cursor() as cur:
-                    _job_finish_ok(cur, job_id=job_id, result={"ok": True, "results": results})
+                    _job_finish_ok(
+                        cur,
+                        job_id=job_id,
+                        result={
+                            "ok": True,
+                            "auto_generate": bool(auto_generate),
+                            "results": prepare_results,
+                            "prepare_results": prepare_results,
+                            "generate_results": generate_results,
+                            "errors": errors,
+                        },
+                    )
                 conn.commit()
         except Exception as e:
             with _connect() as conn:
@@ -2158,7 +2204,7 @@ def _ui_nav(*, active: str) -> str:
         ("Apps", "/apps", "apps"),
         ("ARP", "/arp/ui", "arp"),
         ("Trip Providers", "/trip_providers_research", "trip_providers"),
-        ("Countries", "/trip_providers/countries", "trip_providers_countries"),
+        ("Continents", "/trip_providers/countries", "trip_providers_countries"),
         ("Weather", "/weather/ui", "weather"),
         ("Usage", "/usage/ui", "usage"),
         ("Jobs", "/jobs/ui", "jobs"),
@@ -3813,6 +3859,7 @@ def jobs_api_item(
 class ArpRunIn(BaseModel):
     activity_ids: list[int] = Field(default_factory=list)
     top_k: int = 12
+    auto_generate: bool = False
 
 
 class ArpCreateIn(BaseModel):
@@ -6081,7 +6128,11 @@ def arp_prepare(
     ids = [int(x) for x in (body.activity_ids or []) if int(x) > 0]
     if not ids:
         raise HTTPException(status_code=400, detail="Select at least one activity")
-    job_id = _enqueue_job(kind="arp_prepare", payload={"activity_ids": ids})
+    top_k = max(1, min(int(body.top_k or 12), 50))
+    job_id = _enqueue_job(
+        kind="arp_prepare",
+        payload={"activity_ids": ids, "top_k": top_k, "auto_generate": bool(body.auto_generate)},
+    )
     return {"ok": True, "job_id": job_id}
 
 
@@ -6375,46 +6426,59 @@ def trip_providers_countries_index_ui(
             cur.execute(sql, params)
             rows = list(cur.fetchall())
 
-    continent_to_items: dict[str, list[str]] = {}
-    total_items = 0
+    continent_to_countries: dict[str, list[tuple[str, int]]] = {}
+    total_countries = 0
     for country, provider_count in rows:
         c = str(country or "").strip()
         if not c:
             continue
+        try:
+            n = int(provider_count or 0)
+        except Exception:
+            n = 0
         slug = _slugify(c)
         href = f"/trip_providers/countries/{quote(slug)}"
         continent = continent_for_country(c)
-        item_html = f'<li><a href="{href}">{_esc(c)}</a> <span class="count">({int(provider_count or 0)})</span></li>'
-        continent_to_items.setdefault(continent, []).append(item_html)
-        total_items += 1
+        continent_to_countries.setdefault(continent, []).append((c, n))
+        total_countries += 1
 
     cards: list[str] = []
     for continent in CONTINENT_ORDER:
-        items = continent_to_items.get(continent) or []
-        if not items:
+        pairs = continent_to_countries.get(continent) or []
+        if not pairs:
             continue
+
+        pairs_sorted = sorted(pairs, key=lambda x: (-x[1], x[0].lower()))
+        top = pairs_sorted[:6]
+        continent_slug = _slugify(continent)
+        continent_href = f"/trip_providers/continents/{quote(continent_slug)}"
+
+        li_parts: list[str] = []
+        for name, n in top:
+            country_href = f"/trip_providers/countries/{quote(_slugify(name))}"
+            li_parts.append(
+                f'<li><a href="{country_href}">{_esc(name)}</a> <span class="count">({n})</span></li>'
+            )
+        li_parts.append(f'<li class="viewall"><a href="{continent_href}">View all →</a></li>')
+
         cards.append(
             f"""
             <div class="continent-card">
               <div class="continent-head">
-                <div class="continent-title">{_esc(continent)}</div>
-                <div class="muted">{len(items)} country(ies)</div>
+                <a class="continent-title" href="{continent_href}">{_esc(continent)}</a>
+                <div class="muted">{len(pairs)} country(ies)</div>
               </div>
-              <ul class="country-list">{"".join(items)}</ul>
+              <ul class="continent-toplist">{"".join(li_parts)}</ul>
             </div>
             """.strip()
         )
 
-    list_html = (
-        '<div class="continent-grid">' + "".join(cards) + "</div>"
-        if cards
-        else "<p class=\"muted\">No countries found.</p>"
-    )
+    cards_html = '<div class="continent-grid">' + "".join(cards) + "</div>" if cards else ""
 
     body_html = f"""
       <div class="card">
-        <h1>Trip Providers — Countries</h1>
-        <p class="muted">Browse countries/territories and see education-focused providers operating there.</p>
+        <h1>Trip Providers — Continents</h1>
+        <p class="muted">Browse by continent. Each card shows the 6 countries/territories with the most education-focused providers.</p>
       </div>
 
       <div class="card">
@@ -6437,8 +6501,105 @@ def trip_providers_countries_index_ui(
       </div>
 
       <div class="card">
+        <h2>Continents</h2>
+        <div class="muted">Showing {total_countries} country(ies).</div>
+        <div class="divider"></div>
+        <div class="section">
+          {cards_html if cards_html else '<p class="muted">No countries found.</p>'}
+        </div>
+      </div>
+    """.strip()
+
+    return _ui_shell(title="Trip Providers — Continents", active="trip_providers_countries", body_html=body_html, max_width_px=1100, user=user)
+
+
+@app.get("/trip_providers/continents/{continent_slug}", response_class=HTMLResponse)
+def trip_providers_continent_ui(
+    request: Request,
+    continent_slug: str,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    slug = (continent_slug or "").strip().lower()
+    if not slug:
+        raise HTTPException(status_code=400, detail="Missing continent")
+
+    canonical = ""
+    for c in CONTINENT_ORDER:
+        if _slugify(c) == slug:
+            canonical = c
+            break
+    if not canonical:
+        raise HTTPException(status_code=404, detail="Continent not found")
+
+    def _esc(s: Any) -> str:
+        return (
+            str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    sql = _directory_schema(
+        """
+        SELECT
+          pc.country_or_territory,
+          COUNT(DISTINCT pc.provider_key) AS provider_count
+        FROM "__SCHEMA__".provider_country pc
+        JOIN "__SCHEMA__".providers p ON p.provider_key = pc.provider_key
+        LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
+        WHERE p.status='active'
+          AND NULLIF(TRIM(p.website_url), '') IS NOT NULL
+          AND c.market_orientation = %s
+        GROUP BY pc.country_or_territory
+        ORDER BY pc.country_or_territory ASC;
+        """
+    ).strip()
+
+    rows: list[tuple[Any, ...]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql, ["Education-focused"])
+            rows = list(cur.fetchall())
+
+    items: list[tuple[str, int]] = []
+    for country, provider_count in rows:
+        name = str(country or "").strip()
+        if not name:
+            continue
+        if continent_for_country(name) != canonical:
+            continue
+        try:
+            n = int(provider_count or 0)
+        except Exception:
+            n = 0
+        items.append((name, n))
+
+    items_sorted = sorted(items, key=lambda x: (-x[1], x[0].lower()))
+    li_html = []
+    for name, n in items_sorted:
+        href = f"/trip_providers/countries/{quote(_slugify(name))}"
+        li_html.append(f'<li><a href="{href}">{_esc(name)}</a> <span class="count">({n})</span></li>')
+
+    list_html = (
+        '<ul class="continent-country-list">' + "".join(li_html) + "</ul>"
+        if li_html
+        else '<p class="muted">No countries found for this continent.</p>'
+    )
+
+    body_html = f"""
+      <div class="card">
+        <div class="muted"><a href="/trip_providers/countries">← Back to continents</a></div>
+        <h1>{_esc(canonical)}</h1>
+        <p class="muted">Countries/territories with education-focused trip providers operating there.</p>
+      </div>
+
+      <div class="card">
         <h2>Countries</h2>
-        <div class="muted">Showing {total_items} result(s).</div>
+        <div class="muted">Showing {len(li_html)} country(ies).</div>
         <div class="divider"></div>
         <div class="section">
           {list_html}
@@ -6446,7 +6607,7 @@ def trip_providers_countries_index_ui(
       </div>
     """.strip()
 
-    return _ui_shell(title="Trip Providers — Countries", active="trip_providers_countries", body_html=body_html, max_width_px=1100, user=user)
+    return _ui_shell(title=f"Trip Providers — {canonical}", active="trip_providers_countries", body_html=body_html, max_width_px=1100, user=user)
 
 
 @app.get("/trip_providers/countries/{country_slug}", response_class=HTMLResponse)

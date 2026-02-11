@@ -8085,6 +8085,60 @@ def _save_generated_icon(
     return str(icon_id)
 
 
+def _record_icon_usage_rows(
+    *,
+    run_id: str,
+    kind: str,
+    locations_count: int,
+    ok_count: int,
+    fail_count: int,
+    classifier_model: str,
+    classifier_prompt_tokens: int,
+    classifier_completion_tokens: int,
+    renderer_model: str,
+    renderer_prompt_tokens: int,
+    renderer_completion_tokens: int,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    rows.append(
+        _record_llm_usage(
+            run_id=run_id,
+            workflow="icons",
+            kind=kind,
+            prompt_key="icons_classify_v1",
+            app_key="icons",
+            prompt_workflow="icons",
+            provider="openai",
+            model=classifier_model,
+            prompt_tokens=int(classifier_prompt_tokens),
+            completion_tokens=int(classifier_completion_tokens),
+            total_tokens=int(classifier_prompt_tokens) + int(classifier_completion_tokens),
+            locations_count=int(locations_count),
+            ok_count=int(ok_count),
+            fail_count=int(fail_count),
+        )
+    )
+    rows.append(
+        _record_llm_usage(
+            run_id=run_id,
+            workflow="icons",
+            kind=kind,
+            prompt_key="icons_render_v1",
+            app_key="icons",
+            prompt_workflow="icons",
+            provider="openai",
+            model=renderer_model,
+            prompt_tokens=int(renderer_prompt_tokens),
+            completion_tokens=int(renderer_completion_tokens),
+            total_tokens=int(renderer_prompt_tokens) + int(renderer_completion_tokens),
+            locations_count=int(locations_count),
+            ok_count=int(ok_count),
+            fail_count=int(fail_count),
+        )
+    )
+    return rows
+
+
 def _parse_icon_batch_line(raw: str) -> tuple[str, str]:
     if "|" in raw:
         left, right = raw.split("|", 1)
@@ -8114,15 +8168,31 @@ def render_icon(
         prompt=prompt,
         image_data_url=image_data_url,
     )
+    run_id = _create_run_id()
+    usage_rows = _record_icon_usage_rows(
+        run_id=run_id,
+        kind="icons_render_single",
+        locations_count=1,
+        ok_count=1,
+        fail_count=0,
+        classifier_model=str(classification.usage.model or ""),
+        classifier_prompt_tokens=int(classification.usage.input_tokens or 0),
+        classifier_completion_tokens=int(classification.usage.output_tokens or 0),
+        renderer_model=str(rendered.usage.model or ""),
+        renderer_prompt_tokens=int(rendered.usage.input_tokens or 0),
+        renderer_completion_tokens=int(rendered.usage.output_tokens or 0),
+    )
     return {
         "ok": True,
         "id": icon_id,
+        "run_id": run_id,
         "activity_name": form.activity_name,
         "spec": spec.model_dump(),
         "prompt": prompt,
         "color_token": "--eti-icon-primary",
         "color_hex": ETI_ICON_PRIMARY_HEX,
         "image_data_url": image_data_url,
+        "usage": usage_rows,
     }
 
 
@@ -8136,6 +8206,12 @@ def render_icon_batch(
     rows: list[dict[str, Any]] = []
     success_count = 0
     failed_count = 0
+    classifier_prompt_tokens_total = 0
+    classifier_completion_tokens_total = 0
+    renderer_prompt_tokens_total = 0
+    renderer_completion_tokens_total = 0
+    classifier_model = ""
+    renderer_model = ""
 
     for line_no, raw_line in enumerate(body.batch_text.splitlines(), start=1):
         raw = raw_line.strip()
@@ -8148,6 +8224,12 @@ def render_icon_batch(
             spec = classification.spec.canonical()
             prompt = build_icon_prompt(spec)
             rendered = render_icon_png(prompt)
+            classifier_model = classifier_model or str(classification.usage.model or "")
+            renderer_model = renderer_model or str(rendered.usage.model or "")
+            classifier_prompt_tokens_total += int(classification.usage.input_tokens or 0)
+            classifier_completion_tokens_total += int(classification.usage.output_tokens or 0)
+            renderer_prompt_tokens_total += int(rendered.usage.input_tokens or 0)
+            renderer_completion_tokens_total += int(rendered.usage.output_tokens or 0)
             png_b64 = b64encode(rendered.png_bytes).decode("ascii")
             image_data_url = f"data:image/png;base64,{png_b64}"
             icon_id = _save_generated_icon(
@@ -8178,9 +8260,25 @@ def render_icon_batch(
     if success_count == 0 and failed_count == 0:
         raise HTTPException(status_code=400, detail="No valid non-empty lines found in batch_text")
 
+    run_id = _create_run_id()
+    usage_rows = _record_icon_usage_rows(
+        run_id=run_id,
+        kind="icons_render_batch",
+        locations_count=success_count + failed_count,
+        ok_count=success_count,
+        fail_count=failed_count,
+        classifier_model=classifier_model or "gpt-4.1-mini",
+        classifier_prompt_tokens=classifier_prompt_tokens_total,
+        classifier_completion_tokens=classifier_completion_tokens_total,
+        renderer_model=renderer_model or "gpt-image-1",
+        renderer_prompt_tokens=renderer_prompt_tokens_total,
+        renderer_completion_tokens=renderer_completion_tokens_total,
+    )
     return {
         "ok": failed_count == 0,
+        "run_id": run_id,
         "summary": {"processed": success_count + failed_count, "succeeded": success_count, "failed": failed_count},
+        "usage": usage_rows,
         "rows": rows,
     }
 

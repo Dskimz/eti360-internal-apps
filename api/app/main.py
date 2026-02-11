@@ -8327,24 +8327,16 @@ def icons_ui(
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
     body_html = """
       <div class="card">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-          <div>
-            <h1 style="margin:0;">Icons Pipeline</h1>
-            <p class="muted" style="margin:6px 0 0 0;">Create icons in a popup, then review all saved icons below.</p>
-          </div>
-          <a href="#" id="openCreateModal" class="btn primary">Create Icon</a>
+        <h1>Icons Pipeline</h1>
+        <p class="muted">All generated icons in alphabetical order.</p>
+        <div class="btnrow">
+          <a class="btn primary" href="/icons/create">Create Icons (CSV / Batch)</a>
+          <button id="btnRefreshIcons" class="btn" type="button">Refresh</button>
         </div>
       </div>
 
       <div class="card">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-          <h2 style="margin:0;">Saved Icons</h2>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <label class="label" style="margin:0;">API key</label>
-            <input id="apiKey" type="text" placeholder="ETI360 API key" autocomplete="off" style="min-width:260px;" />
-            <button id="btnRefreshIcons" class="btn" type="button">Refresh</button>
-          </div>
-        </div>
+        <h2>Saved Icons</h2>
         <div class="section tablewrap" style="margin-top:12px;">
           <table>
             <thead>
@@ -8360,80 +8352,11 @@ def icons_ui(
           </table>
         </div>
       </div>
-
-      <div id="createModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999;">
-        <div style="max-width:860px; margin:40px auto; background:white; border-radius:12px; padding:16px; border:1px solid #e2e8f0;">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <h2 style="margin:0;">Create Icon</h2>
-            <button id="closeCreateModal" class="btn" type="button">Close</button>
-          </div>
-          <div class="form-grid two" style="margin-top:12px;">
-            <div>
-              <label class="label">Activity / object name</label>
-              <input id="activityName" type="text" placeholder="Kayaking - Flatwater" />
-            </div>
-            <div>
-              <label class="label">Context note (1-3 sentences)</label>
-              <textarea id="contextNote" class="mono" style="min-height:92px;" placeholder="Short factual context for classification."></textarea>
-            </div>
-          </div>
-          <div style="margin-top:10px;">
-            <label class="label">Batch lines (optional; one item per line)</label>
-            <textarea id="batchText" class="mono" style="min-height:130px;" placeholder="Trekking | Guided mountain trekking activity on marked trails with elevation gain.\nCoach Transfer | Group transfer by coach between airport and accommodation."></textarea>
-            <div class="muted">Format: <span class="mono">Activity | Context note</span> (or tab-separated).</div>
-          </div>
-          <div class="btnrow" style="margin-top:12px;">
-            <button id="btnRunSingle" class="btn primary" type="button">Generate One</button>
-            <button id="btnRunBatch" class="btn" type="button">Generate Batch</button>
-          </div>
-          <div id="modalPreview" style="margin-top:12px;" class="muted">No icon generated yet.</div>
-          <pre id="statusOut" class="mono" style="white-space:pre-wrap; margin-top:10px;">Ready.</pre>
-        </div>
-      </div>
     """.strip()
 
     script = """
     <script>
-      const modalEl = document.getElementById('createModal');
-      const openCreateModalEl = document.getElementById('openCreateModal');
-      const closeCreateModalEl = document.getElementById('closeCreateModal');
-      const apiKeyEl = document.getElementById('apiKey');
-      const activityEl = document.getElementById('activityName');
-      const contextEl = document.getElementById('contextNote');
-      const batchEl = document.getElementById('batchText');
-      const modalPreviewEl = document.getElementById('modalPreview');
       const iconsRowsEl = document.getElementById('iconsRows');
-      const statusOutEl = document.getElementById('statusOut');
-
-      function headers() {
-        const h = { 'Content-Type': 'application/json' };
-        const k = String(apiKeyEl.value || '').trim();
-        if (k) h['X-API-Key'] = k;
-        return h;
-      }
-
-      function setStatus(v) {
-        statusOutEl.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
-      }
-
-      function setSingleCard(item) {
-        const name = String(item.activity_name || '');
-        const src = String(item.image_data_url || '');
-        if (!src) {
-          modalPreviewEl.innerHTML = '<span class="muted">No icon generated yet.</span>';
-          return;
-        }
-        modalPreviewEl.innerHTML = `
-          <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
-            <img src="${src}" alt="${name}" style="width:128px; height:128px; border:1px solid #e2e8f0; border-radius:8px; background:white;" />
-            <div>
-              <div style="font-weight:600;">${name}</div>
-              <div class="muted">Category: ${(item.spec || {}).icon_category || ''}</div>
-              <div class="mono muted">${item.color_token || ''} (${item.color_hex || ''})</div>
-            </div>
-          </div>
-        `;
-      }
 
       function fmtDate(iso) {
         if (!iso) return '';
@@ -8462,88 +8385,227 @@ def icons_ui(
 
       async function refreshIcons() {
         try {
-          const res = await fetch('/icons/list', { headers: headers() });
+          const res = await fetch('/icons/list');
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
           renderIconsTable(body.rows || []);
         } catch (e) {
-          setStatus('Error loading icons: ' + String(e?.message || e));
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td colspan="5" class="muted">Error loading icons: ' + String(e?.message || e) + '</td>';
+          iconsRowsEl.innerHTML = '';
+          iconsRowsEl.appendChild(tr);
         }
       }
 
-      function saveLocal() {
-        localStorage.setItem('eti_icons_api_key', apiKeyEl.value || '');
-        localStorage.setItem('eti_icons_activity', activityEl.value || '');
-        localStorage.setItem('eti_icons_context', contextEl.value || '');
-        localStorage.setItem('eti_icons_batch', batchEl.value || '');
-      }
-
-      function loadLocal() {
-        apiKeyEl.value = localStorage.getItem('eti_icons_api_key') || '';
-        activityEl.value = localStorage.getItem('eti_icons_activity') || '';
-        contextEl.value = localStorage.getItem('eti_icons_context') || '';
-        batchEl.value = localStorage.getItem('eti_icons_batch') || '';
-      }
-
-      [apiKeyEl, activityEl, contextEl, batchEl].forEach((el) => el.addEventListener('input', saveLocal));
-      loadLocal();
-
-      async function runSingle() {
-        const activity_name = String(activityEl.value || '').trim();
-        const context_note = String(contextEl.value || '').trim();
-        if (!activity_name || !context_note) { setStatus('Enter activity name and context note.'); return; }
-        try {
-          setStatus('Generating icon...');
-          const res = await fetch('/icons/render', {
-            method: 'POST',
-            headers: headers(),
-            body: JSON.stringify({ activity_name, context_note }),
-          });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-          setSingleCard(body);
-          setStatus('Icon generated.');
-          await refreshIcons();
-        } catch (e) {
-          setStatus('Error: ' + String(e?.message || e));
-        }
-      }
-
-      async function runBatch() {
-        const raw = String(batchEl.value || '').trim();
-        if (!raw) { setStatus('Enter batch lines first.'); return; }
-        try {
-          setStatus('Generating batch icons...');
-          const res = await fetch('/icons/render-batch', {
-            method: 'POST',
-            headers: headers(),
-            body: JSON.stringify({ batch_text: raw, continue_on_error: true }),
-          });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-
-          const firstOk = (body.rows || []).find((r) => r && r.ok);
-          if (firstOk) setSingleCard(firstOk);
-          const s = body.summary || {};
-          setStatus(`Batch done. Processed=${s.processed || 0}, Succeeded=${s.succeeded || 0}, Failed=${s.failed || 0}`);
-          await refreshIcons();
-        } catch (e) {
-          setStatus('Error: ' + String(e?.message || e));
-        }
-      }
-
-      openCreateModalEl.addEventListener('click', (e) => { e.preventDefault(); modalEl.style.display = 'block'; });
-      closeCreateModalEl.addEventListener('click', () => { modalEl.style.display = 'none'; });
-      modalEl.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.style.display = 'none'; });
       document.getElementById('btnRefreshIcons').addEventListener('click', refreshIcons);
-      document.getElementById('btnRunSingle').addEventListener('click', runSingle);
-      document.getElementById('btnRunBatch').addEventListener('click', runBatch);
       refreshIcons();
     </script>
     """.strip()
 
     return _ui_shell(
         title="ETI360 Icons",
+        active="apps",
+        body_html=body_html,
+        max_width_px=1100,
+        extra_script=script,
+        user=user,
+    )
+
+
+@app.get("/icons/create", response_class=HTMLResponse)
+def icons_create_ui(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> str:
+    user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
+    body_html = """
+      <div class="card">
+        <div class="btnrow"><a class="btn" href="/icons/ui">Back to Icons List</a></div>
+        <h1>Create Icons</h1>
+        <p class="muted">Paste CSV or delimited rows. Build the table, then generate icons.</p>
+      </div>
+
+      <div class="card">
+        <h2>Input</h2>
+        <textarea id="inputData" class="mono" style="width:100%; min-height:200px;" placeholder="activity_name,context_note
+Trekking,Guided mountain trekking activity on marked trails with elevation gain and rest checkpoints.
+Coach Transfer,Group transfer by coach between airport and accommodation."></textarea>
+        <div class="muted" style="margin-top:8px;">Supported formats: CSV with <code>activity_name,context_note</code> headers or line-delimited <code>Activity | Context note</code>.</div>
+        <div class="btnrow" style="margin-top:10px;">
+          <button id="buildTable" class="btn" type="button">Build Table</button>
+          <button id="makeIcons" class="btn primary" type="button">Make Icons</button>
+          <button id="clearInput" class="btn" type="button">Clear</button>
+        </div>
+        <div id="status" class="muted" style="margin-top:10px;">Paste data then click Build Table.</div>
+      </div>
+
+      <div class="card">
+        <h2>Build Table</h2>
+        <div class="section tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Activity</th>
+                <th>Context</th>
+                <th>Icon</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="4" class="muted">No rows yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    """.strip()
+
+    script = """
+    <script>
+      const inputEl = document.getElementById('inputData');
+      const buildBtn = document.getElementById('buildTable');
+      const makeBtn = document.getElementById('makeIcons');
+      const clearBtn = document.getElementById('clearInput');
+      const statusEl = document.getElementById('status');
+      const rowsEl = document.getElementById('rows');
+
+      let parsedRows = [];
+      let renderedByLine = {};
+
+      function esc(s) {
+        return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
+      }
+
+      function splitCsvLine(line) {
+        const out = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i += 1) {
+          const ch = line[i];
+          if (ch === '\"') {
+            if (inQuotes && line[i + 1] === '\"') { cur += '\"'; i += 1; }
+            else inQuotes = !inQuotes;
+          } else if (ch === ',' && !inQuotes) {
+            out.push(cur); cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        out.push(cur);
+        return out.map((v) => v.trim());
+      }
+
+      function parseInput(raw) {
+        const lines = raw.split(/\\r?\\n/).map((l) => l.trim()).filter(Boolean).filter((l) => !l.startsWith('#'));
+        if (!lines.length) return [];
+
+        const first = lines[0].toLowerCase();
+        if (first.includes(',') && first.includes('activity_name') && first.includes('context_note')) {
+          const headers = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
+          const iActivity = headers.indexOf('activity_name');
+          const iContext = headers.indexOf('context_note');
+          if (iActivity < 0 || iContext < 0) return [];
+          const out = [];
+          for (let i = 1; i < lines.length; i += 1) {
+            const vals = splitCsvLine(lines[i]);
+            const activity_name = String(vals[iActivity] || '').trim();
+            const context_note = String(vals[iContext] || '').trim();
+            if (!activity_name || !context_note) continue;
+            out.push({ line: i + 1, activity_name, context_note });
+          }
+          return out;
+        }
+
+        const out = [];
+        for (let i = 0; i < lines.length; i += 1) {
+          const line = lines[i];
+          const parts = line.includes('|') ? line.split('|') : (line.includes('\\t') ? line.split('\\t') : []);
+          if (parts.length < 2) continue;
+          const activity_name = String(parts[0] || '').trim();
+          const context_note = String(parts.slice(1).join('|') || '').trim();
+          if (!activity_name || !context_note) continue;
+          out.push({ line: i + 1, activity_name, context_note });
+        }
+        return out;
+      }
+
+      function renderTable() {
+        if (!parsedRows.length) {
+          rowsEl.innerHTML = '<tr><td colspan="4" class="muted">No rows parsed.</td></tr>';
+          return;
+        }
+        rowsEl.innerHTML = '';
+        for (const r of parsedRows) {
+          const icon = renderedByLine[r.line];
+          const iconHtml = icon ? `<img src="${esc(icon)}" alt="" style="width:56px; height:56px; object-fit:contain;" />` : '<span class="muted">Not generated</span>';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${esc(r.line)}</td>
+            <td>${esc(r.activity_name)}</td>
+            <td class="muted">${esc(r.context_note)}</td>
+            <td>${iconHtml}</td>
+          `;
+          rowsEl.appendChild(tr);
+        }
+      }
+
+      function buildTable() {
+        const raw = String(inputEl.value || '').trim();
+        parsedRows = parseInput(raw);
+        renderedByLine = {};
+        renderTable();
+        statusEl.textContent = `Parsed ${parsedRows.length} row(s).`;
+      }
+
+      async function makeIcons() {
+        if (!parsedRows.length) {
+          statusEl.textContent = 'No rows. Click Build Table first.';
+          return;
+        }
+        const batch_text = parsedRows.map((r) => `${r.activity_name} | ${r.context_note}`).join('\\n');
+        makeBtn.disabled = true;
+        statusEl.textContent = `Generating ${parsedRows.length} icon(s)...`;
+        try {
+          const res = await fetch('/icons/render-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ batch_text, continue_on_error: true }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.ok && !body.summary) throw new Error(body.detail || `HTTP ${res.status}`);
+          for (const row of (body.rows || [])) {
+            if (!row || !row.ok || !row.line) continue;
+            const tableRow = parsedRows[Number(row.line) - 1];
+            if (!tableRow) continue;
+            renderedByLine[tableRow.line] = String(row.image_data_url || '');
+          }
+          renderTable();
+          const s = body.summary || {};
+          statusEl.textContent = `Done. Processed=${s.processed || 0}, Succeeded=${s.succeeded || 0}, Failed=${s.failed || 0}.`;
+        } catch (e) {
+          statusEl.textContent = 'Error: ' + String(e?.message || e);
+        } finally {
+          makeBtn.disabled = false;
+        }
+      }
+
+      function clearAll() {
+        inputEl.value = '';
+        parsedRows = [];
+        renderedByLine = {};
+        renderTable();
+        statusEl.textContent = 'Cleared.';
+      }
+
+      inputEl.value = localStorage.getItem('eti_icons_create_input') || '';
+      inputEl.addEventListener('input', () => localStorage.setItem('eti_icons_create_input', inputEl.value || ''));
+      buildBtn.addEventListener('click', buildTable);
+      makeBtn.addEventListener('click', makeIcons);
+      clearBtn.addEventListener('click', clearAll);
+    </script>
+    """.strip()
+
+    return _ui_shell(
+        title="Create Icons",
         active="apps",
         body_html=body_html,
         max_width_px=1100,

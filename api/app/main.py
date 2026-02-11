@@ -4401,6 +4401,12 @@ def arp_ui(
             <td class="mono">${Number(it.chunks_count||0)}</td>
             <td>${repUrl ? `<a href="${repUrl}">View</a>` : '<span class="muted">—</span>'}</td>
             <td>
+              ${(!repUrl && Number(it.chunks_count || 0) > 30) ? `
+                <button class="btn primary" type="button" data-action="create-report" data-id="${esc(rid)}"
+                  style="padding:6px 10px; border-radius:12px;">
+                  Create Report
+                </button>
+              ` : ''}
               <button class="btn" type="button" data-action="delete" data-id="${esc(rid)}"
                 style="padding:6px 10px; border-radius:12px; color:#b42318; border-color: rgba(180,35,24,0.35);">
                 Delete
@@ -4530,6 +4536,23 @@ def arp_ui(
       dlgCreate.addEventListener('click', (e) => { if (e.target === dlgCreate) closeCreate(); });
 
       rowsEl.addEventListener('click', async (e) => {
+        const reportBtn = e.target?.closest ? e.target.closest('button[data-action="create-report"]') : null;
+        if (reportBtn) {
+          const rid = String(reportBtn.getAttribute('data-id') || '').trim();
+          const aid = Number(rid || '0');
+          if (!aid) return;
+          const topk = Number(topkEl.value || '12');
+          reportBtn.disabled = true;
+          metaEl.textContent = `Starting report generation for #${aid}…`;
+          try {
+            await enqueue('/arp/api/generate', { activity_ids: [aid], top_k: topk });
+          } catch (err) {
+            metaEl.textContent = 'Error: ' + String(err?.message || err);
+            reportBtn.disabled = false;
+          }
+          return;
+        }
+
         const btn = e.target?.closest ? e.target.closest('button[data-action="delete"]') : null;
         if (!btn) return;
         const rid = String(btn.getAttribute('data-id') || '').trim();
@@ -6754,6 +6777,39 @@ def trip_providers_countries_index_ui(
             cur.execute(sql, params)
             rows = list(cur.fetchall())
 
+    # For continent headers, count unique providers per continent (not sum across countries).
+    sql_provider_keys = _directory_schema(
+        f"""
+        SELECT
+          pc.country_or_territory,
+          pc.provider_key
+        FROM "__SCHEMA__".provider_country pc
+        JOIN "__SCHEMA__".providers p ON p.provider_key = pc.provider_key
+        LEFT JOIN "__SCHEMA__".provider_classifications c ON c.provider_id = p.id
+        WHERE p.status='active'
+          AND NULLIF(TRIM(p.website_url), '') IS NOT NULL
+          AND c.market_orientation = %s
+          {where_sql}
+        ;
+        """
+    ).strip()
+
+    provider_rows: list[tuple[Any, ...]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_directory_tables(cur)
+            cur.execute(sql_provider_keys, params)
+            provider_rows = list(cur.fetchall())
+
+    continent_to_provider_keys: dict[str, set[str]] = {}
+    for country, provider_key in provider_rows:
+        c = str(country or "").strip()
+        pk = str(provider_key or "").strip()
+        if not (c and pk):
+            continue
+        continent = continent_for_country(c)
+        continent_to_provider_keys.setdefault(continent, set()).add(pk)
+
     continent_to_countries: dict[str, list[tuple[str, int]]] = {}
     total_countries = 0
     for country, provider_count in rows:
@@ -6765,7 +6821,6 @@ def trip_providers_countries_index_ui(
         except Exception:
             n = 0
         slug = _slugify(c)
-        href = f"/trip_providers/countries/{quote(slug)}"
         continent = continent_for_country(c)
         continent_to_countries.setdefault(continent, []).append((c, n))
         total_countries += 1
@@ -6778,25 +6833,23 @@ def trip_providers_countries_index_ui(
 
         pairs_sorted = sorted(pairs, key=lambda x: (-x[1], x[0].lower()))
         top = pairs_sorted[:6]
+        continent_total = len(continent_to_provider_keys.get(continent) or set())
         continent_slug = _slugify(continent)
         continent_href = f"/trip_providers/continents/{quote(continent_slug)}"
 
-        li_parts: list[str] = []
+        chips: list[str] = []
         for name, n in top:
             country_href = f"/trip_providers/countries/{quote(_slugify(name))}"
-            li_parts.append(
-                f'<li><a href="{country_href}">{_esc(name)}</a> <span class="count">({n})</span></li>'
-            )
-        li_parts.append(f'<li class="viewall"><a href="{continent_href}">View all →</a></li>')
+            chips.append(f'<a class="continent-chip" href="{country_href}">{_esc(name)}<span class="count">({n})</span></a>')
+        chips.append(f'<a class="continent-chip viewall" href="{continent_href}">View all →</a>')
 
         cards.append(
             f"""
             <div class="continent-card">
               <div class="continent-head">
-                <a class="continent-title" href="{continent_href}">{_esc(continent)}</a>
-                <div class="muted">{len(pairs)} country(ies)</div>
+                <a class="continent-title" href="{continent_href}">{_esc(continent)} <span class="muted">({_esc(continent_total)})</span></a>
               </div>
-              <ul class="continent-toplist">{"".join(li_parts)}</ul>
+              <div class="continent-links">{"".join(chips)}</div>
             </div>
             """.strip()
         )

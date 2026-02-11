@@ -8103,6 +8103,12 @@ def _ensure_icons_gallery_table(cur: psycopg.Cursor[Any]) -> None:
             'CREATE INDEX IF NOT EXISTS icons_generated_activity_name_idx ON "__SCHEMA__".icons_generated(LOWER(activity_name), created_at DESC);'
         )
     )
+    # Forward-compatible guards for deployments created before new columns were introduced.
+    cur.execute(_schema('ALTER TABLE "__SCHEMA__".icons_generated ADD COLUMN IF NOT EXISTS icon_code TEXT;'))
+    cur.execute(_schema('ALTER TABLE "__SCHEMA__".icons_generated ADD COLUMN IF NOT EXISTS color_token TEXT NOT NULL DEFAULT \'--eti-icon-primary\';'))
+    cur.execute(_schema('ALTER TABLE "__SCHEMA__".icons_generated ADD COLUMN IF NOT EXISTS color_hex TEXT NOT NULL DEFAULT \'#002b4f\';'))
+    cur.execute(_schema('ALTER TABLE "__SCHEMA__".icons_generated ADD COLUMN IF NOT EXISTS prompt TEXT NOT NULL DEFAULT \'\';'))
+    cur.execute(_schema('ALTER TABLE "__SCHEMA__".icons_generated ADD COLUMN IF NOT EXISTS image_data_url TEXT NOT NULL DEFAULT \'\';'))
     cur.execute(
         _schema(
             'CREATE UNIQUE INDEX IF NOT EXISTS icons_generated_icon_code_uniq_idx ON "__SCHEMA__".icons_generated(icon_code) WHERE icon_code IS NOT NULL;'

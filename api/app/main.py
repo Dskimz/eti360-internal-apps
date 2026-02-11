@@ -10,7 +10,7 @@ import threading
 import time
 import uuid
 import zipfile
-from base64 import b64encode, urlsafe_b64decode, urlsafe_b64encode
+from base64 import b64decode, b64encode, urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
 from hashlib import pbkdf2_hmac, sha256
 from io import StringIO
@@ -8435,6 +8435,107 @@ def list_generated_icons(
     return {"ok": True, "rows": rows_out}
 
 
+def _decode_png_data_url(data_url: str) -> bytes:
+    raw = str(data_url or "").strip()
+    if not raw:
+        raise ValueError("Missing image data")
+    prefix = "data:image/png;base64,"
+    if raw.startswith(prefix):
+        raw = raw[len(prefix) :]
+    return b64decode(raw)
+
+
+def _safe_png_name(name: str, fallback: str) -> str:
+    s = re.sub(r"[^a-zA-Z0-9_-]+", "-", str(name or "").strip()).strip("-").lower()
+    if not s:
+        s = fallback
+    return (s[:80] or fallback) + ".png"
+
+
+@app.get("/icons/{icon_id}/download")
+def download_generated_icon(
+    icon_id: str,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> Response:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_icons_gallery_table(cur)
+            cur.execute(
+                _schema(
+                    """
+                    SELECT icon_code, activity_slug, image_data_url
+                    FROM "__SCHEMA__".icons_generated
+                    WHERE id=%s
+                    LIMIT 1;
+                    """
+                ),
+                (icon_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Icon not found")
+            icon_code, activity_slug, image_data_url = row
+
+    try:
+        png_bytes = _decode_png_data_url(str(image_data_url or ""))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Invalid stored icon data: {e}") from e
+
+    filename = _safe_png_name(str(icon_code or activity_slug or icon_id), "icon")
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/icons/download-batch")
+def download_icons_batch(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> Response:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    rows: list[tuple[str, str, str]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_icons_gallery_table(cur)
+            cur.execute(
+                _schema(
+                    """
+                    SELECT COALESCE(icon_code, ''), COALESCE(activity_slug, ''), COALESCE(image_data_url, '')
+                    FROM "__SCHEMA__".icons_generated
+                    ORDER BY LOWER(activity_name) ASC, created_at DESC;
+                    """
+                )
+            )
+            rows = [(str(a), str(b), str(c)) for (a, b, c) in cur.fetchall()]
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="No icons available")
+
+    buf = io.BytesIO()
+    used_names: dict[str, int] = {}
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for icon_code, activity_slug, image_data_url in rows:
+            try:
+                png_bytes = _decode_png_data_url(image_data_url)
+            except Exception:
+                continue
+            base_name = _safe_png_name(icon_code or activity_slug, "icon")
+            n = used_names.get(base_name, 0) + 1
+            used_names[base_name] = n
+            final_name = base_name if n == 1 else f"{base_name[:-4]}-{n}.png"
+            zf.writestr(final_name, png_bytes)
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="icons-batch.zip"'},
+    )
+
+
 @app.get("/icons/ui", response_class=HTMLResponse)
 def icons_ui(
     request: Request,
@@ -8448,6 +8549,7 @@ def icons_ui(
         <div class="btnrow">
           <a class="btn primary" href="/icons/create">Create Icons (CSV / Batch)</a>
           <button id="btnRefreshIcons" class="btn" type="button">Refresh</button>
+          <button id="btnDownloadBatch" class="btn" type="button">Download Batch</button>
         </div>
       </div>
 
@@ -8457,6 +8559,7 @@ def icons_ui(
           <table>
             <thead>
               <tr>
+                <th>Download</th>
                 <th>Icon</th>
                 <th>ID</th>
                 <th>Name</th>
@@ -8473,6 +8576,7 @@ def icons_ui(
     script = """
     <script>
       const iconsRowsEl = document.getElementById('iconsRows');
+      const downloadBatchEl = document.getElementById('btnDownloadBatch');
 
       function fmtDate(iso) {
         if (!iso) return '';
@@ -8499,6 +8603,7 @@ def icons_ui(
         for (const r of (rows || [])) {
           const tr = document.createElement('tr');
           tr.innerHTML = `
+            <td><button class="btn" type="button" data-download-id="${r.id || ''}" data-download-name="${r.display_id || r.activity_name || 'icon'}">Download</button></td>
             <td><img src="${r.image_data_url || ''}" alt="${r.activity_name || ''}" style="width:52px; height:52px; object-fit:contain;" /></td>
             <td class="mono">${r.display_id || ''}</td>
             <td><div style="font-weight:600;">${r.activity_name || ''}</div></td>
@@ -8509,9 +8614,38 @@ def icons_ui(
         }
         if (!rows || !rows.length) {
           const tr = document.createElement('tr');
-          tr.innerHTML = '<td colspan="5" class="muted">No icons yet.</td>';
+          tr.innerHTML = '<td colspan="6" class="muted">No icons yet.</td>';
           iconsRowsEl.appendChild(tr);
         }
+      }
+
+      async function downloadOne(iconId, suggestedName) {
+        if (!iconId) return;
+        const res = await fetch(`/icons/${encodeURIComponent(iconId)}/download`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${String(suggestedName || 'icon')}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      async function downloadBatch() {
+        const res = await fetch('/icons/download-batch');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'icons-batch.zip';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
       }
 
       async function refreshIcons() {
@@ -8529,6 +8663,19 @@ def icons_ui(
       }
 
       document.getElementById('btnRefreshIcons').addEventListener('click', refreshIcons);
+      downloadBatchEl.addEventListener('click', async () => {
+        try { await downloadBatch(); }
+        catch (e) { alert('Batch download failed: ' + String(e?.message || e)); }
+      });
+      iconsRowsEl.addEventListener('click', async (ev) => {
+        const target = ev.target;
+        if (!(target instanceof HTMLElement)) return;
+        const iconId = target.getAttribute('data-download-id');
+        if (!iconId) return;
+        const name = target.getAttribute('data-download-name') || 'icon';
+        try { await downloadOne(iconId, name); }
+        catch (e) { alert('Download failed: ' + String(e?.message || e)); }
+      });
       refreshIcons();
     </script>
     """.strip()

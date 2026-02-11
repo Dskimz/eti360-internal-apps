@@ -2495,6 +2495,55 @@ def _mapbox_static_png_bytes(
     return bytes(resp.content)
 
 
+def _mapbox_style_diagnostics(*, access_key: str, style_ref: str) -> dict[str, Any]:
+    style_path = _mapbox_style_path(style_ref)
+    style_api_url = f"https://api.mapbox.com/{style_path}?access_token={quote(access_key)}"
+    resp = requests.get(style_api_url, timeout=20)
+    out: dict[str, Any] = {
+        "style_ref": style_ref,
+        "style_path": style_path,
+        "style_api_status": int(resp.status_code),
+    }
+    if resp.status_code >= 300:
+        out["style_ok"] = False
+        out["style_error"] = (resp.text or "")[:400]
+        return out
+
+    ctype = str(resp.headers.get("content-type") or "").lower()
+    obj: dict[str, Any] = resp.json() if "application/json" in ctype else {}
+    layers = obj.get("layers") if isinstance(obj, dict) else []
+    types: dict[str, int] = {}
+    first_layers: list[str] = []
+    if isinstance(layers, list):
+        for i, lyr in enumerate(layers):
+            if not isinstance(lyr, dict):
+                continue
+            typ = str(lyr.get("type") or "")
+            types[typ] = types.get(typ, 0) + 1
+            if i < 12:
+                first_layers.append(f"{str(lyr.get('id') or '')}:{typ}")
+
+    probe_url = f"https://api.mapbox.com/{style_path}/static/103.85,1.30,11/640x640?access_token={quote(access_key)}"
+    probe = requests.get(probe_url, timeout=20)
+    probe_ct = str(probe.headers.get("content-type") or "").lower()
+
+    out.update(
+        {
+            "style_ok": True,
+            "style_name": str(obj.get("name") or "") if isinstance(obj, dict) else "",
+            "layers_count": len(layers) if isinstance(layers, list) else 0,
+            "layer_types": types,
+            "first_layers": first_layers,
+            "basemap_probe_status": int(probe.status_code),
+            "basemap_probe_content_type": probe_ct,
+            "basemap_probe_ok": bool(probe.status_code < 300 and "image/" in probe_ct),
+        }
+    )
+    if probe.status_code >= 300:
+        out["basemap_probe_error"] = (probe.text or "")[:400]
+    return out
+
+
 def _generate_weather_png_for_slug(
     *, location_slug: str, year: int, title_override: str | None = None, subtitle_override: str | None = None
 ) -> dict[str, Any]:
@@ -3564,6 +3613,15 @@ def travel_segments_v1(request: Request) -> str:
       </div>
 
       <div class="card">
+        <h2>Mapbox Diagnostics</h2>
+        <div class="btnrow" style="margin-top:10px;">
+          <button id="run_mapbox_diag" class="btn" type="button">Run Diagnostics</button>
+        </div>
+        <div id="diag_status" class="muted" style="margin-top:10px;">Diagnostics not run.</div>
+        <pre id="diag_output" class="statusbox mono" style="max-height:300px; overflow:auto;"></pre>
+      </div>
+
+      <div class="card">
         <h2>Contracts & References</h2>
         <ul>
           <li><a href="/static/travel_segment_visualization/geometry_color_rules.md" target="_blank" rel="noopener">Geometry & color rules (immutable)</a></li>
@@ -3589,6 +3647,9 @@ def travel_segments_v1(request: Request) -> str:
       const downloadSavedBtn = document.getElementById('download_saved_maps');
       const savedStatusEl = document.getElementById('saved_status');
       const savedRowsEl = document.getElementById('saved_rows');
+      const runDiagBtn = document.getElementById('run_mapbox_diag');
+      const diagStatusEl = document.getElementById('diag_status');
+      const diagOutputEl = document.getElementById('diag_output');
       let parsedRows = [];
       let generatedMaps = {};
 
@@ -3869,6 +3930,23 @@ def travel_segments_v1(request: Request) -> str:
         }
         window.open(`/travel_segments/v1/maps/download?trip_id=${encodeURIComponent(tripId)}`, '_blank');
       });
+
+      runDiagBtn.addEventListener('click', async () => {
+        diagStatusEl.textContent = 'Running diagnostics...';
+        diagOutputEl.textContent = '';
+        try {
+          const res = await fetch('/travel_segments/v1/maps/diagnostics', { cache: 'no-store' });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.ok) {
+            diagStatusEl.textContent = body.detail || body.error || `Failed (HTTP ${res.status})`;
+            return;
+          }
+          diagStatusEl.textContent = 'Diagnostics complete.';
+          diagOutputEl.textContent = JSON.stringify(body.diagnostics || body, null, 2);
+        } catch (_e) {
+          diagStatusEl.textContent = 'Diagnostics request failed.';
+        }
+      });
     </script>
     """.strip()
 
@@ -4128,6 +4206,17 @@ def travel_segments_download_maps_zip(
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@app.get("/travel_segments/v1/maps/diagnostics")
+def travel_segments_maps_diagnostics(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _ = _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    access_key = _require_mapbox_access_key()
+    style_ref = _require_mapbox_style_ref()
+    return {"ok": True, "diagnostics": _mapbox_style_diagnostics(access_key=access_key, style_ref=style_ref)}
 
 
 @app.get("/jobs/ui", response_class=HTMLResponse)
@@ -6868,16 +6957,15 @@ def trip_providers_countries_index_ui(
             continue
 
         pairs_sorted = sorted(pairs, key=lambda x: (-x[1], x[0].lower()))
-        top = pairs_sorted[:6]
         continent_total = len(continent_to_provider_keys.get(continent) or set())
         continent_slug = _slugify(continent)
         continent_href = f"/trip_providers/continents/{quote(continent_slug)}"
 
         chips: list[str] = []
-        for name, n in top:
+        for name, n in pairs_sorted:
             country_href = f"/trip_providers/countries/{quote(_slugify(name))}"
             chips.append(f'<a class="continent-chip" href="{country_href}">{_esc(name)}<span class="count">({n})</span></a>')
-        chips.append(f'<a class="continent-chip viewall" href="{continent_href}">View all →</a>')
+        chips.append(f'<a class="continent-chip viewall" href="{continent_href}">Open continent page →</a>')
 
         cards.append(
             f"""
@@ -6927,7 +7015,7 @@ def trip_providers_countries_index_ui(
       </div>
     """.strip()
 
-    return _ui_shell(title="Trip Providers — Continents", active="trip_providers_countries", body_html=body_html, max_width_px=1100, user=user)
+    return _ui_shell(title="Trip Providers — Continents", active="trip_providers_countries", body_html=body_html, max_width_px=1400, user=user)
 
 
 @app.get("/trip_providers/continents/{continent_slug}", response_class=HTMLResponse)

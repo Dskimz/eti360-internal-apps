@@ -3041,165 +3041,310 @@ def home(request: Request) -> str:
     return apps_home(request=request)
 
 
+_HOME_OWN_CARD_NAMES: list[str] = [
+    "Weather + Sunlight",
+    "Trip Providers (Research)",
+    "Jobs",
+    "Icons Pipeline",
+    "Flight Tracking Dashboard (Pilot)",
+    "Activity Risk Profiles (ARP) Pipeline",
+    "Travel Segment Visualization (v1)",
+    "Schools Research",
+]
+
+_HOME_UTILITY_CARD_NAMES: list[str] = [
+    "Documents",
+    "Prompts",
+    "API Usage Log",
+    "DB Schema",
+    "API Docs",
+    "Marketing Website",
+]
+
+
 @app.get("/apps", response_class=HTMLResponse)
 def apps_home(request: Request) -> str:
     user = _get_current_user(request)
     body_html = """
       <div class="card">
         <h1>Projects</h1>
-        <p class="muted">One place to track internal tools, prototypes, and deployed surfaces. Edit <code>api/app/static/projects.json</code> and redeploy to update this list.</p>
+        <p class="muted">Home cards for core apps/workflows. Utilities are grouped into one card.</p>
       </div>
 
       <div class="card">
-        <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;">
-          <h2>Directory</h2>
-          <div class="btnrow" style="margin-top:0;">
-            <input id="q" type="text" placeholder="Search (name / description / tags)" style="max-width:420px;" />
-            <select id="category" style="max-width:220px;">
-              <option value="">All categories</option>
-            </select>
-            <button id="reset" class="btn" type="button">Clear</button>
-          </div>
+        <h2>Applications</h2>
+        <div id="own-cards" class="apps-grid section">
+          <div class="muted">Loading cards...</div>
         </div>
-
-        <div class="section tablewrap">
-          <table>
-            <thead>
-              <tr>
-                <th class="sortable" data-key="name">Project</th>
-                <th class="sortable" data-key="category">Category</th>
-                <th class="sortable" data-key="status">Status</th>
-                <th>Description</th>
-                <th>Links</th>
-              </tr>
-            </thead>
-            <tbody id="rows"></tbody>
-          </table>
-        </div>
-        <div class="muted" id="meta" style="margin-top:10px;">Loading…</div>
+        <div id="meta" class="muted" style="margin-top:10px;">Loading...</div>
       </div>
+    """.strip()
+
+    own_names_json = json.dumps(_HOME_OWN_CARD_NAMES)
+    utility_names_json = json.dumps(_HOME_UTILITY_CARD_NAMES)
+
+    extra_head = """
+    <style>
+      .apps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      .app-card {
+        border: 1px solid var(--eti-border);
+        border-radius: 14px;
+        background: var(--eti-bg);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 190px;
+      }
+      .app-card h3 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.3;
+        color: var(--eti-text-2);
+      }
+      .app-card p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--eti-muted);
+      }
+      .app-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      .app-actions {
+        margin-top: auto;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .app-actions .btn {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+    </style>
     """.strip()
 
     script = """
     <script>
-      const rowsEl = document.getElementById('rows');
+      const ownCardsEl = document.getElementById('own-cards');
       const metaEl = document.getElementById('meta');
-      const qEl = document.getElementById('q');
-      const resetEl = document.getElementById('reset');
-      const categoryEl = document.getElementById('category');
-
-      let items = [];
-      let sortKey = localStorage.getItem('eti_projects_sortKey') || 'name';
-      let sortDir = localStorage.getItem('eti_projects_sortDir') || 'asc';
+      const ownCardNames = __OWN_NAMES__;
+      const utilityNames = __UTILITY_NAMES__;
 
       function esc(s) {
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
       }
 
-      function keyValue(it, key) { return String(it?.[key] ?? '').toLowerCase(); }
-
-      function compare(a, b) {
-        const dir = sortDir === 'desc' ? -1 : 1;
-        const av = keyValue(a, sortKey);
-        const bv = keyValue(b, sortKey);
-        return av.localeCompare(bv) * dir;
+      function buildCard(it, fallbackName) {
+        const exists = !!it;
+        const name = exists ? String(it.name || fallbackName) : String(fallbackName || 'Unnamed');
+        const status = exists ? String(it.status || '') : 'missing';
+        const desc = exists ? String(it.description || '') : 'Missing from projects.json';
+        const url = exists ? String(it.url || '').trim() : '';
+        const repo = exists ? String(it.repo_url || '').trim() : '';
+        const docs = exists ? String(it.docs_url || '').trim() : '';
+        const openHref = url || repo || '';
+        const openLabel = url ? 'Open' : (repo ? 'Repo' : 'Unavailable');
+        const openAttrs = openHref && /^https?:\\/\\//i.test(openHref) ? ' target=\"_blank\" rel=\"noopener\"' : '';
+        const docsLink = docs ? `<a class=\"btn\" href=\"${esc(docs)}\" target=\"_blank\" rel=\"noopener\">Docs</a>` : '';
+        const notes = exists && it.notes ? `<p>${esc(it.notes)}</p>` : '';
+        return `
+          <article class=\"app-card\">
+            <div class=\"app-meta\">
+              <span class=\"pill\">${esc(status || 'unknown')}</span>
+            </div>
+            <h3>${esc(name)}</h3>
+            <p>${esc(desc)}</p>
+            ${notes}
+            <div class=\"app-actions\">
+              ${openHref ? `<a class=\"btn primary\" href=\"${esc(openHref)}\"${openAttrs}>${esc(openLabel)}</a>` : `<span class=\"pill\">No link</span>`}
+              ${docsLink}
+            </div>
+          </article>
+        `;
       }
 
-      function normalizeTags(it) {
-        const t = it?.tags;
-        if (Array.isArray(t)) return t.map(x => String(x||'').trim()).filter(Boolean);
-        return [];
-      }
-
-      function render() {
-        const q = String(qEl.value || '').trim().toLowerCase();
-        const cat = String(categoryEl.value || '').trim().toLowerCase();
-
-        const filtered = items.filter((it) => {
-          if (cat && String(it.category || '').toLowerCase() !== cat) return false;
-          if (!q) return true;
-          const tags = normalizeTags(it).join(' ');
-          const hay = [it.name, it.description, it.category, it.status, tags, it.notes].map(x => String(x||'').toLowerCase()).join(' | ');
-          return hay.includes(q);
-        }).slice().sort(compare);
-
-        rowsEl.innerHTML = '';
-        for (const it of filtered) {
-          const url = String(it.url || '').trim();
-          const repo = String(it.repo_url || '').trim();
-          const docs = String(it.docs_url || '').trim();
-          const links = [];
-          links.push(url ? `<a href="${esc(url)}">Open</a>` : `<span class="muted">No UI</span>`);
-          if (repo) links.push(`<a href="${esc(repo)}" target="_blank" rel="noopener">Repo</a>`);
-          if (docs) links.push(`<a href="${esc(docs)}" target="_blank" rel="noopener">Docs</a>`);
-          const tags = normalizeTags(it);
-          const tagsHtml = tags.length ? `<div class="muted" style="margin-top:2px;">${tags.map(t => `<span class="pill">${esc(t)}</span>`).join(' ')}</div>` : '';
-          const notesHtml = it.notes ? `<div class="muted" style="margin-top:4px;">${esc(it.notes)}</div>` : '';
-
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td><div style="font-weight:600; color:var(--text-secondary);">${esc(it.name || '')}</div>${tagsHtml}</td>
-            <td>${esc(it.category || '')}</td>
-            <td><span class="pill">${esc(it.status || '')}</span></td>
-            <td>${esc(it.description || '')}${notesHtml}</td>
-            <td>${links.join(' · ')}</td>
-          `;
-          rowsEl.appendChild(tr);
+      function renderHome(items) {
+        const byName = new Map(items.map((it) => [String(it.name || '').toLowerCase(), it]));
+        const cards = [];
+        for (const name of ownCardNames) {
+          cards.push(buildCard(byName.get(String(name).toLowerCase()), name));
         }
-        if (filtered.length === 0) {
-          rowsEl.innerHTML = '<tr><td colspan="5" class="muted">No matching projects.</td></tr>';
-        }
-        metaEl.textContent = `Projects: ${filtered.length}/${items.length} • Sort: ${sortKey} (${sortDir})`;
-      }
-
-      function fillCategories() {
-        const cats = new Set(items.map(it => String(it.category || '').trim()).filter(Boolean));
-        const sorted = Array.from(cats).sort((a,b) => a.localeCompare(b));
-        categoryEl.innerHTML = '<option value=\"\">All categories</option>' + sorted.map(c => `<option value=\"${esc(c)}\">${esc(c)}</option>`).join('');
+        cards.push(`
+          <article class=\"app-card\">
+            <div class=\"app-meta\"><span class=\"pill\">grouped</span></div>
+            <h3>Utilities</h3>
+            <p>Shared support tools and admin surfaces.</p>
+            <div class=\"app-actions\">
+              <a class=\"btn primary\" href=\"/apps/utilities\">Open Utilities</a>
+            </div>
+          </article>
+        `);
+        ownCardsEl.innerHTML = cards.join('');
+        const utilitiesAvailable = utilityNames.filter((name) => byName.has(String(name).toLowerCase())).length;
+        metaEl.textContent = `Home cards: ${ownCardNames.length + 1} (Apps/Workflows: ${ownCardNames.length}, Utilities: 1) • Utilities listed: ${utilitiesAvailable}/${utilityNames.length}`;
       }
 
       async function load() {
         try {
           const res = await fetch('/static/projects.json', { cache: 'no-store' });
           const body = await res.json().catch(() => ([]));
-          items = Array.isArray(body) ? body : [];
-          fillCategories();
-          metaEl.textContent = `Projects: ${items.length}`;
-          render();
+          const items = Array.isArray(body) ? body : [];
+          renderHome(items);
         } catch (e) {
+          ownCardsEl.innerHTML = '<div class=\"muted\">Failed to load projects.json</div>';
           metaEl.textContent = 'Failed to load projects.json';
         }
       }
 
-      qEl.value = localStorage.getItem('eti_projects_q') || '';
-      qEl.addEventListener('input', () => { localStorage.setItem('eti_projects_q', qEl.value); render(); });
-      categoryEl.value = localStorage.getItem('eti_projects_category') || '';
-      categoryEl.addEventListener('change', () => { localStorage.setItem('eti_projects_category', categoryEl.value); render(); });
-      resetEl.addEventListener('click', () => {
-        qEl.value = '';
-        categoryEl.value = '';
-        localStorage.setItem('eti_projects_q', '');
-        localStorage.setItem('eti_projects_category', '');
-        render();
-      });
+      load();
+    </script>
+    """.replace("__OWN_NAMES__", own_names_json).replace("__UTILITY_NAMES__", utility_names_json).strip()
 
-      document.querySelectorAll('th.sortable').forEach((th) => {
-        th.addEventListener('click', () => {
-          const key = th.getAttribute('data-key');
-          if (!key) return;
-          if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-          else { sortKey = key; sortDir = 'asc'; }
-          localStorage.setItem('eti_projects_sortKey', sortKey);
-          localStorage.setItem('eti_projects_sortDir', sortDir);
-          render();
-        });
-      });
+    return _ui_shell(
+        title="ETI360 Projects",
+        active="apps",
+        body_html=body_html,
+        max_width_px=1200,
+        extra_head=extra_head,
+        extra_script=script,
+        user=user,
+    )
+
+
+@app.get("/apps/utilities", response_class=HTMLResponse)
+def apps_utilities(request: Request) -> str:
+    user = _get_current_user(request)
+
+    utility_names_json = json.dumps(_HOME_UTILITY_CARD_NAMES)
+
+    body_html = """
+      <div class="card">
+        <h1>Utilities</h1>
+        <p class="muted">Shared internal support tools.</p>
+        <div class="btnrow"><a class="btn" href="/apps">Back to Apps</a></div>
+      </div>
+
+      <div class="card">
+        <h2>Utility Tools</h2>
+        <div id="utility-cards" class="apps-grid section">
+          <div class="muted">Loading cards...</div>
+        </div>
+        <div id="meta" class="muted" style="margin-top:10px;">Loading...</div>
+      </div>
+    """.strip()
+
+    extra_head = """
+    <style>
+      .apps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      .app-card {
+        border: 1px solid var(--eti-border);
+        border-radius: 14px;
+        background: var(--eti-bg);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 180px;
+      }
+      .app-card h3 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.3;
+        color: var(--eti-text-2);
+      }
+      .app-card p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--eti-muted);
+      }
+      .app-actions {
+        margin-top: auto;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .app-actions .btn {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+    </style>
+    """.strip()
+
+    script = """
+    <script>
+      const cardsEl = document.getElementById('utility-cards');
+      const metaEl = document.getElementById('meta');
+      const utilityNames = __UTILITY_NAMES__;
+
+      function esc(s) {
+        return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
+      }
+
+      function buildCard(it, fallbackName) {
+        const exists = !!it;
+        const name = exists ? String(it.name || fallbackName) : String(fallbackName || 'Unnamed');
+        const status = exists ? String(it.status || '') : 'missing';
+        const desc = exists ? String(it.description || '') : 'Missing from projects.json';
+        const url = exists ? String(it.url || '').trim() : '';
+        const repo = exists ? String(it.repo_url || '').trim() : '';
+        const docs = exists ? String(it.docs_url || '').trim() : '';
+        const openHref = url || repo || '';
+        const openLabel = url ? 'Open' : (repo ? 'Repo' : 'Unavailable');
+        const openAttrs = openHref && /^https?:\\/\\//i.test(openHref) ? ' target=\"_blank\" rel=\"noopener\"' : '';
+        const docsLink = docs ? `<a class=\"btn\" href=\"${esc(docs)}\" target=\"_blank\" rel=\"noopener\">Docs</a>` : '';
+        return `
+          <article class=\"app-card\">
+            <span class=\"pill\">${esc(status || 'unknown')}</span>
+            <h3>${esc(name)}</h3>
+            <p>${esc(desc)}</p>
+            <div class=\"app-actions\">
+              ${openHref ? `<a class=\"btn primary\" href=\"${esc(openHref)}\"${openAttrs}>${esc(openLabel)}</a>` : `<span class=\"pill\">No link</span>`}
+              ${docsLink}
+            </div>
+          </article>
+        `;
+      }
+
+      async function load() {
+        try {
+          const res = await fetch('/static/projects.json', { cache: 'no-store' });
+          const body = await res.json().catch(() => ([]));
+          const items = Array.isArray(body) ? body : [];
+          const byName = new Map(items.map((it) => [String(it.name || '').toLowerCase(), it]));
+          const cards = utilityNames.map((name) => buildCard(byName.get(String(name).toLowerCase()), name));
+          cardsEl.innerHTML = cards.join('');
+          const found = utilityNames.filter((name) => byName.has(String(name).toLowerCase())).length;
+          metaEl.textContent = `Utilities: ${found}/${utilityNames.length}`;
+        } catch (e) {
+          cardsEl.innerHTML = '<div class=\"muted\">Failed to load projects.json</div>';
+          metaEl.textContent = 'Failed to load projects.json';
+        }
+      }
 
       load();
     </script>
-    """.strip()
+    """.replace("__UTILITY_NAMES__", utility_names_json).strip()
 
-    return _ui_shell(title="ETI360 Projects", active="apps", body_html=body_html, max_width_px=1200, extra_script=script, user=user)
+    return _ui_shell(
+        title="ETI360 Utilities",
+        active="apps",
+        body_html=body_html,
+        max_width_px=1200,
+        extra_head=extra_head,
+        extra_script=script,
+        user=user,
+    )
 
 
 @app.get("/travel_segments/v1", response_class=HTMLResponse)

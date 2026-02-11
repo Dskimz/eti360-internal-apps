@@ -2466,17 +2466,24 @@ def _mapbox_static_png_bytes(
         "features": [
             {
                 "type": "Feature",
-                "properties": {"stroke": "#0057B8", "stroke-width": 6, "stroke-opacity": 0.95},
+                # White route casing (outer stroke) for stronger contrast on varied basemaps.
+                "properties": {"stroke": "#FFFFFF", "stroke-width": 10, "stroke-opacity": 0.98},
                 "geometry": {"type": "LineString", "coordinates": route_coords},
             },
             {
                 "type": "Feature",
-                "properties": {"marker-color": "#FFFFFF", "marker-size": "medium", "marker-symbol": ""},
+                # ETI route stroke color.
+                "properties": {"stroke": "#1F4E79", "stroke-width": 6, "stroke-opacity": 0.98},
+                "geometry": {"type": "LineString", "coordinates": route_coords},
+            },
+            {
+                "type": "Feature",
+                "properties": {"marker-color": "#1F4E79", "marker-size": "medium", "marker-symbol": ""},
                 "geometry": {"type": "Point", "coordinates": [origin_lng, origin_lat]},
             },
             {
                 "type": "Feature",
-                "properties": {"marker-color": "#FFFFFF", "marker-size": "medium", "marker-symbol": ""},
+                "properties": {"marker-color": "#C9A24D", "marker-size": "medium", "marker-symbol": ""},
                 "geometry": {"type": "Point", "coordinates": [dest_lng, dest_lat]},
             },
         ],

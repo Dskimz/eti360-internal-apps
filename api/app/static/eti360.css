@@ -278,7 +278,31 @@ th {
   letter-spacing: 0.2px;
   color: var(--eti-text-2);
 }
-.continent-toplist,
+.continent-links {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+.continent-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: var(--eti-radius-pill);
+  border: 1px solid var(--eti-border);
+  background: var(--eti-band);
+  font-size: 13px;
+  color: var(--eti-primary);
+  white-space: nowrap;
+}
+.continent-chip:hover { text-decoration: none; background: #fff; }
+.continent-chip .count { color: var(--eti-muted); font-size: 12px; }
+.continent-chip.viewall {
+  background: var(--eti-tint);
+  border-color: var(--eti-border);
+  font-weight: 600;
+}
 .continent-country-list {
   list-style: none;
   padding: 0;
@@ -287,17 +311,12 @@ th {
   grid-template-columns: 1fr;
   gap: 8px 18px;
 }
-.continent-toplist li,
 .continent-country-list li {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
 }
-.continent-toplist a,
 .continent-country-list a { flex: 1; min-width: 0; }
-.continent-toplist .count,
 .continent-country-list .count { color: var(--eti-muted); font-size: 12px; white-space: nowrap; }
-.continent-toplist .viewall { justify-content: flex-start; }
-.continent-toplist .viewall a { font-weight: 600; }
 @media (min-width: 1100px) { .continent-country-list { grid-template-columns: 1fr 1fr; } }

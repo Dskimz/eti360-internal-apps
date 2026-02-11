@@ -8031,6 +8031,7 @@ def _ensure_icons_gallery_table(cur: psycopg.Cursor[Any]) -> None:
             """
             CREATE TABLE IF NOT EXISTS "__SCHEMA__".icons_generated (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              icon_code TEXT,
               activity_name TEXT NOT NULL,
               activity_slug TEXT NOT NULL,
               icon_category TEXT NOT NULL DEFAULT '',
@@ -8048,6 +8049,11 @@ def _ensure_icons_gallery_table(cur: psycopg.Cursor[Any]) -> None:
             'CREATE INDEX IF NOT EXISTS icons_generated_activity_name_idx ON "__SCHEMA__".icons_generated(LOWER(activity_name), created_at DESC);'
         )
     )
+    cur.execute(
+        _schema(
+            'CREATE UNIQUE INDEX IF NOT EXISTS icons_generated_icon_code_uniq_idx ON "__SCHEMA__".icons_generated(icon_code) WHERE icon_code IS NOT NULL;'
+        )
+    )
 
 
 def _save_generated_icon(
@@ -8063,14 +8069,27 @@ def _save_generated_icon(
             cur.execute(
                 _schema(
                     """
+                    SELECT COALESCE(MAX(CAST(SUBSTRING(icon_code FROM 3) AS INTEGER)), 0)
+                    FROM "__SCHEMA__".icons_generated
+                    WHERE icon_code ~ '^LG[0-9]+$';
+                    """
+                )
+            )
+            (max_num,) = cur.fetchone()
+            next_num = int(max_num or 0) + 1
+            icon_code = f"LG{next_num:04d}"
+            cur.execute(
+                _schema(
+                    """
                     INSERT INTO "__SCHEMA__".icons_generated
-                      (activity_name, activity_slug, icon_category, prompt, color_token, color_hex, image_data_url)
+                      (icon_code, activity_name, activity_slug, icon_category, prompt, color_token, color_hex, image_data_url)
                     VALUES
-                      (%s,%s,%s,%s,%s,%s,%s)
+                      (%s,%s,%s,%s,%s,%s,%s,%s)
                     RETURNING id;
                     """
                 ),
                 (
+                    icon_code,
                     activity_name,
                     _slugify(activity_name),
                     icon_category,
@@ -8295,17 +8314,19 @@ def list_generated_icons(
             cur.execute(
                 _schema(
                     """
-                    SELECT id, activity_name, activity_slug, icon_category, color_token, color_hex, prompt, image_data_url, created_at
+                    SELECT id, icon_code, activity_name, activity_slug, icon_category, color_token, color_hex, prompt, image_data_url, created_at
                     FROM "__SCHEMA__".icons_generated
                     ORDER BY LOWER(activity_name) ASC, created_at DESC;
                     """
                 )
             )
-            for row in cur.fetchall():
-                icon_id, activity_name, activity_slug, icon_category, color_token, color_hex, prompt, image_data_url, created_at = row
+            for idx, row in enumerate(cur.fetchall(), start=1):
+                icon_id, icon_code, activity_name, activity_slug, icon_category, color_token, color_hex, prompt, image_data_url, created_at = row
+                display_id = str(icon_code or "").strip() or f"LG{idx:04d}"
                 rows_out.append(
                     {
                         "id": str(icon_id),
+                        "display_id": display_id,
                         "activity_name": str(activity_name or ""),
                         "activity_slug": str(activity_slug or ""),
                         "icon_category": str(icon_category or ""),
@@ -8342,9 +8363,9 @@ def icons_ui(
             <thead>
               <tr>
                 <th>Icon</th>
+                <th>ID</th>
                 <th>Name</th>
                 <th>Category</th>
-                <th>Color</th>
                 <th>Created</th>
               </tr>
             </thead>
@@ -8360,7 +8381,22 @@ def icons_ui(
 
       function fmtDate(iso) {
         if (!iso) return '';
-        try { return new Date(iso).toLocaleString(); } catch { return String(iso); }
+        try {
+          const d = new Date(iso);
+          if (Number.isNaN(d.getTime())) return String(iso);
+          const month = d.toLocaleString(undefined, { month: 'short' });
+          const day = d.getDate();
+          const year = d.getFullYear();
+          return `${month}, ${day}, ${year}`;
+        } catch {
+          return String(iso);
+        }
+      }
+
+      function sentenceCaseCategory(v) {
+        const s = String(v || '').replaceAll('_', ' ').trim().toLowerCase();
+        if (!s) return '';
+        return s.charAt(0).toUpperCase() + s.slice(1);
       }
 
       function renderIconsTable(rows) {
@@ -8369,9 +8405,9 @@ def icons_ui(
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td><img src="${r.image_data_url || ''}" alt="${r.activity_name || ''}" style="width:52px; height:52px; object-fit:contain;" /></td>
-            <td><div style="font-weight:600;">${r.activity_name || ''}</div><div class="mono muted">${r.activity_slug || ''}</div></td>
-            <td class="mono">${r.icon_category || ''}</td>
-            <td class="mono">${r.color_token || ''}<br/>${r.color_hex || ''}</td>
+            <td class="mono">${r.display_id || ''}</td>
+            <td><div style="font-weight:600;">${r.activity_name || ''}</div></td>
+            <td>${sentenceCaseCategory(r.icon_category)}</td>
             <td class="muted">${fmtDate(r.created_at)}</td>
           `;
           iconsRowsEl.appendChild(tr);

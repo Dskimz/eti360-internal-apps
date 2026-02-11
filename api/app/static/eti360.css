@@ -222,6 +222,12 @@ th {
   color: rgba(0, 8, 20, 0.75);
 }
 
+/* Datetime display */
+.datetime {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* Status */
 .statusbox {
   margin-top: 12px;

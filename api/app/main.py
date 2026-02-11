@@ -2375,6 +2375,22 @@ def _mapbox_profile_for_mode(mode: str) -> tuple[str, bool, str]:
     return "", False, ""
 
 
+def _fmt_ui_datetime(dt: Any) -> str:
+    if not isinstance(dt, datetime):
+        return str(dt or "")
+    local_dt = dt.astimezone()
+    month = local_dt.strftime("%b")
+    day = str(local_dt.day)
+    year = str(local_dt.year)
+    hour24 = local_dt.hour
+    minute = f"{local_dt.minute:02d}"
+    ampm = "PM" if hour24 >= 12 else "AM"
+    hour12 = hour24 % 12
+    if hour12 == 0:
+        hour12 = 12
+    return f"{month} {day}, {year} {hour12}:{minute} {ampm}"
+
+
 def _ensure_travel_segment_maps_table(cur: psycopg.Cursor) -> None:
     schema = _jobs_schema_name()
     cur.execute(
@@ -3580,6 +3596,23 @@ def travel_segments_v1(request: Request) -> str:
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
       }
 
+      function fmtDateTime(s) {
+        const raw = String(s || '').trim();
+        if (!raw) return '';
+        const d = new Date(raw);
+        if (!isFinite(d.getTime())) return raw;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[d.getMonth()];
+        const day = d.getDate();
+        const year = d.getFullYear();
+        let hour = d.getHours();
+        const minute = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12;
+        if (hour === 0) hour = 12;
+        return `${month} ${day}, ${year} ${hour}:${minute} ${ampm}`;
+      }
+
       function splitCsvLine(line) {
         const out = [];
         let cur = '';
@@ -3702,8 +3735,9 @@ def travel_segments_v1(request: Request) -> str:
         for (const it of items) {
           const tr = document.createElement('tr');
           const mapLink = String(it.view_url || '').trim();
+          const createdLabel = String(it.created_at_display || '').trim() || fmtDateTime(it.created_at);
           tr.innerHTML = `
-            <td>${esc(it.created_at || '')}</td>
+            <td><span class="datetime">${esc(createdLabel)}</span></td>
             <td>${esc(it.trip_id || '')}</td>
             <td>${esc(it.segment_order || '')}</td>
             <td>${esc(it.segment_name || '')}</td>
@@ -4038,6 +4072,7 @@ def travel_segments_list_maps(
                 "s3_key": k,
                 "view_url": view_url,
                 "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at or ""),
+                "created_at_display": _fmt_ui_datetime(created_at),
             }
         )
     return {"ok": True, "count": len(out), "items": out}

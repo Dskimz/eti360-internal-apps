@@ -8,7 +8,7 @@ import tempfile
 import threading
 import time
 import uuid
-from base64 import urlsafe_b64decode, urlsafe_b64encode
+from base64 import b64encode, urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
 from hashlib import pbkdf2_hmac, sha256
 from io import StringIO
@@ -2278,6 +2278,120 @@ def _extract_model_float_list(obj: Any, key: str) -> list[float]:
     return out
 
 
+def _require_mapbox_access_key() -> str:
+    key = os.environ.get("MAPBOX_ACCESS_KEY", "").strip()
+    if not key:
+        raise HTTPException(status_code=500, detail="MAPBOX_ACCESS_KEY is not set")
+    return key
+
+
+def _require_mapbox_style_ref() -> str:
+    style = os.environ.get("MAPBOX_TRIPRISK_MAP_STYLE", "").strip()
+    if not style:
+        style = os.environ.get("MAPBOX_STYLE", "").strip()
+    if not style:
+        raise HTTPException(status_code=500, detail="MAPBOX_TRIPRISK_MAP_STYLE is not set")
+    return style
+
+
+def _mapbox_style_path(style_ref: str) -> str:
+    s = (style_ref or "").strip()
+    if s.startswith("mapbox://styles/"):
+        return "styles/v1/" + s.replace("mapbox://styles/", "", 1)
+    if s.startswith("https://api.mapbox.com/styles/v1/"):
+        return s.replace("https://api.mapbox.com/", "", 1).split("?", 1)[0]
+    if s.startswith("styles/v1/"):
+        return s
+    raise HTTPException(status_code=400, detail="Unsupported MAPBOX_TRIPRISK_MAP_STYLE format")
+
+
+def _mapbox_profile_for_mode(mode: str) -> tuple[str, bool, str]:
+    m = (mode or "").strip().lower()
+    if m in {"coach", "bus"}:
+        return "driving", False, ""
+    if m in {"walking", "trekking"}:
+        return "walking", False, ""
+    if m in {"train", "metro", "subway", "tram"}:
+        # v1 fallback: keep rail mode label, render representative driving corridor.
+        return "driving", True, "rail_fallback_to_driving_corridor"
+    return "", False, ""
+
+
+def _mapbox_directions_geojson_line(*, access_key: str, profile: str, origin_lng: float, origin_lat: float, dest_lng: float, dest_lat: float) -> tuple[list[list[float]], float, float]:
+    url = (
+        "https://api.mapbox.com/directions/v5/mapbox/"
+        f"{quote(profile)}/{origin_lng},{origin_lat};{dest_lng},{dest_lat}?"
+        "alternatives=false&steps=false&overview=full&geometries=geojson"
+        f"&access_token={quote(access_key)}"
+    )
+    resp = requests.get(url, timeout=20)
+    if resp.status_code >= 300:
+        raise HTTPException(status_code=400, detail=f"Mapbox Directions failed ({resp.status_code})")
+    obj = resp.json()
+    routes = obj.get("routes") if isinstance(obj, dict) else None
+    if not isinstance(routes, list) or not routes:
+        raise HTTPException(status_code=400, detail="Mapbox Directions returned no routes")
+    first = routes[0] if isinstance(routes[0], dict) else {}
+    geom = first.get("geometry") if isinstance(first, dict) else {}
+    coords = geom.get("coordinates") if isinstance(geom, dict) else None
+    if not isinstance(coords, list) or len(coords) < 2:
+        raise HTTPException(status_code=400, detail="Mapbox Directions returned invalid geometry")
+    distance_m = float(first.get("distance") or 0.0)
+    duration_s = float(first.get("duration") or 0.0)
+    clean: list[list[float]] = []
+    for pt in coords:
+        if isinstance(pt, list) and len(pt) >= 2:
+            clean.append([float(pt[0]), float(pt[1])])
+    if len(clean) < 2:
+        raise HTTPException(status_code=400, detail="Mapbox Directions geometry had <2 points")
+    return clean, distance_m, duration_s
+
+
+def _mapbox_static_png_bytes(
+    *,
+    access_key: str,
+    style_ref: str,
+    route_coords: list[list[float]],
+    origin_lng: float,
+    origin_lat: float,
+    dest_lng: float,
+    dest_lat: float,
+) -> bytes:
+    style_path = _mapbox_style_path(style_ref)
+    overlay_obj = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {"stroke": "#0057B8", "stroke-width": 6, "stroke-opacity": 0.95},
+                "geometry": {"type": "LineString", "coordinates": route_coords},
+            },
+            {
+                "type": "Feature",
+                "properties": {"marker-color": "#FFFFFF", "marker-size": "medium", "marker-symbol": ""},
+                "geometry": {"type": "Point", "coordinates": [origin_lng, origin_lat]},
+            },
+            {
+                "type": "Feature",
+                "properties": {"marker-color": "#FFFFFF", "marker-size": "medium", "marker-symbol": ""},
+                "geometry": {"type": "Point", "coordinates": [dest_lng, dest_lat]},
+            },
+        ],
+    }
+    encoded_overlay = quote(json.dumps(overlay_obj, separators=(",", ":")), safe="")
+    map_url = (
+        f"https://api.mapbox.com/{style_path}/static/geojson({encoded_overlay})/auto/900x900"
+        f"?padding=80&access_token={quote(access_key)}"
+    )
+    resp = requests.get(map_url, timeout=25)
+    if resp.status_code >= 300:
+        raise HTTPException(status_code=400, detail=f"Mapbox Static Images failed ({resp.status_code})")
+    ctype = str(resp.headers.get("content-type") or "").lower()
+    if "image/png" not in ctype:
+        raise HTTPException(status_code=500, detail="Mapbox Static Images did not return PNG")
+    return bytes(resp.content)
+
+
 def _generate_weather_png_for_slug(
     *, location_slug: str, year: int, title_override: str | None = None, subtitle_override: str | None = None
 ) -> dict[str, Any]:
@@ -2906,6 +3020,22 @@ def list_weather_locations(
     return {"ok": True, "locations": rows_out}
 
 
+class TravelSegmentIn(BaseModel):
+    segment_order: int | None = None
+    segment_name: str = ""
+    mode: str = ""
+    origin_name: str = ""
+    origin_lat: float
+    origin_lng: float
+    destination_name: str = ""
+    destination_lat: float
+    destination_lng: float
+
+
+class TravelMapsGenerateIn(BaseModel):
+    segments: list[TravelSegmentIn] = Field(default_factory=list)
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> str:
     return apps_home(request=request)
@@ -3111,12 +3241,16 @@ def travel_segments_v1(request: Request) -> str:
                 <th>Date</th>
                 <th>Departure</th>
                 <th>Mode</th>
+                <th>Map</th>
               </tr>
             </thead>
             <tbody id="routes_rows">
-              <tr><td colspan="7" class="muted">Paste routes above, then click "Build Table".</td></tr>
+              <tr><td colspan="8" class="muted">Paste routes above, then click "Build Table".</td></tr>
             </tbody>
           </table>
+        </div>
+        <div class="btnrow" style="margin-top:10px;">
+          <button id="generate_maps" class="btn" type="button">Generate Maps</button>
         </div>
       </div>
 
@@ -3138,8 +3272,11 @@ def travel_segments_v1(request: Request) -> str:
       const parseBtn = document.getElementById('parse_routes');
       const clearBtn = document.getElementById('clear_routes');
       const exampleBtn = document.getElementById('load_example');
+      const genBtn = document.getElementById('generate_maps');
       const statusEl = document.getElementById('parse_status');
       const rowsEl = document.getElementById('routes_rows');
+      let parsedRows = [];
+      let generatedMaps = {};
 
       function esc(s) {
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
@@ -3177,7 +3314,11 @@ def travel_segments_v1(request: Request) -> str:
           segment_order: headers.indexOf('segment_order'),
           segment_name: headers.indexOf('segment_name'),
           origin_name: headers.indexOf('origin_name'),
+          origin_lat: headers.indexOf('origin_lat'),
+          origin_lng: headers.indexOf('origin_lng'),
           destination_name: headers.indexOf('destination_name'),
+          destination_lat: headers.indexOf('destination_lat'),
+          destination_lng: headers.indexOf('destination_lng'),
           date_local: headers.indexOf('date_local'),
           departure_time_local: headers.indexOf('departure_time_local'),
           mode: headers.indexOf('mode'),
@@ -3193,7 +3334,11 @@ def travel_segments_v1(request: Request) -> str:
             segment_order: Number.isFinite(orderNum) ? orderNum : i,
             segment_name: idx.segment_name >= 0 ? (vals[idx.segment_name] || '') : '',
             origin_name: idx.origin_name >= 0 ? (vals[idx.origin_name] || '') : '',
+            origin_lat: idx.origin_lat >= 0 ? Number.parseFloat(vals[idx.origin_lat]) : Number.NaN,
+            origin_lng: idx.origin_lng >= 0 ? Number.parseFloat(vals[idx.origin_lng]) : Number.NaN,
             destination_name: idx.destination_name >= 0 ? (vals[idx.destination_name] || '') : '',
+            destination_lat: idx.destination_lat >= 0 ? Number.parseFloat(vals[idx.destination_lat]) : Number.NaN,
+            destination_lng: idx.destination_lng >= 0 ? Number.parseFloat(vals[idx.destination_lng]) : Number.NaN,
             date_local: idx.date_local >= 0 ? (vals[idx.date_local] || '') : '',
             departure_time_local: idx.departure_time_local >= 0 ? (vals[idx.departure_time_local] || '') : '',
             mode: idx.mode >= 0 ? (vals[idx.mode] || '') : '',
@@ -3213,6 +3358,10 @@ def travel_segments_v1(request: Request) -> str:
             segment_name: parts.length > 1 ? `${origin} -> ${destination}` : line,
             origin_name: origin,
             destination_name: destination,
+            origin_lat: Number.NaN,
+            origin_lng: Number.NaN,
+            destination_lat: Number.NaN,
+            destination_lng: Number.NaN,
             date_local: '',
             departure_time_local: '',
             mode: '',
@@ -3222,11 +3371,12 @@ def travel_segments_v1(request: Request) -> str:
 
       function renderTable(rows) {
         if (!rows.length) {
-          rowsEl.innerHTML = '<tr><td colspan="7" class="muted">No routes parsed.</td></tr>';
+          rowsEl.innerHTML = '<tr><td colspan="8" class="muted">No routes parsed.</td></tr>';
           return;
         }
         rowsEl.innerHTML = '';
         for (const r of rows) {
+          const mapCell = generatedMaps[String(r.segment_order)] || '<span class="muted">Not generated</span>';
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${esc(r.segment_order)}</td>
@@ -3236,6 +3386,7 @@ def travel_segments_v1(request: Request) -> str:
             <td>${esc(r.date_local || '')}</td>
             <td>${esc(r.departure_time_local || '')}</td>
             <td>${esc(r.mode || '')}</td>
+            <td>${mapCell}</td>
           `;
           rowsEl.appendChild(tr);
         }
@@ -3257,23 +3408,76 @@ def travel_segments_v1(request: Request) -> str:
           rows = parseLineList(raw);
           statusEl.textContent = `Parsed ${rows.length} route(s) from line list.`;
         }
-        renderTable(rows);
+        parsedRows = rows;
+        generatedMaps = {};
+        renderTable(parsedRows);
       }
 
       parseBtn.addEventListener('click', buildTable);
       clearBtn.addEventListener('click', () => {
         inputEl.value = '';
-        rowsEl.innerHTML = '<tr><td colspan="7" class="muted">Paste routes above, then click "Build Table".</td></tr>';
+        parsedRows = [];
+        generatedMaps = {};
+        rowsEl.innerHTML = '<tr><td colspan="8" class="muted">Paste routes above, then click "Build Table".</td></tr>';
         statusEl.textContent = 'Cleared.';
       });
       exampleBtn.addEventListener('click', () => {
         inputEl.value = [
-          'segment_order,segment_name,origin_name,destination_name,date_local,departure_time_local,mode',
-          '1,Hotel to Museum,Hotel,Museum,2026-05-15,08:30,coach',
-          '2,Museum to Station,Museum,Train Station,2026-05-15,11:10,walking',
-          '3,Station to Airport,Train Station,Airport,2026-05-15,13:00,train'
+          'segment_order,segment_name,origin_name,origin_lat,origin_lng,destination_name,destination_lat,destination_lng,date_local,departure_time_local,mode',
+          '1,Marina Bay Sands to Gardens by the Bay,Marina Bay Sands,1.2834,103.8607,Gardens by the Bay,1.2816,103.8636,2026-05-15,08:30,walking',
+          '2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,103.8636,Singapore Flyer,1.2893,103.8631,2026-05-15,09:15,coach',
+          '3,Singapore Flyer to National Museum,Singapore Flyer,1.2893,103.8631,National Museum of Singapore,1.2966,103.8485,2026-05-15,10:00,train'
         ].join('\\n');
         buildTable();
+      });
+
+      genBtn.addEventListener('click', async () => {
+        if (!parsedRows.length) {
+          statusEl.textContent = 'No parsed routes. Click "Build Table" first.';
+          return;
+        }
+        const withCoords = parsedRows.filter((r) =>
+          Number.isFinite(r.origin_lat) &&
+          Number.isFinite(r.origin_lng) &&
+          Number.isFinite(r.destination_lat) &&
+          Number.isFinite(r.destination_lng)
+        );
+        if (!withCoords.length) {
+          statusEl.textContent = 'No valid lat/lng found. Use CSV with origin_lat, origin_lng, destination_lat, destination_lng.';
+          return;
+        }
+        genBtn.disabled = true;
+        statusEl.textContent = `Generating maps for ${withCoords.length} route(s)...`;
+        try {
+          const res = await fetch('/travel_segments/v1/maps/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ segments: withCoords }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.ok) {
+            statusEl.textContent = body.detail || body.error || `Generate failed (HTTP ${res.status})`;
+            return;
+          }
+          const items = Array.isArray(body.items) ? body.items : [];
+          generatedMaps = {};
+          for (const it of items) {
+            const key = String(it.segment_order ?? '');
+            const dataUrl = String(it.map_data_url || '');
+            const note = String(it.note || '');
+            if (dataUrl) {
+              generatedMaps[key] = `<a href="${esc(dataUrl)}" target="_blank" rel="noopener"><img alt="map preview" src="${esc(dataUrl)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" /></a><div class="muted" style="margin-top:4px;">${esc(note)}</div>`;
+            } else {
+              generatedMaps[key] = `<span class="muted">Failed</span><div class="muted" style="margin-top:4px;">${esc(note)}</div>`;
+            }
+          }
+          renderTable(parsedRows);
+          statusEl.textContent = `Generated ${items.length} map(s). Click any thumbnail to open full image.`;
+        } catch (e) {
+          statusEl.textContent = 'Generate failed due to network or server error.';
+        } finally {
+          genBtn.disabled = false;
+        }
       });
     </script>
     """.strip()
@@ -3286,6 +3490,89 @@ def travel_segments_v1(request: Request) -> str:
         extra_script=script,
         user=user,
     )
+
+
+@app.post("/travel_segments/v1/maps/generate")
+def travel_segments_generate_maps(
+    payload: TravelMapsGenerateIn,
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _ = _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    access_key = _require_mapbox_access_key()
+    style_ref = _require_mapbox_style_ref()
+    items_out: list[dict[str, Any]] = []
+
+    for i, seg in enumerate(payload.segments[:50], start=1):
+        mode = (seg.mode or "").strip().lower()
+        profile, is_fallback, fallback_reason = _mapbox_profile_for_mode(mode)
+        source = "straight_line"
+        coords: list[list[float]] = [
+            [float(seg.origin_lng), float(seg.origin_lat)],
+            [float(seg.destination_lng), float(seg.destination_lat)],
+        ]
+        distance_m = 0.0
+        duration_s = 0.0
+        note = "straight-line representative corridor"
+
+        try:
+            if profile:
+                source = "mapbox_directions"
+                route_coords, distance_m, duration_s = _mapbox_directions_geojson_line(
+                    access_key=access_key,
+                    profile=profile,
+                    origin_lng=float(seg.origin_lng),
+                    origin_lat=float(seg.origin_lat),
+                    dest_lng=float(seg.destination_lng),
+                    dest_lat=float(seg.destination_lat),
+                )
+                coords = route_coords
+                if is_fallback:
+                    note = fallback_reason
+                else:
+                    note = f"{profile} profile"
+
+            png_bytes = _mapbox_static_png_bytes(
+                access_key=access_key,
+                style_ref=style_ref,
+                route_coords=coords,
+                origin_lng=float(seg.origin_lng),
+                origin_lat=float(seg.origin_lat),
+                dest_lng=float(seg.destination_lng),
+                dest_lat=float(seg.destination_lat),
+            )
+            data_url = "data:image/png;base64," + b64encode(png_bytes).decode("ascii")
+            items_out.append(
+                {
+                    "segment_order": int(seg.segment_order or i),
+                    "segment_name": str(seg.segment_name or ""),
+                    "mode": str(seg.mode or ""),
+                    "source": source,
+                    "profile_used": profile or "none",
+                    "is_fallback": bool(is_fallback),
+                    "distance_m": round(distance_m, 2),
+                    "duration_s": round(duration_s, 2),
+                    "note": note,
+                    "map_data_url": data_url,
+                }
+            )
+        except Exception as e:
+            items_out.append(
+                {
+                    "segment_order": int(seg.segment_order or i),
+                    "segment_name": str(seg.segment_name or ""),
+                    "mode": str(seg.mode or ""),
+                    "source": source,
+                    "profile_used": profile or "none",
+                    "is_fallback": bool(is_fallback),
+                    "distance_m": round(distance_m, 2),
+                    "duration_s": round(duration_s, 2),
+                    "note": f"error: {e}",
+                    "map_data_url": "",
+                }
+            )
+
+    return {"ok": True, "count": len(items_out), "items": items_out}
 
 
 @app.get("/jobs/ui", response_class=HTMLResponse)

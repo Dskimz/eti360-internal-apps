@@ -2896,7 +2896,7 @@ def usage_ui(request: Request) -> str:
           <table>
             <thead>
               <tr>
-                <th>Date (UTC)</th>
+                <th>Date/Time (Local)</th>
                 <th>Workflow</th>
                 <th>Prompt</th>
                 <th>Provider</th>
@@ -2921,6 +2921,23 @@ def usage_ui(request: Request) -> str:
 
       function money(x) { return '$' + Number(x || 0).toFixed(6); }
       function safe(s) { return String(s || ''); }
+      function pad2(n) { return String(Number(n || 0)).padStart(2, '0'); }
+      function fmtLocalDateTime(iso) {
+        const raw = safe(iso);
+        if (!raw) return '';
+        const d = new Date(raw);
+        if (!isFinite(d.getTime())) return raw.replace('T', ' ').replace('Z', '');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[d.getMonth()];
+        const day = pad2(d.getDate());
+        const year = d.getFullYear();
+        let hour = d.getHours();
+        const minute = pad2(d.getMinutes());
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12;
+        if (hour === 0) hour = 12;
+        return `${month} ${day}, ${year} ${pad2(hour)}:${minute} ${ampm}`;
+      }
 
       async function load() {
         try {
@@ -2940,7 +2957,7 @@ def usage_ui(request: Request) -> str:
           rowsEl.innerHTML = '';
           for (const r of items) {
             const tr = document.createElement('tr');
-            const date = safe(r.created_at).replace('T', ' ').replace('Z','');
+            const date = fmtLocalDateTime(r.created_at);
             const runShort = safe(r.run_id).slice(0, 8);
             tr.innerHTML = `
               <td><code>${date}</code></td>

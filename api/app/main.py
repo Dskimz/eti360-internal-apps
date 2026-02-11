@@ -2343,11 +2343,12 @@ def _require_mapbox_access_key() -> str:
 
 
 def _require_mapbox_style_ref() -> str:
+    default_style = "mapbox://styles/dskimin/cmlh5k0hc006l01sngwhdbtrh"
     style = os.environ.get("MAPBOX_TRIPRISK_MAP_STYLE", "").strip()
     if not style:
         style = os.environ.get("MAPBOX_STYLE", "").strip()
     if not style:
-        raise HTTPException(status_code=500, detail="MAPBOX_TRIPRISK_MAP_STYLE is not set")
+        style = default_style
     return style
 
 

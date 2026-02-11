@@ -3074,45 +3074,218 @@ def apps_home(request: Request) -> str:
 
 @app.get("/travel_segments/v1", response_class=HTMLResponse)
 def travel_segments_v1(request: Request) -> str:
-    """
-    Human-readable contract page for Travel Segment Visualization (v1).
-    The canonical assets are served under /static/travel_segment_visualization/*.
-    """
     user = _get_current_user(request)
 
-    md = f"""
-## Purpose
-Define the immutable v1 contracts and governance constraints for generating Travel Segment booklet pages (static maps + text) and injecting them into an InDesign template.
-
-## Key Links
-- Geometry & color rules (immutable): [/static/travel_segment_visualization/geometry_color_rules.md](/static/travel_segment_visualization/geometry_color_rules.md)
-- CSV input spec: [/static/travel_segment_visualization/csv_spec.md](/static/travel_segment_visualization/csv_spec.md)
-- InDesign Script Label contract: [/static/travel_segment_visualization/indesign_script_labels.md](/static/travel_segment_visualization/indesign_script_labels.md)
-- Booklet JSON schema: [/static/travel_segment_visualization/booklet.schema.json](/static/travel_segment_visualization/booklet.schema.json)
-- Booklet JSON example: [/static/travel_segment_visualization/booklet_example.json](/static/travel_segment_visualization/booklet_example.json)
-
-## Non-Negotiables (Summary)
-- ETI360 Blue means intentional student movement only:
-  - Allowed: route line; origin/destination marker outlines only
-  - Never: city names, roads, land/water, background elements
-- Geometry is representative, not operational:
-  - No station names, no line names
-  - No arrows/turn cues
-  - Rail fallback if transit routing unavailable: Mapbox driving corridor geometry, rail mode label preserved
-""".strip()
-
-    body_html = f"""
+    body_html = """
       <div class="card">
         <h1>Travel Segment Visualization (v1)</h1>
-        <p class="muted">Contracts for CSV input → static map/QR assets → booklet JSON → InDesign injection.</p>
+        <p class="muted">Paste routes (line list or CSV) and preview them in a table.</p>
       </div>
 
       <div class="card">
-        {_render_markdown_safe(md)}
+        <h2>Paste Routes</h2>
+        <p class="muted">Accepted formats:</p>
+        <ul class="muted" style="margin-top:6px;">
+          <li>Line list: <code>Hotel -&gt; Museum</code> (one per line)</li>
+          <li>CSV with headers, e.g. <code>segment_order,segment_name,origin_name,destination_name,date_local,departure_time_local,mode</code></li>
+        </ul>
+        <textarea id="routes_input" placeholder="Hotel -> Museum&#10;Museum -> Train Station&#10;Train Station -> Airport" style="width:100%; min-height:180px; margin-top:10px;"></textarea>
+        <div class="btnrow" style="margin-top:10px;">
+          <button id="parse_routes" class="btn" type="button">Build Table</button>
+          <button id="clear_routes" class="btn" type="button">Clear</button>
+          <button id="load_example" class="btn" type="button">Load Example CSV</button>
+        </div>
+        <div id="parse_status" class="muted" style="margin-top:10px;">No routes loaded.</div>
+      </div>
+
+      <div class="card">
+        <h2>Routes Table</h2>
+        <div class="section tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Segment</th>
+                <th>Origin</th>
+                <th>Destination</th>
+                <th>Date</th>
+                <th>Departure</th>
+                <th>Mode</th>
+              </tr>
+            </thead>
+            <tbody id="routes_rows">
+              <tr><td colspan="7" class="muted">Paste routes above, then click "Build Table".</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Contracts & References</h2>
+        <ul>
+          <li><a href="/static/travel_segment_visualization/geometry_color_rules.md" target="_blank" rel="noopener">Geometry & color rules (immutable)</a></li>
+          <li><a href="/static/travel_segment_visualization/csv_spec.md" target="_blank" rel="noopener">CSV input spec</a></li>
+          <li><a href="/static/travel_segment_visualization/indesign_script_labels.md" target="_blank" rel="noopener">InDesign Script Label contract</a></li>
+          <li><a href="/static/travel_segment_visualization/booklet.schema.json" target="_blank" rel="noopener">Booklet JSON schema</a></li>
+          <li><a href="/static/travel_segment_visualization/booklet_example.json" target="_blank" rel="noopener">Booklet JSON example</a></li>
+        </ul>
       </div>
     """.strip()
 
-    return _ui_shell(title="Travel Segments (v1)", active="apps", body_html=body_html, max_width_px=980, user=user)
+    script = """
+    <script>
+      const inputEl = document.getElementById('routes_input');
+      const parseBtn = document.getElementById('parse_routes');
+      const clearBtn = document.getElementById('clear_routes');
+      const exampleBtn = document.getElementById('load_example');
+      const statusEl = document.getElementById('parse_status');
+      const rowsEl = document.getElementById('routes_rows');
+
+      function esc(s) {
+        return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+      }
+
+      function splitCsvLine(line) {
+        const out = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i += 1) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              cur += '"';
+              i += 1;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (ch === ',' && !inQuotes) {
+            out.push(cur);
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        out.push(cur);
+        return out.map((v) => v.trim());
+      }
+
+      function parseCsv(text) {
+        const lines = text.split(/\\r?\\n/).map((l) => l.trim()).filter(Boolean);
+        if (!lines.length) return [];
+        const headers = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
+        const idx = {
+          segment_order: headers.indexOf('segment_order'),
+          segment_name: headers.indexOf('segment_name'),
+          origin_name: headers.indexOf('origin_name'),
+          destination_name: headers.indexOf('destination_name'),
+          date_local: headers.indexOf('date_local'),
+          departure_time_local: headers.indexOf('departure_time_local'),
+          mode: headers.indexOf('mode'),
+        };
+        if (idx.origin_name < 0 || idx.destination_name < 0) return [];
+
+        const rows = [];
+        for (let i = 1; i < lines.length; i += 1) {
+          const vals = splitCsvLine(lines[i]);
+          const orderRaw = idx.segment_order >= 0 ? vals[idx.segment_order] : '';
+          const orderNum = Number.parseInt(orderRaw, 10);
+          rows.push({
+            segment_order: Number.isFinite(orderNum) ? orderNum : i,
+            segment_name: idx.segment_name >= 0 ? (vals[idx.segment_name] || '') : '',
+            origin_name: idx.origin_name >= 0 ? (vals[idx.origin_name] || '') : '',
+            destination_name: idx.destination_name >= 0 ? (vals[idx.destination_name] || '') : '',
+            date_local: idx.date_local >= 0 ? (vals[idx.date_local] || '') : '',
+            departure_time_local: idx.departure_time_local >= 0 ? (vals[idx.departure_time_local] || '') : '',
+            mode: idx.mode >= 0 ? (vals[idx.mode] || '') : '',
+          });
+        }
+        return rows;
+      }
+
+      function parseLineList(text) {
+        const lines = text.split(/\\r?\\n/).map((l) => l.trim()).filter(Boolean);
+        return lines.map((line, i) => {
+          const parts = line.split(/\\s*\\-\\>|\\s*→\\s*/);
+          const origin = parts.length > 1 ? parts[0].trim() : line;
+          const destination = parts.length > 1 ? parts.slice(1).join(' -> ').trim() : '';
+          return {
+            segment_order: i + 1,
+            segment_name: parts.length > 1 ? `${origin} -> ${destination}` : line,
+            origin_name: origin,
+            destination_name: destination,
+            date_local: '',
+            departure_time_local: '',
+            mode: '',
+          };
+        });
+      }
+
+      function renderTable(rows) {
+        if (!rows.length) {
+          rowsEl.innerHTML = '<tr><td colspan="7" class="muted">No routes parsed.</td></tr>';
+          return;
+        }
+        rowsEl.innerHTML = '';
+        for (const r of rows) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${esc(r.segment_order)}</td>
+            <td>${esc(r.segment_name || '')}</td>
+            <td>${esc(r.origin_name || '')}</td>
+            <td>${esc(r.destination_name || '')}</td>
+            <td>${esc(r.date_local || '')}</td>
+            <td>${esc(r.departure_time_local || '')}</td>
+            <td>${esc(r.mode || '')}</td>
+          `;
+          rowsEl.appendChild(tr);
+        }
+      }
+
+      function buildTable() {
+        const raw = String(inputEl.value || '').trim();
+        if (!raw) {
+          statusEl.textContent = 'Nothing to parse. Paste routes first.';
+          renderTable([]);
+          return;
+        }
+        const firstLine = raw.split(/\\r?\\n/, 1)[0].toLowerCase();
+        let rows = [];
+        if (firstLine.includes(',') && (firstLine.includes('origin_name') || firstLine.includes('destination_name'))) {
+          rows = parseCsv(raw);
+          statusEl.textContent = `Parsed ${rows.length} route(s) from CSV.`;
+        } else {
+          rows = parseLineList(raw);
+          statusEl.textContent = `Parsed ${rows.length} route(s) from line list.`;
+        }
+        renderTable(rows);
+      }
+
+      parseBtn.addEventListener('click', buildTable);
+      clearBtn.addEventListener('click', () => {
+        inputEl.value = '';
+        rowsEl.innerHTML = '<tr><td colspan="7" class="muted">Paste routes above, then click "Build Table".</td></tr>';
+        statusEl.textContent = 'Cleared.';
+      });
+      exampleBtn.addEventListener('click', () => {
+        inputEl.value = [
+          'segment_order,segment_name,origin_name,destination_name,date_local,departure_time_local,mode',
+          '1,Hotel to Museum,Hotel,Museum,2026-05-15,08:30,coach',
+          '2,Museum to Station,Museum,Train Station,2026-05-15,11:10,walking',
+          '3,Station to Airport,Train Station,Airport,2026-05-15,13:00,train'
+        ].join('\\n');
+        buildTable();
+      });
+    </script>
+    """.strip()
+
+    return _ui_shell(
+        title="Travel Segments (v1)",
+        active="apps",
+        body_html=body_html,
+        max_width_px=1100,
+        extra_script=script,
+        user=user,
+    )
 
 
 @app.get("/jobs/ui", response_class=HTMLResponse)

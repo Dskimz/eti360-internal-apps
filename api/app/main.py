@@ -44,7 +44,7 @@ from app.arp_pipeline import (
 )
 from app.geo import CONTINENT_ORDER, continent_for_country
 from app.icons import IconFormInput, IconIntentSpec, build_icon_prompt, classify_icon_intent, render_icon_png, sha256_json
-from app.icons.prompt_builder import FIXED_GENERATION_PARAMS
+from app.icons.prompt_builder import ETI_ICON_PRIMARY_HEX, FIXED_GENERATION_PARAMS
 from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
@@ -7705,6 +7705,67 @@ def build_icon_generation_prompt(
     }
 
 
+def _ensure_icons_gallery_table(cur: psycopg.Cursor[Any]) -> None:
+    cur.execute(_schema("CREATE EXTENSION IF NOT EXISTS pgcrypto;"))
+    cur.execute(
+        _schema(
+            """
+            CREATE TABLE IF NOT EXISTS "__SCHEMA__".icons_generated (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              activity_name TEXT NOT NULL,
+              activity_slug TEXT NOT NULL,
+              icon_category TEXT NOT NULL DEFAULT '',
+              prompt TEXT NOT NULL,
+              color_token TEXT NOT NULL DEFAULT '--eti-icon-primary',
+              color_hex TEXT NOT NULL DEFAULT '#002b4f',
+              image_data_url TEXT NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            """
+        ).strip()
+    )
+    cur.execute(
+        _schema(
+            'CREATE INDEX IF NOT EXISTS icons_generated_activity_name_idx ON "__SCHEMA__".icons_generated(LOWER(activity_name), created_at DESC);'
+        )
+    )
+
+
+def _save_generated_icon(
+    *,
+    activity_name: str,
+    icon_category: str,
+    prompt: str,
+    image_data_url: str,
+) -> str:
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_icons_gallery_table(cur)
+            cur.execute(
+                _schema(
+                    """
+                    INSERT INTO "__SCHEMA__".icons_generated
+                      (activity_name, activity_slug, icon_category, prompt, color_token, color_hex, image_data_url)
+                    VALUES
+                      (%s,%s,%s,%s,%s,%s,%s)
+                    RETURNING id;
+                    """
+                ),
+                (
+                    activity_name,
+                    _slugify(activity_name),
+                    icon_category,
+                    prompt,
+                    "--eti-icon-primary",
+                    ETI_ICON_PRIMARY_HEX,
+                    image_data_url,
+                ),
+            )
+            (icon_id,) = cur.fetchone()
+        conn.commit()
+    return str(icon_id)
+
+
 def _parse_icon_batch_line(raw: str) -> tuple[str, str]:
     if "|" in raw:
         left, right = raw.split("|", 1)
@@ -7727,12 +7788,22 @@ def render_icon(
     prompt = build_icon_prompt(spec)
     rendered = render_icon_png(prompt)
     png_b64 = b64encode(rendered.png_bytes).decode("ascii")
+    image_data_url = f"data:image/png;base64,{png_b64}"
+    icon_id = _save_generated_icon(
+        activity_name=form.activity_name,
+        icon_category=str(spec.icon_category),
+        prompt=prompt,
+        image_data_url=image_data_url,
+    )
     return {
         "ok": True,
+        "id": icon_id,
         "activity_name": form.activity_name,
         "spec": spec.model_dump(),
         "prompt": prompt,
-        "image_data_url": f"data:image/png;base64,{png_b64}",
+        "color_token": "--eti-icon-primary",
+        "color_hex": ETI_ICON_PRIMARY_HEX,
+        "image_data_url": image_data_url,
     }
 
 
@@ -7759,13 +7830,23 @@ def render_icon_batch(
             prompt = build_icon_prompt(spec)
             rendered = render_icon_png(prompt)
             png_b64 = b64encode(rendered.png_bytes).decode("ascii")
+            image_data_url = f"data:image/png;base64,{png_b64}"
+            icon_id = _save_generated_icon(
+                activity_name=activity_name,
+                icon_category=str(spec.icon_category),
+                prompt=prompt,
+                image_data_url=image_data_url,
+            )
             rows.append(
                 {
                     "line": line_no,
                     "ok": True,
+                    "id": icon_id,
                     "activity_name": activity_name,
                     "spec": spec.model_dump(),
-                    "image_data_url": f"data:image/png;base64,{png_b64}",
+                    "color_token": "--eti-icon-primary",
+                    "color_hex": ETI_ICON_PRIMARY_HEX,
+                    "image_data_url": image_data_url,
                 }
             )
             success_count += 1
@@ -7785,6 +7866,42 @@ def render_icon_batch(
     }
 
 
+@app.get("/icons/list")
+def list_generated_icons(
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+    rows_out: list[dict[str, Any]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_icons_gallery_table(cur)
+            cur.execute(
+                _schema(
+                    """
+                    SELECT id, activity_name, activity_slug, icon_category, color_token, color_hex, prompt, image_data_url, created_at
+                    FROM "__SCHEMA__".icons_generated
+                    ORDER BY LOWER(activity_name) ASC, created_at DESC;
+                    """
+                )
+            )
+            for row in cur.fetchall():
+                icon_id, activity_name, activity_slug, icon_category, color_token, color_hex, prompt, image_data_url, created_at = row
+                rows_out.append(
+                    {
+                        "id": str(icon_id),
+                        "activity_name": str(activity_name or ""),
+                        "activity_slug": str(activity_slug or ""),
+                        "icon_category": str(icon_category or ""),
+                        "color_token": str(color_token or ""),
+                        "color_hex": str(color_hex or ""),
+                        "prompt": str(prompt or ""),
+                        "image_data_url": str(image_data_url or ""),
+                        "created_at": created_at.isoformat() if created_at else None,
+                    }
+                )
+    return {"ok": True, "rows": rows_out}
+
+
 @app.get("/icons/ui", response_class=HTMLResponse)
 def icons_ui(
     request: Request,
@@ -7793,52 +7910,82 @@ def icons_ui(
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
     body_html = """
       <div class="card">
-        <h1>Icons Pipeline</h1>
-        <p class="muted">Enter activity context and generate icon previews directly.</p>
-      </div>
-
-      <div class="card">
-        <div class="form-grid two">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
           <div>
-            <label class="label">Activity / object name</label>
-            <input id="activityName" type="text" placeholder="Kayaking - Flatwater" />
+            <h1 style="margin:0;">Icons Pipeline</h1>
+            <p class="muted" style="margin:6px 0 0 0;">Create icons in a popup, then review all saved icons below.</p>
           </div>
-          <div>
-            <label class="label">API key (optional if auth is disabled)</label>
-            <input id="apiKey" type="text" placeholder="ETI360 API key" autocomplete="off" />
-          </div>
-        </div>
-        <div style="margin-top:10px;">
-          <label class="label">Context note (1-3 sentences)</label>
-          <textarea id="contextNote" class="mono" style="min-height:100px;" placeholder="Short factual context for classification."></textarea>
-        </div>
-        <div style="margin-top:10px;">
-          <label class="label">Batch lines (optional; one item per line)</label>
-          <textarea id="batchText" class="mono" style="min-height:140px;" placeholder="Kayaking - Flatwater | Guided paddling activity on calm river water with safety briefing."></textarea>
-          <div class="muted">Format: <span class="mono">Activity | Context note</span> (or tab-separated).</div>
-        </div>
-        <div class="btnrow" style="margin-top:12px;">
-          <button id="btnRunSingle" class="btn primary" type="button">Generate icon</button>
-          <button id="btnRunBatch" class="btn" type="button">Generate batch</button>
+          <a href="#" id="openCreateModal" class="btn primary">Create Icon</a>
         </div>
       </div>
 
       <div class="card">
-        <h2>Preview</h2>
-        <div id="singleResult" class="muted">No icon generated yet.</div>
-        <div id="batchResults" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; margin-top:12px;"></div>
-        <pre id="statusOut" class="mono" style="white-space:pre-wrap; margin-top:10px;">Ready.</pre>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <h2 style="margin:0;">Saved Icons</h2>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <label class="label" style="margin:0;">API key</label>
+            <input id="apiKey" type="text" placeholder="ETI360 API key" autocomplete="off" style="min-width:260px;" />
+            <button id="btnRefreshIcons" class="btn" type="button">Refresh</button>
+          </div>
+        </div>
+        <div class="section tablewrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Icon</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Color</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="iconsRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="createModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999;">
+        <div style="max-width:860px; margin:40px auto; background:white; border-radius:12px; padding:16px; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <h2 style="margin:0;">Create Icon</h2>
+            <button id="closeCreateModal" class="btn" type="button">Close</button>
+          </div>
+          <div class="form-grid two" style="margin-top:12px;">
+            <div>
+              <label class="label">Activity / object name</label>
+              <input id="activityName" type="text" placeholder="Kayaking - Flatwater" />
+            </div>
+            <div>
+              <label class="label">Context note (1-3 sentences)</label>
+              <textarea id="contextNote" class="mono" style="min-height:92px;" placeholder="Short factual context for classification."></textarea>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label class="label">Batch lines (optional; one item per line)</label>
+            <textarea id="batchText" class="mono" style="min-height:130px;" placeholder="Trekking | Guided mountain trekking activity on marked trails with elevation gain.\nCoach Transfer | Group transfer by coach between airport and accommodation."></textarea>
+            <div class="muted">Format: <span class="mono">Activity | Context note</span> (or tab-separated).</div>
+          </div>
+          <div class="btnrow" style="margin-top:12px;">
+            <button id="btnRunSingle" class="btn primary" type="button">Generate One</button>
+            <button id="btnRunBatch" class="btn" type="button">Generate Batch</button>
+          </div>
+          <div id="modalPreview" style="margin-top:12px;" class="muted">No icon generated yet.</div>
+          <pre id="statusOut" class="mono" style="white-space:pre-wrap; margin-top:10px;">Ready.</pre>
+        </div>
       </div>
     """.strip()
 
     script = """
     <script>
+      const modalEl = document.getElementById('createModal');
+      const openCreateModalEl = document.getElementById('openCreateModal');
+      const closeCreateModalEl = document.getElementById('closeCreateModal');
       const apiKeyEl = document.getElementById('apiKey');
       const activityEl = document.getElementById('activityName');
       const contextEl = document.getElementById('contextNote');
       const batchEl = document.getElementById('batchText');
-      const singleEl = document.getElementById('singleResult');
-      const batchResultsEl = document.getElementById('batchResults');
+      const modalPreviewEl = document.getElementById('modalPreview');
+      const iconsRowsEl = document.getElementById('iconsRows');
       const statusOutEl = document.getElementById('statusOut');
 
       function headers() {
@@ -7856,18 +8003,55 @@ def icons_ui(
         const name = String(item.activity_name || '');
         const src = String(item.image_data_url || '');
         if (!src) {
-          singleEl.innerHTML = '<span class="muted">No icon generated yet.</span>';
+          modalPreviewEl.innerHTML = '<span class="muted">No icon generated yet.</span>';
           return;
         }
-        singleEl.innerHTML = `
+        modalPreviewEl.innerHTML = `
           <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
             <img src="${src}" alt="${name}" style="width:128px; height:128px; border:1px solid #e2e8f0; border-radius:8px; background:white;" />
             <div>
               <div style="font-weight:600;">${name}</div>
               <div class="muted">Category: ${(item.spec || {}).icon_category || ''}</div>
+              <div class="mono muted">${item.color_token || ''} (${item.color_hex || ''})</div>
             </div>
           </div>
         `;
+      }
+
+      function fmtDate(iso) {
+        if (!iso) return '';
+        try { return new Date(iso).toLocaleString(); } catch { return String(iso); }
+      }
+
+      function renderIconsTable(rows) {
+        iconsRowsEl.innerHTML = '';
+        for (const r of (rows || [])) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><img src="${r.image_data_url || ''}" alt="${r.activity_name || ''}" style="width:52px; height:52px; object-fit:contain;" /></td>
+            <td><div style="font-weight:600;">${r.activity_name || ''}</div><div class="mono muted">${r.activity_slug || ''}</div></td>
+            <td class="mono">${r.icon_category || ''}</td>
+            <td class="mono">${r.color_token || ''}<br/>${r.color_hex || ''}</td>
+            <td class="muted">${fmtDate(r.created_at)}</td>
+          `;
+          iconsRowsEl.appendChild(tr);
+        }
+        if (!rows || !rows.length) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td colspan="5" class="muted">No icons yet.</td>';
+          iconsRowsEl.appendChild(tr);
+        }
+      }
+
+      async function refreshIcons() {
+        try {
+          const res = await fetch('/icons/list', { headers: headers() });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+          renderIconsTable(body.rows || []);
+        } catch (e) {
+          setStatus('Error loading icons: ' + String(e?.message || e));
+        }
       }
 
       function saveLocal() {
@@ -7902,6 +8086,7 @@ def icons_ui(
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
           setSingleCard(body);
           setStatus('Icon generated.');
+          await refreshIcons();
         } catch (e) {
           setStatus('Error: ' + String(e?.message || e));
         }
@@ -7920,29 +8105,23 @@ def icons_ui(
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
 
-          batchResultsEl.innerHTML = '';
-          for (const row of (body.rows || [])) {
-            if (!row || !row.ok) continue;
-            const card = document.createElement('div');
-            card.style.border = '1px solid #e2e8f0';
-            card.style.borderRadius = '8px';
-            card.style.padding = '10px';
-            card.style.background = 'white';
-            card.innerHTML = `
-              <img src="${row.image_data_url || ''}" alt="${row.activity_name || ''}" style="width:96px; height:96px; display:block; margin:0 auto 8px auto;" />
-              <div style="font-size:12px; text-align:center;">${row.activity_name || ''}</div>
-            `;
-            batchResultsEl.appendChild(card);
-          }
+          const firstOk = (body.rows || []).find((r) => r && r.ok);
+          if (firstOk) setSingleCard(firstOk);
           const s = body.summary || {};
           setStatus(`Batch done. Processed=${s.processed || 0}, Succeeded=${s.succeeded || 0}, Failed=${s.failed || 0}`);
+          await refreshIcons();
         } catch (e) {
           setStatus('Error: ' + String(e?.message || e));
         }
       }
 
+      openCreateModalEl.addEventListener('click', (e) => { e.preventDefault(); modalEl.style.display = 'block'; });
+      closeCreateModalEl.addEventListener('click', () => { modalEl.style.display = 'none'; });
+      modalEl.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.style.display = 'none'; });
+      document.getElementById('btnRefreshIcons').addEventListener('click', refreshIcons);
       document.getElementById('btnRunSingle').addEventListener('click', runSingle);
       document.getElementById('btnRunBatch').addEventListener('click', runBatch);
+      refreshIcons();
     </script>
     """.strip()
 

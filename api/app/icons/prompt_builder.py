@@ -11,6 +11,7 @@ FIXED_GENERATION_PARAMS = {
     "background": "transparent",
     "output_format": "png",
 }
+ETI_ICON_PRIMARY_HEX = "#002b4f"
 
 
 def sha256_json(obj: dict[str, Any]) -> str:
@@ -33,7 +34,7 @@ def build_icon_prompt(spec: IconIntentSpec) -> str:
             f"Secondary cues: {_join_or_none(canonical.secondary_cues)}.",
             f"Exclusions: {_join_or_none(canonical.exclusions)}.",
             f"{canonical.canvas}x{canonical.canvas} canvas, {canonical.stroke}px stroke.",
-            f"Color token: {canonical.color_token}.",
+            f"Color token: {canonical.color_token} ({ETI_ICON_PRIMARY_HEX}).",
             "Neutral institutional style.",
         ]
     )

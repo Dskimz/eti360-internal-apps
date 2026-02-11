@@ -17,6 +17,8 @@ Required:
 
 - `DATABASE_URL` (Render Postgres internal URL)
 - `ETI360_API_KEY` (shared secret for admin/write endpoints; sent as `X-API-Key`)
+- `OPENAI_API_KEY` (for icon classification + image generation)
+- `AWS_REGION` (for icon S3 writes/download links)
 
 Auth (recommended for browser UIs):
 
@@ -31,6 +33,14 @@ Optional / for assets:
 
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
 - `S3_BUCKET`, `S3_PREFIX`
+- `ICONS_S3_BUCKET` (default: `eti360-icons`)
+- `ICON_CLASSIFIER_MODEL` (default: `gpt-4.1-mini`)
+- `ICON_RENDERER_MODEL` (default: `gpt-image-1`)
+- `ICON_CLASSIFIER_INPUT_USD_PER_1M` (default: `0.4`)
+- `ICON_CLASSIFIER_OUTPUT_USD_PER_1M` (default: `1.6`)
+- `ICON_RENDERER_USD_PER_IMAGE` (default: `0.04`)
+- `ICON_RENDERER_INPUT_USD_PER_1M` (default: `0`)
+- `ICON_RENDERER_OUTPUT_USD_PER_1M` (default: `0`)
 
 Optional / for trip providers:
 
@@ -70,3 +80,12 @@ Optional / for weather helpers:
 - `POST /icons/form/validate` (validate user input fields with governance constraints)
 - `POST /icons/spec/validate` (fail-fast validation for LLM #1 strict icon intent JSON)
 - `POST /icons/prompt/build` (deterministic prompt compilation + stable hashes)
+- `GET /icons/models` (configured models + pricing estimate settings)
+- `POST /icons/create` (run full pipeline: classify -> prompt -> render -> store)
+- `POST /icons/create-batch` (parse multiline input and run per-line icon workflow)
+- `GET /icons/list` (list icon assets with model usage and estimated costs)
+- `POST /icons/{id}/recreate` (render again from stored prompt; new version)
+- `DELETE /icons/{id}` (soft delete icon record)
+- `GET /icons/{id}/download` (presigned S3 download redirect)
+- `GET /icons/{id}/download-url` (presigned S3 URL as JSON for UI actions)
+- `GET /icons/ui` (UI with entry form and icon table/actions)

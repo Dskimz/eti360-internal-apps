@@ -67,3 +67,6 @@ Optional / for weather helpers:
 - API usage log: `GET /usage/ui`, `GET /usage/log` (usage rows are attributed by `prompt_key`)
 - Documents: `GET /documents/ui`, `GET /documents/list`, `POST /documents/upload`, `GET /documents/download/{doc_id}`, `POST /documents/delete/{doc_id}`
 - Trip providers (research): `GET /trip_providers_research`, `GET /trip_providers_research/{provider_key}`, `GET /trip_providers_research/{provider_key}/evidence`
+- `POST /icons/form/validate` (validate user input fields with governance constraints)
+- `POST /icons/spec/validate` (fail-fast validation for LLM #1 strict icon intent JSON)
+- `POST /icons/prompt/build` (deterministic prompt compilation + stable hashes)

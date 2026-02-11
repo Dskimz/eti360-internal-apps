@@ -43,6 +43,8 @@ from app.arp_pipeline import (
     validate_arp_json,
 )
 from app.geo import CONTINENT_ORDER, continent_for_country
+from app.icons import IconFormInput, IconIntentSpec, build_icon_prompt, sha256_json
+from app.icons.prompt_builder import FIXED_GENERATION_PARAMS
 from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
 from app.weather.llm_usage import estimate_cost_usd
@@ -5646,7 +5648,6 @@ def arp_report_save(
         conn.commit()
     return {"ok": True}
 
-
 def _safe_provider_key(provider_key: str) -> str:
     provider_key = (provider_key or "").strip()
     if not provider_key:
@@ -6874,6 +6875,49 @@ async def trip_providers_delete(
 @app.get("/health")
 def health() -> JSONResponse:
     return JSONResponse({"ok": True}, headers={"Cache-Control": "no-store"})
+
+
+class IconSpecEnvelope(BaseModel):
+    spec: IconIntentSpec
+
+
+@app.post("/icons/form/validate")
+def validate_icon_form_input(
+    body: IconFormInput,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+    return {"ok": True, "validated_input": body.model_dump()}
+
+
+@app.post("/icons/spec/validate")
+def validate_icon_intent_spec(
+    body: IconSpecEnvelope,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+    canonical_spec = body.spec.canonical()
+    spec_json = canonical_spec.model_dump()
+    return {"ok": True, "spec": spec_json, "spec_hash": sha256_json(spec_json)}
+
+
+@app.post("/icons/prompt/build")
+def build_icon_generation_prompt(
+    body: IconSpecEnvelope,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+    canonical_spec = body.spec.canonical()
+    spec_json = canonical_spec.model_dump()
+    prompt = build_icon_prompt(canonical_spec)
+    return {
+        "ok": True,
+        "spec": spec_json,
+        "spec_hash": sha256_json(spec_json),
+        "prompt": prompt,
+        "prompt_hash": sha256_json({"prompt": prompt, "generation_params": FIXED_GENERATION_PARAMS}),
+        "generation_params": FIXED_GENERATION_PARAMS,
+    }
 
 
 @app.get("/health/db")

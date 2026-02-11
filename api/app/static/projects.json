@@ -120,6 +120,18 @@
     "notes": "Web UI backed by Postgres + S3 (evidence storage)."
   },
   {
+    "name": "Travel Segment Visualization (v1)",
+    "category": "Internal Tool",
+    "status": "pilot",
+    "owner": "ETI360",
+    "description": "CSV input -> derived duration/distance -> static map + QR assets -> booklet JSON for InDesign injection (Script Labels).",
+    "url": "/travel_segments/v1",
+    "repo_url": "",
+    "docs_url": "/static/travel_segment_visualization/README.md",
+    "tags": ["travel", "maps", "indesign", "governance"],
+    "notes": "ETI360 Blue is restricted to the route line + origin/destination marker outlines only. Geometry is representative, not operational."
+  },
+  {
     "name": "Schools Research",
     "category": "Internal Tool",
     "status": "pilot",

@@ -1,0 +1,78 @@
+{
+  "version": "v1",
+  "trip": {
+    "trip_id": "T-001",
+    "trip_name": "Spain Spring Trip",
+    "default_timezone": "Europe/Madrid",
+    "created_at": "2026-02-11T07:50:00Z",
+    "brand": {
+      "eti360_blue": {
+        "hex": "#0057B8",
+        "print_fidelity": "authoritative",
+        "cmyk": { "c": 100, "m": 70, "y": 0, "k": 0 }
+      }
+    },
+    "map": {
+      "provider": "mapbox",
+      "style_ref": "mapbox://styles/eti360/your-style-id",
+      "style_version": "style-v2026-02-11",
+      "image": { "width_px": 1024, "height_px": 1024, "scale": 2 }
+    }
+  },
+  "segments": [
+    {
+      "segment_id": "seg-001",
+      "trip_id": "T-001",
+      "segment_order": 1,
+      "segment_name": "Hotel to Museum",
+      "date_local": "2026-05-15",
+      "departure_time_local": "08:30",
+      "timezone": "Europe/Madrid",
+      "mode": "coach",
+      "environment": { "value": "Urban", "source": "auto" },
+      "origin": { "name": "Hotel", "lat": 40.4168, "lng": -3.7038 },
+      "destination": { "name": "Museum", "lat": 40.4139, "lng": -3.6921 },
+      "derived": {
+        "base_duration_min": 30,
+        "expected_duration_min": 24,
+        "expected_duration_max": 39,
+        "distance_km": 7.8,
+        "distance_miles": 4.8,
+        "arrival_window_start_local": "08:54",
+        "arrival_window_end_local": "09:09",
+        "route_geometry": {
+          "type": "LineString",
+          "source": "mapbox_directions",
+          "profile_used": "driving",
+          "is_fallback": false,
+          "geojson": {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [-3.7038, 40.4168],
+                [-3.6921, 40.4139]
+              ]
+            }
+          }
+        }
+      },
+      "assets": {
+        "map_png": {
+          "s3_url": "s3://eti360-maps/T-001/segments/1/map.png",
+          "width_px": 1024,
+          "height_px": 1024,
+          "content_hash": "sha256:example"
+        },
+        "qr_png": {
+          "s3_url": "s3://eti360-maps/T-001/segments/1/qr.png",
+          "width_px": 512,
+          "height_px": 512,
+          "content_hash": "sha256:example"
+        },
+        "qr_target_url": "https://example.com/public/orientation/T-001/seg-001"
+      }
+    }
+  ]
+}

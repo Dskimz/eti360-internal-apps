@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import os
 import re
@@ -8,6 +9,7 @@ import tempfile
 import threading
 import time
 import uuid
+import zipfile
 from base64 import b64encode, urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
 from hashlib import pbkdf2_hmac, sha256
@@ -2372,6 +2374,35 @@ def _mapbox_profile_for_mode(mode: str) -> tuple[str, bool, str]:
     return "", False, ""
 
 
+def _ensure_travel_segment_maps_table(cur: psycopg.Cursor) -> None:
+    schema = _jobs_schema_name()
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS "{schema}".travel_segment_maps (
+          id TEXT PRIMARY KEY,
+          trip_id TEXT NOT NULL DEFAULT '',
+          segment_order INTEGER,
+          segment_name TEXT NOT NULL DEFAULT '',
+          mode TEXT NOT NULL DEFAULT '',
+          origin_name TEXT NOT NULL DEFAULT '',
+          destination_name TEXT NOT NULL DEFAULT '',
+          source TEXT NOT NULL DEFAULT '',
+          profile_used TEXT NOT NULL DEFAULT '',
+          is_fallback BOOLEAN NOT NULL DEFAULT FALSE,
+          distance_m DOUBLE PRECISION NOT NULL DEFAULT 0,
+          duration_s DOUBLE PRECISION NOT NULL DEFAULT 0,
+          note TEXT NOT NULL DEFAULT '',
+          s3_bucket TEXT NOT NULL DEFAULT '',
+          s3_key TEXT NOT NULL DEFAULT '',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+        """
+    )
+    cur.execute(
+        f'CREATE INDEX IF NOT EXISTS travel_segment_maps_trip_created_idx ON "{schema}".travel_segment_maps (trip_id, created_at DESC);'
+    )
+
+
 def _mapbox_directions_geojson_line(*, access_key: str, profile: str, origin_lng: float, origin_lat: float, dest_lng: float, dest_lat: float) -> tuple[list[list[float]], float, float]:
     url = (
         "https://api.mapbox.com/directions/v5/mapbox/"
@@ -3108,6 +3139,7 @@ def list_weather_locations(
 
 
 class TravelSegmentIn(BaseModel):
+    trip_id: str = ""
     segment_order: int | None = None
     segment_name: str = ""
     mode: str = ""
@@ -3487,6 +3519,34 @@ def travel_segments_v1(request: Request) -> str:
       </div>
 
       <div class="card">
+        <h2>Saved Maps</h2>
+        <div class="btnrow" style="margin-top:10px; align-items:center;">
+          <label for="saved_trip_filter">Trip ID</label>
+          <input id="saved_trip_filter" type="text" placeholder="e.g. SG-TEST-001" style="max-width:220px;" />
+          <button id="load_saved_maps" class="btn" type="button">Load Maps</button>
+          <button id="download_saved_maps" class="btn" type="button">Download Filtered ZIP</button>
+        </div>
+        <div id="saved_status" class="muted" style="margin-top:10px;">No saved maps loaded.</div>
+        <div class="section tablewrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Trip</th>
+                <th>#</th>
+                <th>Segment</th>
+                <th>Mode</th>
+                <th>Map</th>
+              </tr>
+            </thead>
+            <tbody id="saved_rows">
+              <tr><td colspan="6" class="muted">Load maps by trip to view saved assets.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>Contracts & References</h2>
         <ul>
           <li><a href="/static/travel_segment_visualization/geometry_color_rules.md" target="_blank" rel="noopener">Geometry & color rules (immutable)</a></li>
@@ -3507,6 +3567,11 @@ def travel_segments_v1(request: Request) -> str:
       const genBtn = document.getElementById('generate_maps');
       const statusEl = document.getElementById('parse_status');
       const rowsEl = document.getElementById('routes_rows');
+      const savedTripEl = document.getElementById('saved_trip_filter');
+      const loadSavedBtn = document.getElementById('load_saved_maps');
+      const downloadSavedBtn = document.getElementById('download_saved_maps');
+      const savedStatusEl = document.getElementById('saved_status');
+      const savedRowsEl = document.getElementById('saved_rows');
       let parsedRows = [];
       let generatedMaps = {};
 
@@ -3554,6 +3619,7 @@ def travel_segments_v1(request: Request) -> str:
           date_local: headers.indexOf('date_local'),
           departure_time_local: headers.indexOf('departure_time_local'),
           mode: headers.indexOf('mode'),
+          trip_id: headers.indexOf('trip_id'),
         };
         if (idx.origin_name < 0 || idx.destination_name < 0) return [];
 
@@ -3565,6 +3631,7 @@ def travel_segments_v1(request: Request) -> str:
           rows.push({
             segment_order: Number.isFinite(orderNum) ? orderNum : i,
             segment_name: idx.segment_name >= 0 ? (vals[idx.segment_name] || '') : '',
+            trip_id: idx.trip_id >= 0 ? (vals[idx.trip_id] || '') : '',
             origin_name: idx.origin_name >= 0 ? (vals[idx.origin_name] || '') : '',
             origin_lat: idx.origin_lat >= 0 ? Number.parseFloat(vals[idx.origin_lat]) : Number.NaN,
             origin_lng: idx.origin_lng >= 0 ? Number.parseFloat(vals[idx.origin_lng]) : Number.NaN,
@@ -3588,6 +3655,7 @@ def travel_segments_v1(request: Request) -> str:
           return {
             segment_order: i + 1,
             segment_name: parts.length > 1 ? `${origin} -> ${destination}` : line,
+            trip_id: '',
             origin_name: origin,
             destination_name: destination,
             origin_lat: Number.NaN,
@@ -3621,6 +3689,48 @@ def travel_segments_v1(request: Request) -> str:
             <td>${mapCell}</td>
           `;
           rowsEl.appendChild(tr);
+        }
+      }
+
+      function renderSavedTable(items) {
+        if (!items.length) {
+          savedRowsEl.innerHTML = '<tr><td colspan="6" class="muted">No saved maps for this filter.</td></tr>';
+          return;
+        }
+        savedRowsEl.innerHTML = '';
+        for (const it of items) {
+          const tr = document.createElement('tr');
+          const mapLink = String(it.view_url || '').trim();
+          tr.innerHTML = `
+            <td>${esc(it.created_at || '')}</td>
+            <td>${esc(it.trip_id || '')}</td>
+            <td>${esc(it.segment_order || '')}</td>
+            <td>${esc(it.segment_name || '')}</td>
+            <td>${esc(it.mode || '')}</td>
+            <td>${mapLink ? `<a href="${esc(mapLink)}" target="_blank" rel="noopener">Open</a>` : '<span class="muted">Missing</span>'}</td>
+          `;
+          savedRowsEl.appendChild(tr);
+        }
+      }
+
+      async function loadSavedMaps() {
+        const tripId = String(savedTripEl.value || '').trim();
+        savedStatusEl.textContent = tripId ? `Loading maps for ${tripId}...` : 'Loading recent maps...';
+        try {
+          const q = tripId ? `?trip_id=${encodeURIComponent(tripId)}` : '';
+          const res = await fetch(`/travel_segments/v1/maps${q}`, { cache: 'no-store' });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.ok) {
+            savedStatusEl.textContent = body.detail || body.error || `Failed (HTTP ${res.status})`;
+            renderSavedTable([]);
+            return;
+          }
+          const items = Array.isArray(body.items) ? body.items : [];
+          savedStatusEl.textContent = `Loaded ${items.length} map(s).`;
+          renderSavedTable(items);
+        } catch (e) {
+          savedStatusEl.textContent = 'Failed to load saved maps.';
+          renderSavedTable([]);
         }
       }
 
@@ -3705,11 +3815,24 @@ def travel_segments_v1(request: Request) -> str:
           }
           renderTable(parsedRows);
           statusEl.textContent = `Generated ${items.length} map(s). Click any thumbnail to open full image.`;
+          const firstTrip = String((withCoords[0] && withCoords[0].trip_id) || '').trim();
+          if (firstTrip) savedTripEl.value = firstTrip;
+          loadSavedMaps();
         } catch (e) {
           statusEl.textContent = 'Generate failed due to network or server error.';
         } finally {
           genBtn.disabled = false;
         }
+      });
+
+      loadSavedBtn.addEventListener('click', loadSavedMaps);
+      downloadSavedBtn.addEventListener('click', () => {
+        const tripId = String(savedTripEl.value || '').trim();
+        if (!tripId) {
+          savedStatusEl.textContent = 'Enter a Trip ID to download filtered maps.';
+          return;
+        }
+        window.open(`/travel_segments/v1/maps/download?trip_id=${encodeURIComponent(tripId)}`, '_blank');
       });
     </script>
     """.strip()
@@ -3733,10 +3856,18 @@ def travel_segments_generate_maps(
     _ = _require_access(request=request, x_api_key=x_api_key, role="viewer")
     access_key = _require_mapbox_access_key()
     style_ref = _require_mapbox_style_ref()
+    s3_cfg = get_s3_config()
     items_out: list[dict[str, Any]] = []
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _apply_ops_migrations(cur)
+            _ensure_travel_segment_maps_table(cur)
+        conn.commit()
 
     for i, seg in enumerate(payload.segments[:50], start=1):
         mode = (seg.mode or "").strip().lower()
+        trip_id = (seg.trip_id or "").strip() or "unassigned-trip"
         profile, is_fallback, fallback_reason = _mapbox_profile_for_mode(mode)
         source = "straight_line"
         coords: list[list[float]] = [
@@ -3773,9 +3904,48 @@ def travel_segments_generate_maps(
                 dest_lng=float(seg.destination_lng),
                 dest_lat=float(seg.destination_lat),
             )
+            s3_key = (
+                f"{s3_cfg.prefix}travel-segments/"
+                f"{_slugify(trip_id)}/maps/"
+                f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+                f"-{int(seg.segment_order or i):03d}-{_slugify(str(seg.segment_name or 'segment'))}.png"
+            )
+            put_png(region=s3_cfg.region, bucket=s3_cfg.bucket, key=s3_key, body=png_bytes)
+            view_url = presign_get(region=s3_cfg.region, bucket=s3_cfg.bucket, key=s3_key, expires_in=3600)
             data_url = "data:image/png;base64," + b64encode(png_bytes).decode("ascii")
+            rec_id = str(uuid.uuid4())
+            with _connect() as conn:
+                with conn.cursor() as cur:
+                    _ensure_travel_segment_maps_table(cur)
+                    cur.execute(
+                        f"""
+                        INSERT INTO "{_jobs_schema_name()}".travel_segment_maps
+                        (id, trip_id, segment_order, segment_name, mode, origin_name, destination_name, source, profile_used, is_fallback, distance_m, duration_s, note, s3_bucket, s3_key)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                        """,
+                        (
+                            rec_id,
+                            trip_id,
+                            int(seg.segment_order or i),
+                            str(seg.segment_name or ""),
+                            str(seg.mode or ""),
+                            str(seg.origin_name or ""),
+                            str(seg.destination_name or ""),
+                            source,
+                            profile or "",
+                            bool(is_fallback),
+                            float(distance_m),
+                            float(duration_s),
+                            note,
+                            s3_cfg.bucket,
+                            s3_key,
+                        ),
+                    )
+                conn.commit()
             items_out.append(
                 {
+                    "id": rec_id,
+                    "trip_id": trip_id,
                     "segment_order": int(seg.segment_order or i),
                     "segment_name": str(seg.segment_name or ""),
                     "mode": str(seg.mode or ""),
@@ -3786,11 +3956,15 @@ def travel_segments_generate_maps(
                     "duration_s": round(duration_s, 2),
                     "note": note,
                     "map_data_url": data_url,
+                    "view_url": view_url,
+                    "s3_bucket": s3_cfg.bucket,
+                    "s3_key": s3_key,
                 }
             )
         except Exception as e:
             items_out.append(
                 {
+                    "trip_id": trip_id,
                     "segment_order": int(seg.segment_order or i),
                     "segment_name": str(seg.segment_name or ""),
                     "mode": str(seg.mode or ""),
@@ -3805,6 +3979,119 @@ def travel_segments_generate_maps(
             )
 
     return {"ok": True, "count": len(items_out), "items": items_out}
+
+
+@app.get("/travel_segments/v1/maps")
+def travel_segments_list_maps(
+    request: Request,
+    trip_id: str = Query(default=""),
+    limit: int = Query(default=200, ge=1, le=1000),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _ = _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    t = (trip_id or "").strip()
+    out: list[dict[str, Any]] = []
+    cfg = get_s3_config()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _apply_ops_migrations(cur)
+            _ensure_travel_segment_maps_table(cur)
+            if t:
+                cur.execute(
+                    f"""
+                    SELECT id, trip_id, segment_order, segment_name, mode, source, profile_used, is_fallback, note, s3_bucket, s3_key, created_at
+                    FROM "{_jobs_schema_name()}".travel_segment_maps
+                    WHERE trip_id=%s
+                    ORDER BY created_at DESC
+                    LIMIT %s;
+                    """,
+                    (t, int(limit)),
+                )
+            else:
+                cur.execute(
+                    f"""
+                    SELECT id, trip_id, segment_order, segment_name, mode, source, profile_used, is_fallback, note, s3_bucket, s3_key, created_at
+                    FROM "{_jobs_schema_name()}".travel_segment_maps
+                    ORDER BY created_at DESC
+                    LIMIT %s;
+                    """,
+                    (int(limit),),
+                )
+            rows = cur.fetchall()
+    for rid, trip, seg_order, seg_name, mode, source, profile, is_fb, note, bucket, key, created_at in rows:
+        b = str(bucket or cfg.bucket)
+        k = str(key or "")
+        view_url = presign_get(region=cfg.region, bucket=b, key=k, expires_in=3600) if k else ""
+        out.append(
+            {
+                "id": str(rid),
+                "trip_id": str(trip or ""),
+                "segment_order": int(seg_order or 0),
+                "segment_name": str(seg_name or ""),
+                "mode": str(mode or ""),
+                "source": str(source or ""),
+                "profile_used": str(profile or ""),
+                "is_fallback": bool(is_fb),
+                "note": str(note or ""),
+                "s3_bucket": b,
+                "s3_key": k,
+                "view_url": view_url,
+                "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at or ""),
+            }
+        )
+    return {"ok": True, "count": len(out), "items": out}
+
+
+@app.get("/travel_segments/v1/maps/download")
+def travel_segments_download_maps_zip(
+    request: Request,
+    trip_id: str = Query(default=""),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> Response:
+    _ = _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    t = (trip_id or "").strip()
+    if not t:
+        raise HTTPException(status_code=400, detail="trip_id is required")
+
+    cfg = get_s3_config()
+    rows: list[tuple[Any, ...]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _apply_ops_migrations(cur)
+            _ensure_travel_segment_maps_table(cur)
+            cur.execute(
+                f"""
+                SELECT segment_order, segment_name, s3_bucket, s3_key, created_at
+                FROM "{_jobs_schema_name()}".travel_segment_maps
+                WHERE trip_id=%s
+                ORDER BY created_at DESC
+                LIMIT 500;
+                """,
+                (t,),
+            )
+            rows = cur.fetchall()
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for seg_order, seg_name, bucket, key, _created in rows:
+            b = str(bucket or cfg.bucket)
+            k = str(key or "").strip()
+            if not k:
+                continue
+            try:
+                raw = get_bytes(region=cfg.region, bucket=b, key=k, max_bytes=15 * 1024 * 1024)
+            except Exception:
+                continue
+            fname = f"{int(seg_order or 0):03d}-{_slugify(str(seg_name or 'segment'))}.png"
+            zf.writestr(fname, raw)
+
+    zip_bytes = buf.getvalue()
+    filename = f"travel-segment-maps-{_slugify(t)}.zip"
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.get("/jobs/ui", response_class=HTMLResponse)

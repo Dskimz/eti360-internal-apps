@@ -43,7 +43,7 @@ from app.arp_pipeline import (
     validate_arp_json,
 )
 from app.geo import CONTINENT_ORDER, continent_for_country
-from app.icons import IconFormInput, IconIntentSpec, build_icon_prompt, sha256_json
+from app.icons import IconFormInput, IconIntentSpec, build_icon_prompt, classify_icon_intent, render_icon_png, sha256_json
 from app.icons.prompt_builder import FIXED_GENERATION_PARAMS
 from app.weather.perplexity import fetch_monthly_weather_normals
 from app.weather.daylight_chart import DaylightInputs, compute_daylight_summary, render_daylight_chart
@@ -7486,6 +7486,16 @@ class IconSpecEnvelope(BaseModel):
     spec: IconIntentSpec
 
 
+class IconRenderIn(BaseModel):
+    activity_name: str = Field(..., min_length=2, max_length=80)
+    context_note: str = Field(..., min_length=10, max_length=600)
+
+
+class IconBatchRenderIn(BaseModel):
+    batch_text: str = Field(..., min_length=1, max_length=20000)
+    continue_on_error: bool = True
+
+
 @app.post("/icons/form/validate")
 def validate_icon_form_input(
     body: IconFormInput,
@@ -7525,6 +7535,86 @@ def build_icon_generation_prompt(
     }
 
 
+def _parse_icon_batch_line(raw: str) -> tuple[str, str]:
+    if "|" in raw:
+        left, right = raw.split("|", 1)
+        return left.strip(), right.strip()
+    if "\t" in raw:
+        left, right = raw.split("\t", 1)
+        return left.strip(), right.strip()
+    raise ValueError("Missing delimiter. Use 'Activity | Context note' or tab-delimited lines.")
+
+
+@app.post("/icons/render")
+def render_icon(
+    body: IconRenderIn,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+    form = IconFormInput(activity_name=body.activity_name, context_note=body.context_note)
+    classification = classify_icon_intent(form)
+    spec = classification.spec.canonical()
+    prompt = build_icon_prompt(spec)
+    rendered = render_icon_png(prompt)
+    png_b64 = b64encode(rendered.png_bytes).decode("ascii")
+    return {
+        "ok": True,
+        "activity_name": form.activity_name,
+        "spec": spec.model_dump(),
+        "prompt": prompt,
+        "image_data_url": f"data:image/png;base64,{png_b64}",
+    }
+
+
+@app.post("/icons/render-batch")
+def render_icon_batch(
+    body: IconBatchRenderIn,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_api_key(x_api_key)
+
+    rows: list[dict[str, Any]] = []
+    success_count = 0
+    failed_count = 0
+
+    for line_no, raw_line in enumerate(body.batch_text.splitlines(), start=1):
+        raw = raw_line.strip()
+        if not raw or raw.startswith("#"):
+            continue
+        try:
+            activity_name, context_note = _parse_icon_batch_line(raw)
+            form = IconFormInput(activity_name=activity_name, context_note=context_note)
+            classification = classify_icon_intent(form)
+            spec = classification.spec.canonical()
+            prompt = build_icon_prompt(spec)
+            rendered = render_icon_png(prompt)
+            png_b64 = b64encode(rendered.png_bytes).decode("ascii")
+            rows.append(
+                {
+                    "line": line_no,
+                    "ok": True,
+                    "activity_name": activity_name,
+                    "spec": spec.model_dump(),
+                    "image_data_url": f"data:image/png;base64,{png_b64}",
+                }
+            )
+            success_count += 1
+        except Exception as e:
+            rows.append({"line": line_no, "ok": False, "error": str(e)})
+            failed_count += 1
+            if not body.continue_on_error:
+                break
+
+    if success_count == 0 and failed_count == 0:
+        raise HTTPException(status_code=400, detail="No valid non-empty lines found in batch_text")
+
+    return {
+        "ok": failed_count == 0,
+        "summary": {"processed": success_count + failed_count, "succeeded": success_count, "failed": failed_count},
+        "rows": rows,
+    }
+
+
 @app.get("/icons/ui", response_class=HTMLResponse)
 def icons_ui(
     request: Request,
@@ -7534,7 +7624,7 @@ def icons_ui(
     body_html = """
       <div class="card">
         <h1>Icons Pipeline</h1>
-        <p class="muted">Classify intent into strict schema, then compile deterministic prompt text.</p>
+        <p class="muted">Enter activity context and generate icon previews directly.</p>
       </div>
 
       <div class="card">
@@ -7558,14 +7648,16 @@ def icons_ui(
           <div class="muted">Format: <span class="mono">Activity | Context note</span> (or tab-separated).</div>
         </div>
         <div class="btnrow" style="margin-top:12px;">
-          <button id="btnRunSingle" class="btn primary" type="button">Run single</button>
-          <button id="btnRunBatch" class="btn" type="button">Run batch</button>
+          <button id="btnRunSingle" class="btn primary" type="button">Generate icon</button>
+          <button id="btnRunBatch" class="btn" type="button">Generate batch</button>
         </div>
       </div>
 
       <div class="card">
-        <h2>Results</h2>
-        <pre id="output" class="mono" style="white-space:pre-wrap;">Ready.</pre>
+        <h2>Preview</h2>
+        <div id="singleResult" class="muted">No icon generated yet.</div>
+        <div id="batchResults" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; margin-top:12px;"></div>
+        <pre id="statusOut" class="mono" style="white-space:pre-wrap; margin-top:10px;">Ready.</pre>
       </div>
     """.strip()
 
@@ -7575,7 +7667,9 @@ def icons_ui(
       const activityEl = document.getElementById('activityName');
       const contextEl = document.getElementById('contextNote');
       const batchEl = document.getElementById('batchText');
-      const outEl = document.getElementById('output');
+      const singleEl = document.getElementById('singleResult');
+      const batchResultsEl = document.getElementById('batchResults');
+      const statusOutEl = document.getElementById('statusOut');
 
       function headers() {
         const h = { 'Content-Type': 'application/json' };
@@ -7584,8 +7678,26 @@ def icons_ui(
         return h;
       }
 
-      function setOut(v) {
-        outEl.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+      function setStatus(v) {
+        statusOutEl.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+      }
+
+      function setSingleCard(item) {
+        const name = String(item.activity_name || '');
+        const src = String(item.image_data_url || '');
+        if (!src) {
+          singleEl.innerHTML = '<span class="muted">No icon generated yet.</span>';
+          return;
+        }
+        singleEl.innerHTML = `
+          <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+            <img src="${src}" alt="${name}" style="width:128px; height:128px; border:1px solid #e2e8f0; border-radius:8px; background:white;" />
+            <div>
+              <div style="font-weight:600;">${name}</div>
+              <div class="muted">Category: ${(item.spec || {}).icon_category || ''}</div>
+            </div>
+          </div>
+        `;
       }
 
       function saveLocal() {
@@ -7608,54 +7720,55 @@ def icons_ui(
       async function runSingle() {
         const activity_name = String(activityEl.value || '').trim();
         const context_note = String(contextEl.value || '').trim();
-        if (!activity_name || !context_note) { setOut('Enter activity name and context note.'); return; }
+        if (!activity_name || !context_note) { setStatus('Enter activity name and context note.'); return; }
         try {
-          setOut('Validating input...');
-          const res = await fetch('/icons/form/validate', {
+          setStatus('Generating icon...');
+          const res = await fetch('/icons/render', {
             method: 'POST',
             headers: headers(),
             body: JSON.stringify({ activity_name, context_note }),
           });
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-          setOut({
-            ok: true,
-            note: 'Input validated. This page currently runs form governance checks and batch parsing.',
-            validated_input: body.validated_input || { activity_name, context_note },
-          });
+          setSingleCard(body);
+          setStatus('Icon generated.');
         } catch (e) {
-          setOut('Error: ' + String(e?.message || e));
+          setStatus('Error: ' + String(e?.message || e));
         }
       }
 
       async function runBatch() {
         const raw = String(batchEl.value || '').trim();
-        if (!raw) { setOut('Enter batch lines first.'); return; }
-        const lines = raw.split(/\\r?\\n/).map((x) => x.trim()).filter(Boolean).filter((x) => !x.startsWith('#'));
-        const out = [];
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          const parts = line.includes('|') ? line.split('|') : (line.includes('\\t') ? line.split('\\t') : []);
-          if (parts.length < 2) {
-            out.push({ line: i + 1, ok: false, error: 'Missing delimiter (use | or tab)' });
-            continue;
+        if (!raw) { setStatus('Enter batch lines first.'); return; }
+        try {
+          setStatus('Generating batch icons...');
+          const res = await fetch('/icons/render-batch', {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ batch_text: raw, continue_on_error: true }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+          batchResultsEl.innerHTML = '';
+          for (const row of (body.rows || [])) {
+            if (!row || !row.ok) continue;
+            const card = document.createElement('div');
+            card.style.border = '1px solid #e2e8f0';
+            card.style.borderRadius = '8px';
+            card.style.padding = '10px';
+            card.style.background = 'white';
+            card.innerHTML = `
+              <img src="${row.image_data_url || ''}" alt="${row.activity_name || ''}" style="width:96px; height:96px; display:block; margin:0 auto 8px auto;" />
+              <div style="font-size:12px; text-align:center;">${row.activity_name || ''}</div>
+            `;
+            batchResultsEl.appendChild(card);
           }
-          const activity_name = String(parts[0] || '').trim();
-          const context_note = String(parts.slice(1).join('|') || '').trim();
-          try {
-            const res = await fetch('/icons/form/validate', {
-              method: 'POST',
-              headers: headers(),
-              body: JSON.stringify({ activity_name, context_note }),
-            });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
-            out.push({ line: i + 1, ok: true, activity_name });
-          } catch (e) {
-            out.push({ line: i + 1, ok: false, error: String(e?.message || e) });
-          }
+          const s = body.summary || {};
+          setStatus(`Batch done. Processed=${s.processed || 0}, Succeeded=${s.succeeded || 0}, Failed=${s.failed || 0}`);
+        } catch (e) {
+          setStatus('Error: ' + String(e?.message || e));
         }
-        setOut({ processed: out.length, succeeded: out.filter((x) => x.ok).length, failed: out.filter((x) => !x.ok).length, rows: out });
       }
 
       document.getElementById('btnRunSingle').addEventListener('click', runSingle);

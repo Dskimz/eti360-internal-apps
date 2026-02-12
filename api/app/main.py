@@ -3556,7 +3556,9 @@ def travel_segments_v1(request: Request) -> str:
           <li>Line list: <code>Hotel -&gt; Museum</code> (one per line)</li>
           <li>CSV with headers, e.g. <code>segment_order,segment_name,origin_name,destination_name,date_local,departure_time_local,mode</code></li>
         </ul>
-        <textarea id="routes_input" placeholder="trip_id,segment_order,segment_name,origin_name,origin_lat,origin_lng,destination_name,destination_lat,destination_lng,date_local,departure_time_local,mode&#10;SG-CHECK-002,1,Marina Bay Sands to Gardens by the Bay,Marina Bay Sands,1.2834,103.8607,Gardens by the Bay,1.2816,103.8636,2026-02-11,08:30,walking&#10;SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,103.8636,Singapore Flyer,1.2893,103.8631,2026-02-11,09:15,coach" style="width:100%; min-height:180px; margin-top:10px;"></textarea>
+        <textarea id="routes_input" style="width:100%; min-height:180px; margin-top:10px;">trip_id,segment_order,segment_name,origin_name,origin_lat,origin_lng,destination_name,destination_lat,destination_lng,date_local,departure_time_local,mode
+SG-CHECK-002,1,Marina Bay Sands to Gardens by the Bay,Marina Bay Sands,1.2834,103.8607,Gardens by the Bay,1.2816,103.8636,2026-02-11,08:30,walking
+SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,103.8636,Singapore Flyer,1.2893,103.8631,2026-02-11,09:15,coach</textarea>
         <div class="btnrow" style="margin-top:10px;">
           <button id="parse_routes" class="btn" type="button">Build Table</button>
           <button id="clear_routes" class="btn" type="button">Clear</button>

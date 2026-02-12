@@ -9,7 +9,11 @@ from io import BytesIO
 from typing import Any
 
 from collections import Counter, defaultdict
-from pypdf import PdfReader
+
+try:
+    from pypdf import PdfReader  # type: ignore[import-not-found]
+except Exception:  # pragma: no cover - optional local dependency for PDF parsing
+    PdfReader = None  # type: ignore[assignment]
 
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -182,6 +186,8 @@ def _pdf_page_text(page) -> str:
 
 
 def parse_pdf_bytes(source_id: str, raw: bytes) -> DocumentRecord:
+    if PdfReader is None:
+        raise RuntimeError("PDF parsing unavailable: install pypdf to enable PDF ingestion.")
     reader = PdfReader(BytesIO(raw))
     sections: list[DocumentSection] = []
     for i, page in enumerate(reader.pages):

@@ -2704,6 +2704,94 @@ def _mapbox_static_png_bytes(
     return bytes(resp.content)
 
 
+def _nice_scale_max_km(distance_m: float) -> float:
+    km = max(0.0, float(distance_m) / 1000.0)
+    target = max(1.0, km * 1.4)
+    for v in (1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 400.0):
+        if v >= target:
+            return v
+    return 400.0
+
+
+def _overlay_scale_bar_on_png(*, png_bytes: bytes, distance_m: float) -> bytes:
+    """
+    Burn a dual-unit scale bar into the map PNG so full-opened maps keep the scale.
+    """
+    if not (float(distance_m or 0.0) > 0):
+        return png_bytes
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except Exception:
+        return png_bytes
+
+    try:
+        img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+        draw = ImageDraw.Draw(img, "RGBA")
+        font = ImageFont.load_default()
+
+        max_km = _nice_scale_max_km(float(distance_m))
+        seg_km = max_km / 4.0
+        ticks_km = [0.0, seg_km, seg_km * 2.0, seg_km * 3.0, max_km]
+        ticks_mi = [round(v * 0.621371) for v in ticks_km]
+
+        def fmt_km(v: float) -> str:
+            if v >= 10:
+                return str(int(round(v)))
+            if v >= 2:
+                return f"{round(v, 1):g}"
+            return f"{round(v, 2):g}"
+
+        tick_km_labels = [fmt_km(v) for v in ticks_km]
+        tick_mi_labels = [str(int(v)) for v in ticks_mi]
+
+        box_x = 12
+        box_y = 12
+        bar_w = 180
+        bar_h = 8
+        pad = 4
+        label_h = 12
+        box_h = label_h + 2 + bar_h + 2 + label_h + pad
+        box_w = bar_w + pad * 2
+
+        # Background plate
+        draw.rectangle([box_x, box_y, box_x + box_w, box_y + box_h], fill=(255, 255, 255, 220))
+
+        # Top (km) labels
+        top_y = box_y + 2
+        for i, text in enumerate(tick_km_labels):
+            x = box_x + pad + int((bar_w * i) / 4)
+            if i == 4:
+                text = f"{text} km"
+            tw = int(draw.textlength(text, font=font))
+            draw.text((x - (tw if i == 4 else tw // 2), top_y), text, fill=(51, 51, 51, 255), font=font)
+
+        # Segmented bar
+        bar_x0 = box_x + pad
+        bar_y0 = box_y + label_h + 2
+        seg_w = bar_w // 4
+        colors = ((31, 78, 121, 255), (208, 211, 214, 255), (31, 78, 121, 255), (208, 211, 214, 255))
+        for i in range(4):
+            x0 = bar_x0 + i * seg_w
+            x1 = bar_x0 + ((i + 1) * seg_w if i < 3 else bar_w)
+            draw.rectangle([x0, bar_y0, x1, bar_y0 + bar_h], fill=colors[i])
+        draw.rectangle([bar_x0, bar_y0, bar_x0 + bar_w, bar_y0 + bar_h], outline=(51, 51, 51, 255), width=1)
+
+        # Bottom (mi) labels
+        bottom_y = bar_y0 + bar_h + 2
+        for i, text in enumerate(tick_mi_labels):
+            x = box_x + pad + int((bar_w * i) / 4)
+            if i == 4:
+                text = f"{text} mi"
+            tw = int(draw.textlength(text, font=font))
+            draw.text((x - (tw if i == 4 else tw // 2), bottom_y), text, fill=(51, 51, 51, 255), font=font)
+
+        out = io.BytesIO()
+        img.convert("RGB").save(out, format="PNG")
+        return out.getvalue()
+    except Exception:
+        return png_bytes
+
+
 def _mapbox_style_diagnostics(*, access_key: str, style_ref: str) -> dict[str, Any]:
     style_path = _mapbox_style_path(style_ref)
     style_api_url = f"https://api.mapbox.com/{style_path}?access_token={quote(access_key)}"
@@ -4379,6 +4467,7 @@ def travel_segments_generate_maps(
                 dest_lng=float(seg.destination_lng),
                 dest_lat=float(seg.destination_lat),
             )
+            png_bytes = _overlay_scale_bar_on_png(png_bytes=png_bytes, distance_m=distance_m)
             s3_key = (
                 f"{s3_cfg.prefix}travel-segments/"
                 f"{_slugify(trip_id)}/maps/"

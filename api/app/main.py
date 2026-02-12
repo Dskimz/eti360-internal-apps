@@ -3682,6 +3682,47 @@ def travel_segments_v1(request: Request) -> str:
         return `${month} ${day}, ${year} ${hour}:${minute} ${ampm}`;
       }
 
+      function niceScaleMaxKm(distanceM) {
+        const km = Math.max(0, Number(distanceM || 0) / 1000);
+        const target = Math.max(1, km * 1.4);
+        const options = [1, 2, 5, 10, 20, 50, 100, 200, 400];
+        for (const v of options) {
+          if (v >= target) return v;
+        }
+        return 400;
+      }
+
+      function fmtTick(v) {
+        if (v >= 10) return String(Math.round(v));
+        if (v >= 2) return String(Math.round(v * 10) / 10);
+        return String(Math.round(v * 100) / 100);
+      }
+
+      function scaleBarHtml(distanceM) {
+        const m = Number(distanceM || 0);
+        if (!(m > 0)) return '';
+        const maxKm = niceScaleMaxKm(m);
+        const segKm = maxKm / 4;
+        const ticksKm = [0, segKm, segKm * 2, segKm * 3, maxKm].map(fmtTick);
+        const ticksMi = [0, segKm, segKm * 2, segKm * 3, maxKm].map((v) => String(Math.round(v * 0.621371)));
+        return `
+          <div style="margin-top:6px; width:180px;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:#333; line-height:1.1;">
+              <span>${ticksKm[0]}</span><span>${ticksKm[1]}</span><span>${ticksKm[2]}</span><span>${ticksKm[3]}</span><span>${ticksKm[4]} km</span>
+            </div>
+            <div style="margin-top:2px; display:flex; height:7px; border:1px solid #333; border-radius:0; overflow:hidden;">
+              <div style="flex:1; background:#1F4E79;"></div>
+              <div style="flex:1; background:#D0D3D6;"></div>
+              <div style="flex:1; background:#1F4E79;"></div>
+              <div style="flex:1; background:#D0D3D6;"></div>
+            </div>
+            <div style="margin-top:2px; display:flex; justify-content:space-between; font-size:10px; color:#333; line-height:1.1;">
+              <span>${ticksMi[0]}</span><span>${ticksMi[1]}</span><span>${ticksMi[2]}</span><span>${ticksMi[3]}</span><span>${ticksMi[4]} mi</span>
+            </div>
+          </div>
+        `;
+      }
+
       function splitCsvLine(line) {
         const out = [];
         let cur = '';
@@ -3809,6 +3850,7 @@ def travel_segments_v1(request: Request) -> str:
           const km = meters > 0 ? (meters / 1000).toFixed(2) : '';
           const mi = meters > 0 ? (meters / 1609.344).toFixed(2) : '';
           const distanceLabel = meters > 0 ? `${km} km / ${mi} mi` : '';
+          const scale = scaleBarHtml(meters);
           tr.innerHTML = `
             <td><span class="datetime">${esc(createdLabel)}</span></td>
             <td>${esc(it.trip_id || '')}</td>
@@ -3816,7 +3858,7 @@ def travel_segments_v1(request: Request) -> str:
             <td>${esc(it.segment_name || '')}</td>
             <td>${esc(it.mode || '')}</td>
             <td>${esc(distanceLabel)}</td>
-            <td>${mapLink ? `<a href="${esc(mapLink)}" target="_blank" rel="noopener">Open</a>` : '<span class="muted">Missing</span>'}</td>
+            <td>${mapLink ? `<a href="${esc(mapLink)}" target="_blank" rel="noopener">Open</a>${scale}` : '<span class="muted">Missing</span>'}</td>
           `;
           savedRowsEl.appendChild(tr);
         }
@@ -3919,8 +3961,9 @@ def travel_segments_v1(request: Request) -> str:
             const km = meters > 0 ? (meters / 1000).toFixed(2) : '';
             const mi = meters > 0 ? (meters / 1609.344).toFixed(2) : '';
             const distanceLabel = meters > 0 ? `Distance: ${km} km / ${mi} mi` : '';
+            const scale = scaleBarHtml(meters);
             if (dataUrl) {
-              generatedMaps[key] = `<a href="${esc(dataUrl)}" target="_blank" rel="noopener"><img alt="map preview" src="${esc(dataUrl)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" /></a><div class="muted" style="margin-top:4px;">${esc(distanceLabel)}</div><div class="muted" style="margin-top:2px;">${esc(note)}</div>`;
+              generatedMaps[key] = `<a href="${esc(dataUrl)}" target="_blank" rel="noopener"><img alt="map preview" src="${esc(dataUrl)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" /></a>${scale}<div class="muted" style="margin-top:4px;">${esc(distanceLabel)}</div><div class="muted" style="margin-top:2px;">${esc(note)}</div>`;
             } else {
               generatedMaps[key] = `<span class="muted">Failed</span><div class="muted" style="margin-top:4px;">${esc(note)}</div>`;
             }

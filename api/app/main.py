@@ -3838,7 +3838,7 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
         const ticksKm = [0, segKm, segKm * 2, segKm * 3, maxKm].map(fmtTick);
         const ticksMi = [0, segKm, segKm * 2, segKm * 3, maxKm].map((v) => String(Math.round(v * 0.621371)));
         return `
-          <div style="position:absolute; left:4px; bottom:4px; background:rgba(255,255,255,0.92); padding:2px 3px; border-radius:0;">
+          <div style="position:absolute; left:4px; top:4px; background:rgba(255,255,255,0.92); padding:2px 3px; border-radius:0;">
             <div style="display:flex; justify-content:space-between; font-size:9px; color:#333; line-height:1.0; width:120px;">
               <span>${ticksKm[0]}</span><span>${ticksKm[1]}</span><span>${ticksKm[2]}</span><span>${ticksKm[3]}</span><span>${ticksKm[4]} km</span>
             </div>
@@ -4774,12 +4774,12 @@ def arp_ui(
             <td>
               ${(!repUrl && Number(it.chunks_count || 0) > 30) ? `
                 <button class="btn primary" type="button" data-action="create-report" data-id="${esc(rid)}"
-                  style="padding:6px 10px; border-radius:12px;">
+                  style="width:112px; height:34px; padding:0; border-radius:12px; justify-content:center; white-space:nowrap;">
                   Create Report
                 </button>
               ` : ''}
               <button class="btn" type="button" data-action="delete" data-id="${esc(rid)}"
-                style="padding:6px 10px; border-radius:12px; color:#b42318; border-color: rgba(180,35,24,0.35);">
+                style="width:112px; height:34px; padding:0; border-radius:12px; justify-content:center; white-space:nowrap; color:#b42318; border-color: rgba(180,35,24,0.35);">
                 Delete
               </button>
             </td>
@@ -8779,8 +8779,55 @@ def list_generated_icons(
                         "prompt": str(prompt or ""),
                         "image_data_url": str(image_data_url or ""),
                         "created_at": created_at.isoformat() if created_at else None,
+                        "source": "icons_generated",
+                        "downloadable": True,
                     }
                 )
+
+            # Include ARP activity icons (stored as inline SVG in arp.activity_icons).
+            _ensure_arp_tables(cur)
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT
+                      ai.activity_id,
+                      ai.activity_slug,
+                      a.activity_name,
+                      ai.spec_json,
+                      ai.svg,
+                      ai.updated_at
+                    FROM "__ARP_SCHEMA__".activity_icons ai
+                    JOIN "__ARP_SCHEMA__".activities a ON a.activity_id = ai.activity_id
+                    WHERE COALESCE(ai.svg, '') <> ''
+                    ORDER BY LOWER(a.activity_name) ASC, ai.updated_at DESC;
+                    """
+                ).strip()
+            )
+            for activity_id, activity_slug, activity_name, spec_json, svg, updated_at in (cur.fetchall() or []):
+                svg_s = str(svg or "").strip()
+                if not svg_s.startswith("<svg"):
+                    continue
+                cat = ""
+                if isinstance(spec_json, dict):
+                    cat = str(spec_json.get("primary_symbol") or spec_json.get("activity_type") or "").strip()
+                rows_out.append(
+                    {
+                        "id": f"arp:{int(activity_id)}",
+                        "display_id": f"ARP-{int(activity_id)}",
+                        "activity_name": str(activity_name or ""),
+                        "activity_slug": str(activity_slug or ""),
+                        "icon_category": cat or "arp",
+                        "color_token": "--eti-icon-primary",
+                        "color_hex": ETI_ICON_PRIMARY_HEX,
+                        "prompt": "",
+                        "image_data_url": "data:image/svg+xml;utf8," + quote(svg_s),
+                        "created_at": updated_at.isoformat() if updated_at else None,
+                        "source": "arp",
+                        "downloadable": False,
+                    }
+                )
+
+    rows_out.sort(key=lambda r: (str(r.get("activity_name") or "").lower(), str(r.get("created_at") or "")))
     return {"ok": True, "rows": rows_out}
 
 
@@ -8951,8 +8998,12 @@ def icons_ui(
         iconsRowsEl.innerHTML = '';
         for (const r of (rows || [])) {
           const tr = document.createElement('tr');
+          const canDownload = Boolean(r.downloadable);
+          const dl = canDownload
+            ? `<button class="btn" type="button" data-download-id="${r.id || ''}" data-download-name="${r.display_id || r.activity_name || 'icon'}">Download</button>`
+            : '<span class="muted">—</span>';
           tr.innerHTML = `
-            <td><button class="btn" type="button" data-download-id="${r.id || ''}" data-download-name="${r.display_id || r.activity_name || 'icon'}">Download</button></td>
+            <td>${dl}</td>
             <td><img src="${r.image_data_url || ''}" alt="${r.activity_name || ''}" style="width:52px; height:52px; object-fit:contain;" /></td>
             <td class="mono">${r.display_id || ''}</td>
             <td><div style="font-weight:600;">${r.activity_name || ''}</div></td>

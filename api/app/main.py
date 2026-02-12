@@ -959,7 +959,7 @@ def _arp_upsert_activity_icon(
     activity_name: str,
     scope_notes: str,
     report_md: str,
-    job_id: str,
+    job_id: str | None = None,
 ) -> None:
     overview = extract_activity_overview(report_md) or (scope_notes or "")
     ih = icon_input_hash(activity_name=activity_name, overview=overview)
@@ -981,7 +981,8 @@ def _arp_upsert_activity_icon(
             if row:
                 rec = icon_record_from_row(row)
                 if rec.svg and rec.input_hash == ih and rec.renderer_version == ICON_RENDERER_VERSION:
-                    _job_append_log(cur, job_id=job_id, line="Icon: cached")
+                    if job_id:
+                        _job_append_log(cur, job_id=job_id, line="Icon: cached")
                     conn.commit()
                     return
         conn.commit()
@@ -994,7 +995,8 @@ def _arp_upsert_activity_icon(
         f"{overview}\n"
     )
 
-    _job_append_log_safe(job_id=job_id, line=f"Icon: classify (model={model_icon})")
+    if job_id:
+        _job_append_log_safe(job_id=job_id, line=f"Icon: classify (model={model_icon})")
     run_id = _create_run_id()
     res = chat_json(model=model_icon, system=ICON_CLASSIFY_SYSTEM, user=user_prompt, temperature=0.0)
 
@@ -1044,7 +1046,8 @@ def _arp_upsert_activity_icon(
             )
         conn.commit()
 
-    _job_append_log_safe(job_id=job_id, line="Icon: saved")
+    if job_id:
+        _job_append_log_safe(job_id=job_id, line="Icon: saved")
 
 
 def _job_append_log_safe(*, job_id: str, line: str) -> None:
@@ -2584,7 +2587,7 @@ def _mapbox_directions_geojson_line(*, access_key: str, profile: str, origin_lng
     url = (
         "https://api.mapbox.com/directions/v5/mapbox/"
         f"{quote(profile)}/{origin_lng},{origin_lat};{dest_lng},{dest_lat}?"
-        "alternatives=false&steps=false&overview=full&geometries=geojson"
+        "alternatives=false&steps=false&overview=simplified&geometries=geojson"
         f"&access_token={quote(access_key)}"
     )
     resp = requests.get(url, timeout=20)
@@ -2610,6 +2613,41 @@ def _mapbox_directions_geojson_line(*, access_key: str, profile: str, origin_lng
     return clean, distance_m, duration_s
 
 
+def _simplify_route_coords(route_coords: list[list[float]], *, max_points: int = 80) -> list[list[float]]:
+    """
+    Reduce route geometry size to keep Mapbox Static URL payloads below URI limits.
+    - Round coordinates to 5dp (~1m precision).
+    - Remove consecutive duplicates after rounding.
+    - Evenly downsample while preserving first/last points.
+    """
+    if not isinstance(route_coords, list):
+        return []
+    rounded: list[list[float]] = []
+    last: tuple[float, float] | None = None
+    for pt in route_coords:
+        if not isinstance(pt, list) or len(pt) < 2:
+            continue
+        lng = round(float(pt[0]), 5)
+        lat = round(float(pt[1]), 5)
+        cur = (lng, lat)
+        if last == cur:
+            continue
+        rounded.append([lng, lat])
+        last = cur
+
+    if len(rounded) <= max_points:
+        return rounded
+
+    keep = max(2, int(max_points))
+    out: list[list[float]] = [rounded[0]]
+    interior = rounded[1:-1]
+    if interior and keep > 2:
+        step = max(1, int(len(interior) / float(keep - 2)))
+        out.extend(interior[::step][: keep - 2])
+    out.append(rounded[-1])
+    return out
+
+
 def _mapbox_static_png_bytes(
     *,
     access_key: str,
@@ -2621,6 +2659,10 @@ def _mapbox_static_png_bytes(
     dest_lat: float,
 ) -> bytes:
     style_path = _mapbox_style_path(style_ref)
+    simplified_coords = _simplify_route_coords(route_coords, max_points=80)
+    if len(simplified_coords) < 2:
+        simplified_coords = route_coords[:2]
+
     overlay_obj = {
         "type": "FeatureCollection",
         "features": [
@@ -2628,13 +2670,13 @@ def _mapbox_static_png_bytes(
                 "type": "Feature",
                 # White route casing (outer stroke) for stronger contrast on varied basemaps.
                 "properties": {"stroke": "#FFFFFF", "stroke-width": 10, "stroke-opacity": 0.98},
-                "geometry": {"type": "LineString", "coordinates": route_coords},
+                "geometry": {"type": "LineString", "coordinates": simplified_coords},
             },
             {
                 "type": "Feature",
                 # ETI route stroke color.
                 "properties": {"stroke": "#1F4E79", "stroke-width": 6, "stroke-opacity": 0.98},
-                "geometry": {"type": "LineString", "coordinates": route_coords},
+                "geometry": {"type": "LineString", "coordinates": simplified_coords},
             },
             {
                 "type": "Feature",
@@ -2651,7 +2693,7 @@ def _mapbox_static_png_bytes(
     encoded_overlay = quote(json.dumps(overlay_obj, separators=(",", ":")), safe="")
     map_url = (
         f"https://api.mapbox.com/{style_path}/static/geojson({encoded_overlay})/auto/900x900"
-        f"?padding=80&access_token={quote(access_key)}"
+        f"?padding=80&logo=false&attribution=false&access_token={quote(access_key)}"
     )
     resp = requests.get(map_url, timeout=25)
     if resp.status_code >= 300:
@@ -3386,6 +3428,42 @@ def list_weather_locations(
     return {"ok": True, "locations": rows_out}
 
 
+@app.get("/apps/api/icons")
+def apps_api_icons(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    rows_out: list[dict[str, Any]] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_icons_gallery_table(cur)
+            cur.execute(
+                _schema(
+                    """
+                    SELECT DISTINCT ON (LOWER(activity_slug))
+                      activity_name,
+                      activity_slug,
+                      image_data_url,
+                      created_at
+                    FROM "__SCHEMA__".icons_generated
+                    WHERE COALESCE(image_data_url, '') <> ''
+                    ORDER BY LOWER(activity_slug), created_at DESC;
+                    """
+                )
+            )
+            for activity_name, activity_slug, image_data_url, created_at in (cur.fetchall() or []):
+                rows_out.append(
+                    {
+                        "activity_name": str(activity_name or ""),
+                        "activity_slug": str(activity_slug or ""),
+                        "image_data_url": str(image_data_url or ""),
+                        "created_at": created_at.isoformat() if created_at else None,
+                    }
+                )
+    return {"ok": True, "rows": rows_out}
+
+
 class TravelSegmentIn(BaseModel):
     trip_id: str = ""
     segment_order: int | None = None
@@ -3456,9 +3534,18 @@ def apps_home(request: Request) -> str:
       const metaEl = document.getElementById('meta');
       const ownCardNames = __OWN_NAMES__;
       const utilityNames = __UTILITY_NAMES__;
+      let iconBySlug = new Map();
 
       function esc(s) {
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
+      }
+      function slugify(s) {
+        return String(s || '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 120);
       }
       function shortWords(s, maxWords = 9) {
         const words = String(s || '').trim().split(/\\s+/).filter(Boolean);
@@ -3478,6 +3565,11 @@ def apps_home(request: Request) -> str:
         const openLabel = url ? 'Open' : (repo ? 'Repo' : 'Unavailable');
         const openAttrs = openHref && /^https?:\\/\\//i.test(openHref) ? ' target=\"_blank\" rel=\"noopener\"' : '';
         const docsLink = docs ? `<a class=\"btn\" href=\"${esc(docs)}\" target=\"_blank\" rel=\"noopener\">Docs</a>` : '';
+        const iconSlug = slugify(name);
+        const iconUrl = String(iconBySlug.get(iconSlug) || '');
+        const iconHtml = iconUrl
+          ? `<img src=\"${esc(iconUrl)}\" alt=\"${esc(name)} icon\" style=\"width:100%; height:100%; object-fit:contain;\" />`
+          : 'Icon';
         return `
           <article class=\"app-card\">
             <div class=\"app-card-main\">
@@ -3485,7 +3577,7 @@ def apps_home(request: Request) -> str:
                 <h3>${esc(name)}</h3>
                 <p>${esc(shortDesc)}</p>
               </div>
-              <div class=\"app-icon-slot\" title=\"Icon slot\">Icon</div>
+              <div class=\"app-icon-slot\" title=\"Icon slot\">${iconHtml}</div>
             </div>
             <div class=\"app-actions\">
               ${openHref ? `<a class=\"btn primary\" href=\"${esc(openHref)}\"${openAttrs}>${esc(openLabel)}</a>` : `<span class=\"pill\">No link</span>`}
@@ -3508,7 +3600,11 @@ def apps_home(request: Request) -> str:
                 <h3>Utilities</h3>
                 <p>Shared support tools and admin surfaces.</p>
               </div>
-              <div class=\"app-icon-slot\" title=\"Icon slot\">Icon</div>
+              <div class=\"app-icon-slot\" title=\"Icon slot\">${
+                String(iconBySlug.get(slugify('Utilities')) || '')
+                  ? `<img src=\"${esc(String(iconBySlug.get(slugify('Utilities')) || ''))}\" alt=\"Utilities icon\" style=\"width:100%; height:100%; object-fit:contain;\" />`
+                  : 'Icon'
+              }</div>
             </div>
             <div class=\"app-actions\">
               <a class=\"btn primary\" href=\"/apps/utilities\">Open Utilities</a>
@@ -3522,9 +3618,19 @@ def apps_home(request: Request) -> str:
 
       async function load() {
         try {
-          const res = await fetch('/static/projects.json', { cache: 'no-store' });
-          const body = await res.json().catch(() => ([]));
+          const [projRes, iconRes] = await Promise.all([
+            fetch('/static/projects.json', { cache: 'no-store' }),
+            fetch('/apps/api/icons', { cache: 'no-store' }),
+          ]);
+          const body = await projRes.json().catch(() => ([]));
+          const iconBody = await iconRes.json().catch(() => ({}));
           const items = Array.isArray(body) ? body : [];
+          const iconRows = Array.isArray(iconBody.rows) ? iconBody.rows : [];
+          iconBySlug = new Map(
+            iconRows
+              .map((r) => [slugify(r.activity_slug || r.activity_name || ''), String(r.image_data_url || '')])
+              .filter((x) => x[0] && x[1])
+          );
           renderHome(items);
         } catch (e) {
           ownCardsEl.innerHTML = '<div class=\"muted\">Failed to load projects.json</div>';
@@ -3573,9 +3679,18 @@ def apps_utilities(request: Request) -> str:
       const cardsEl = document.getElementById('utility-cards');
       const metaEl = document.getElementById('meta');
       const utilityNames = __UTILITY_NAMES__;
+      let iconBySlug = new Map();
 
       function esc(s) {
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
+      }
+      function slugify(s) {
+        return String(s || '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 120);
       }
       function shortWords(s, maxWords = 9) {
         const words = String(s || '').trim().split(/\\s+/).filter(Boolean);
@@ -3595,6 +3710,11 @@ def apps_utilities(request: Request) -> str:
         const openLabel = url ? 'Open' : (repo ? 'Repo' : 'Unavailable');
         const openAttrs = openHref && /^https?:\\/\\//i.test(openHref) ? ' target=\"_blank\" rel=\"noopener\"' : '';
         const docsLink = docs ? `<a class=\"btn\" href=\"${esc(docs)}\" target=\"_blank\" rel=\"noopener\">Docs</a>` : '';
+        const iconSlug = slugify(name);
+        const iconUrl = String(iconBySlug.get(iconSlug) || '');
+        const iconHtml = iconUrl
+          ? `<img src=\"${esc(iconUrl)}\" alt=\"${esc(name)} icon\" style=\"width:100%; height:100%; object-fit:contain;\" />`
+          : 'Icon';
         return `
           <article class=\"app-card\">
             <div class=\"app-card-main\">
@@ -3602,7 +3722,7 @@ def apps_utilities(request: Request) -> str:
                 <h3>${esc(name)}</h3>
                 <p>${esc(shortDesc)}</p>
               </div>
-              <div class=\"app-icon-slot\" title=\"Icon slot\">Icon</div>
+              <div class=\"app-icon-slot\" title=\"Icon slot\">${iconHtml}</div>
             </div>
             <div class=\"app-actions\">
               ${openHref ? `<a class=\"btn primary\" href=\"${esc(openHref)}\"${openAttrs}>${esc(openLabel)}</a>` : `<span class=\"pill\">No link</span>`}
@@ -3614,9 +3734,19 @@ def apps_utilities(request: Request) -> str:
 
       async function load() {
         try {
-          const res = await fetch('/static/projects.json', { cache: 'no-store' });
+          const [res, iconRes] = await Promise.all([
+            fetch('/static/projects.json', { cache: 'no-store' }),
+            fetch('/apps/api/icons', { cache: 'no-store' }),
+          ]);
           const body = await res.json().catch(() => ([]));
+          const iconBody = await iconRes.json().catch(() => ({}));
           const items = Array.isArray(body) ? body : [];
+          const iconRows = Array.isArray(iconBody.rows) ? iconBody.rows : [];
+          iconBySlug = new Map(
+            iconRows
+              .map((r) => [slugify(r.activity_slug || r.activity_name || ''), String(r.image_data_url || '')])
+              .filter((x) => x[0] && x[1])
+          );
           const byName = new Map(items.map((it) => [String(it.name || '').toLowerCase(), it]));
           const cards = utilityNames.map((name) => buildCard(byName.get(String(name).toLowerCase()), name));
           cardsEl.innerHTML = cards.join('');
@@ -3660,8 +3790,8 @@ def travel_segments_v1(request: Request) -> str:
           <li>CSV with headers, e.g. <code>segment_order,segment_name,origin_name,destination_name,date_local,departure_time_local,mode</code></li>
         </ul>
         <textarea id="routes_input" style="width:100%; min-height:180px; margin-top:10px;">trip_id,segment_order,segment_name,origin_name,origin_lat,origin_lng,destination_name,destination_lat,destination_lng,date_local,departure_time_local,mode
-SG-CHECK-002,1,Marina Bay Sands to Gardens by the Bay,Marina Bay Sands,1.2834,103.8607,Gardens by the Bay,1.2816,103.8636,2026-02-11,08:30,walking
-SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,103.8636,Singapore Flyer,1.2893,103.8631,2026-02-11,09:15,coach</textarea>
+SG-CHECK-003,1,Changi Airport to Marina Bay Sands,Changi Airport Terminal 3,1.3571,103.9872,Marina Bay Sands,1.2834,103.8607,2026-02-11,08:30,coach
+SG-CHECK-003,2,Marina Bay Sands to Singapore Zoo,Marina Bay Sands,1.2834,103.8607,Singapore Zoo,1.4043,103.7930,2026-02-11,10:00,coach</textarea>
         <div class="btnrow" style="margin-top:10px;">
           <button id="parse_routes" class="btn" type="button">Build Table</button>
           <button id="clear_routes" class="btn" type="button">Clear</button>
@@ -3767,6 +3897,7 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
       const diagOutputEl = document.getElementById('diag_output');
       let parsedRows = [];
       let generatedMaps = {};
+      let generatedMapLinks = {};
 
       function esc(s) {
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
@@ -3964,6 +4095,16 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
             <td>${esc(r.mode || '')}</td>
             <td>${mapCell}</td>
           `;
+          const routeUrl = generatedMapLinks[String(r.segment_order)] || '';
+          if (routeUrl) {
+            tr.style.cursor = 'pointer';
+            tr.title = 'Open route map';
+            tr.addEventListener('click', (ev) => {
+              const target = ev.target;
+              if (target && target.closest && target.closest('a')) return;
+              window.open(routeUrl, '_blank', 'noopener');
+            });
+          }
           rowsEl.appendChild(tr);
         }
       }
@@ -4055,6 +4196,7 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
         }
         parsedRows = rows;
         generatedMaps = {};
+        generatedMapLinks = {};
         renderTable(parsedRows);
       }
 
@@ -4063,14 +4205,15 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
         inputEl.value = '';
         parsedRows = [];
         generatedMaps = {};
+        generatedMapLinks = {};
         rowsEl.innerHTML = '<tr><td colspan="8" class="muted">Paste routes above, then click "Build Table".</td></tr>';
         statusEl.textContent = 'Cleared.';
       });
       exampleBtn.addEventListener('click', () => {
         inputEl.value = [
           'trip_id,segment_order,segment_name,origin_name,origin_lat,origin_lng,destination_name,destination_lat,destination_lng,date_local,departure_time_local,mode',
-          'SG-CHECK-002,1,Marina Bay Sands to Gardens by the Bay,Marina Bay Sands,1.2834,103.8607,Gardens by the Bay,1.2816,103.8636,2026-02-11,08:30,walking',
-          'SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,103.8636,Singapore Flyer,1.2893,103.8631,2026-02-11,09:15,coach'
+          'SG-CHECK-003,1,Changi Airport to Marina Bay Sands,Changi Airport Terminal 3,1.3571,103.9872,Marina Bay Sands,1.2834,103.8607,2026-02-11,08:30,coach',
+          'SG-CHECK-003,2,Marina Bay Sands to Singapore Zoo,Marina Bay Sands,1.2834,103.8607,Singapore Zoo,1.4043,103.7930,2026-02-11,10:00,coach'
         ].join('\\n');
         buildTable();
       });
@@ -4105,9 +4248,11 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
           }
           const items = Array.isArray(body.items) ? body.items : [];
           generatedMaps = {};
+          generatedMapLinks = {};
           for (const it of items) {
             const key = String(it.segment_order ?? '');
             const dataUrl = String(it.map_data_url || '');
+            const viewUrl = String(it.view_url || '');
             const note = String(it.note || '');
             const meters = Number(it.distance_m || 0);
             const km = meters > 0 ? (meters / 1000).toFixed(2) : '';
@@ -4115,7 +4260,11 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
             const distanceLabel = meters > 0 ? `Distance: ${km} km / ${mi} mi` : '';
             const scaleOverlay = scaleBarOverlayHtml(meters);
             if (dataUrl) {
+              generatedMapLinks[key] = dataUrl;
               generatedMaps[key] = `<a href="${esc(dataUrl)}" target="_blank" rel="noopener"><div style="position:relative; width:150px; height:150px;"><img alt="map preview" src="${esc(dataUrl)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" />${scaleOverlay}</div></a><div class="muted" style="margin-top:4px;">${esc(distanceLabel)}</div><div class="muted" style="margin-top:2px;">${esc(note)}</div>`;
+            } else if (viewUrl) {
+              generatedMapLinks[key] = viewUrl;
+              generatedMaps[key] = `<a href="${esc(viewUrl)}" target="_blank" rel="noopener">Open route</a><div class="muted" style="margin-top:4px;">${esc(distanceLabel)}</div><div class="muted" style="margin-top:2px;">${esc(note)}</div>`;
             } else {
               generatedMaps[key] = `<span class="muted">Failed</span><div class="muted" style="margin-top:4px;">${esc(note)}</div>`;
             }
@@ -6881,13 +7030,15 @@ def arp_report_ui(
 ) -> str:
     user = _require_access(request=request, x_api_key=x_api_key, role="viewer") or {}
     slug = _slugify(activity_slug)
+    activity_id = 0
+    scope_notes = ""
     with _connect() as conn:
         with conn.cursor() as cur:
             _ensure_arp_tables(cur)
             cur.execute(
                 _arp_schema(
                     """
-                    SELECT a.activity_name, r.report_md, r.updated_at
+                    SELECT a.activity_id, a.activity_name, COALESCE(a.scope_notes, ''), r.report_md, r.updated_at
                     FROM "__ARP_SCHEMA__".reports r
                     JOIN "__ARP_SCHEMA__".activities a ON a.activity_id = r.activity_id
                     WHERE r.activity_slug=%s;
@@ -6898,7 +7049,24 @@ def arp_report_ui(
             row = cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Report not found")
-            activity_name, report_md, updated_at = row
+            activity_id, activity_name, scope_notes, report_md, updated_at = row
+
+    # Ensure each report has an icon built from activity + activity overview.
+    try:
+        _arp_upsert_activity_icon(
+            activity_id=int(activity_id),
+            activity_slug=str(slug),
+            activity_name=str(activity_name or ""),
+            scope_notes=str(scope_notes or ""),
+            report_md=str(report_md or ""),
+            job_id=None,
+        )
+    except Exception:
+        pass
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _ensure_arp_tables(cur)
             cur.execute(
                 _arp_schema(
                     """
@@ -7008,6 +7176,9 @@ def arp_report_save(
     _require_write_access(request=request, x_api_key=x_api_key, role="editor")
     slug = _slugify(activity_slug)
     report_md = str(body.get("report_md") or "")
+    activity_id = 0
+    activity_name = ""
+    scope_notes = ""
     with _connect() as conn:
         with conn.cursor() as cur:
             _ensure_arp_tables(cur)
@@ -7023,7 +7194,35 @@ def arp_report_save(
             )
             if cur.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Report not found")
+            cur.execute(
+                _arp_schema(
+                    """
+                    SELECT a.activity_id, a.activity_name, COALESCE(a.scope_notes, '')
+                    FROM "__ARP_SCHEMA__".reports r
+                    JOIN "__ARP_SCHEMA__".activities a ON a.activity_id = r.activity_id
+                    WHERE r.activity_slug=%s;
+                    """
+                ).strip(),
+                (slug,),
+            )
+            row = cur.fetchone()
+            if row:
+                activity_id, activity_name, scope_notes = row
         conn.commit()
+
+    # Keep icon in sync with manual report edits.
+    if int(activity_id or 0) > 0:
+        try:
+            _arp_upsert_activity_icon(
+                activity_id=int(activity_id),
+                activity_slug=str(slug),
+                activity_name=str(activity_name or ""),
+                scope_notes=str(scope_notes or ""),
+                report_md=str(report_md or ""),
+                job_id=None,
+            )
+        except Exception:
+            pass
     return {"ok": True}
 
 def _safe_provider_key(provider_key: str) -> str:

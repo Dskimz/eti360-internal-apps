@@ -2320,6 +2320,127 @@ def _ui_shell(
         {body_html}
       </div>
     </main>
+    <script>
+      (function () {{
+        function norm(s) {{
+          return String(s || "").trim();
+        }}
+
+        function cellText(cell) {{
+          if (!cell) return "";
+          const v = cell.getAttribute("data-sort-value");
+          if (v !== null) return norm(v);
+          return norm(cell.innerText || cell.textContent || "");
+        }}
+
+        function parseNumber(s) {{
+          const t = norm(s).replace(/[$,%]/g, "").replace(/,/g, "");
+          if (!t) return NaN;
+          const n = Number(t);
+          return Number.isFinite(n) ? n : NaN;
+        }}
+
+        function parseDate(s) {{
+          const t = norm(s);
+          if (!t) return NaN;
+          const ms = Date.parse(t);
+          return Number.isFinite(ms) ? ms : NaN;
+        }}
+
+        function detectType(values) {{
+          const vals = values.map(norm).filter(Boolean);
+          if (!vals.length) return "text";
+          if (vals.every((v) => Number.isFinite(parseNumber(v)))) return "number";
+          if (vals.every((v) => Number.isFinite(parseDate(v)))) return "date";
+          return "text";
+        }}
+
+        function getRows(tbody) {{
+          return Array.from(tbody.querySelectorAll(":scope > tr"));
+        }}
+
+        function attachTableSort(table) {{
+          const thead = table.querySelector("thead");
+          const tbody = table.querySelector("tbody");
+          if (!thead || !tbody) return;
+          const headerRow = thead.querySelector("tr");
+          if (!headerRow) return;
+
+          const ths = Array.from(headerRow.children).filter((el) => el && el.tagName === "TH");
+          if (!ths.length) return;
+
+          const collator = new Intl.Collator(undefined, {{ numeric: true, sensitivity: "base" }});
+
+          ths.forEach((th, idx) => {{
+            if (th.getAttribute("data-nosort") === "1") return;
+            th.classList.add("sortable");
+            th.style.cursor = "pointer";
+            th.title = "Sort";
+            th.setAttribute("tabindex", "0");
+            th.setAttribute("role", "button");
+            th.setAttribute("aria-sort", "none");
+
+            const runSort = () => {{
+              const rows = getRows(tbody);
+              if (!rows.length) return;
+
+              const sortableRows = [];
+              const passthroughRows = [];
+              for (const tr of rows) {{
+                const cells = Array.from(tr.children).filter((el) => el && (el.tagName === "TD" || el.tagName === "TH"));
+                // Keep placeholder/special rows (colspan or too few cells) in place at the end.
+                if (!cells.length || cells.length <= idx || cells.some((c) => Number(c.getAttribute("colspan") || "1") > 1)) {{
+                  passthroughRows.push(tr);
+                }} else {{
+                  sortableRows.push(tr);
+                }}
+              }}
+
+              const values = sortableRows.map((tr) => cellText(tr.children[idx]));
+              const type = detectType(values);
+
+              const current = th.getAttribute("data-sort-dir") || "none";
+              const next = current === "asc" ? "desc" : "asc";
+              ths.forEach((x) => {{
+                x.setAttribute("data-sort-dir", "none");
+                x.setAttribute("aria-sort", "none");
+              }});
+              th.setAttribute("data-sort-dir", next);
+              th.setAttribute("aria-sort", next === "asc" ? "ascending" : "descending");
+
+              sortableRows.sort((a, b) => {{
+                const av = cellText(a.children[idx]);
+                const bv = cellText(b.children[idx]);
+                let cmp = 0;
+                if (type === "number") {{
+                  cmp = parseNumber(av) - parseNumber(bv);
+                }} else if (type === "date") {{
+                  cmp = parseDate(av) - parseDate(bv);
+                }} else {{
+                  cmp = collator.compare(av, bv);
+                }}
+                return next === "asc" ? cmp : -cmp;
+              }});
+
+              tbody.innerHTML = "";
+              for (const tr of sortableRows) tbody.appendChild(tr);
+              for (const tr of passthroughRows) tbody.appendChild(tr);
+            }};
+
+            th.addEventListener("click", runSort);
+            th.addEventListener("keydown", (ev) => {{
+              if (ev.key === "Enter" || ev.key === " ") {{
+                ev.preventDefault();
+                runSort();
+              }}
+            }});
+          }});
+        }}
+
+        const tables = Array.from(document.querySelectorAll("table"));
+        for (const table of tables) attachTableSort(table);
+      }})();
+    </script>
     {extra_script}
   </body>
 </html>"""
@@ -2785,11 +2906,16 @@ def _record_llm_usage(
     locations_count: int,
     ok_count: int,
     fail_count: int,
+    cost_usd: float | None = None,
 ) -> dict[str, Any]:
     run_uuid = uuid.UUID(str(run_id))
     prompt_key_s = _require_prompt_key(prompt_key) if (prompt_key or "").strip() else ""
-    cost_usd = float(
-        estimate_cost_usd(provider=provider, model=model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+    computed_cost_usd = (
+        float(cost_usd)
+        if cost_usd is not None
+        else float(
+            estimate_cost_usd(provider=provider, model=model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+        )
     )
 
     with _connect() as conn:
@@ -2828,7 +2954,7 @@ def _record_llm_usage(
                     int(prompt_tokens),
                     int(completion_tokens),
                     int(total_tokens),
-                    cost_usd,
+                    computed_cost_usd,
                 ),
             )
         conn.commit()
@@ -2842,7 +2968,7 @@ def _record_llm_usage(
         "prompt_tokens": int(prompt_tokens),
         "completion_tokens": int(completion_tokens),
         "total_tokens": int(total_tokens),
-        "cost_usd": cost_usd,
+        "cost_usd": computed_cost_usd,
     }
 
 
@@ -3041,7 +3167,7 @@ def usage_ui(request: Request) -> str:
     user = _get_current_user(request)
     body_html = """
       <div class="card">
-        <h1>API Usage Log</h1>
+        <h1>LLM Usage Log</h1>
         <p class="muted">LLM tokens/cost per run. Pricing comes from env vars (if unset, costs show as $0).</p>
       </div>
 
@@ -3102,14 +3228,24 @@ def usage_ui(request: Request) -> str:
 
           const totals = body.totals_by_provider || {};
           const workflows = body.totals_by_workflow || {};
-          const p = totals.perplexity || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-          const o = totals.openai || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-          const arp = workflows.arp || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost_usd: 0, rows: 0 };
-          summaryEl.textContent =
-            `Cumulative total: ${money(body.cumulative_total_cost_usd)} (rows: ${(body.items || []).length}) | ` +
-            `Perplexity in/out: ${p.prompt_tokens}/${p.completion_tokens} | ` +
-            `OpenAI in/out: ${o.prompt_tokens}/${o.completion_tokens} | ` +
-            `ARP in/out: ${arp.prompt_tokens}/${arp.completion_tokens} (rows: ${arp.rows}, cost: ${money(arp.cost_usd)})`;
+          const providerParts = Object.keys(totals)
+            .sort()
+            .map((k) => {
+              const t = totals[k] || {};
+              return `${k} in/out: ${Number(t.prompt_tokens || 0)}/${Number(t.completion_tokens || 0)}`;
+            });
+          const workflowParts = Object.keys(workflows)
+            .sort()
+            .map((k) => {
+              const t = workflows[k] || {};
+              return `${k} rows:${Number(t.rows || 0)} cost:${money(t.cost_usd)}`;
+            });
+          const parts = [
+            `Cumulative total: ${money(body.cumulative_total_cost_usd)} (rows: ${(body.items || []).length})`,
+            ...providerParts,
+            ...workflowParts,
+          ];
+          summaryEl.textContent = parts.join(' | ');
 
           const items = body.items || [];
           rowsEl.innerHTML = '';
@@ -3120,7 +3256,7 @@ def usage_ui(request: Request) -> str:
             tr.innerHTML = `
               <td><code>${date}</code></td>
               <td>${safe(r.workflow || r.kind)}</td>
-              <td><code>${safe(r.prompt_key || '')}</code></td>
+              <td><code>${safe(r.prompt_key || r.kind || '')}</code></td>
               <td>${safe(r.provider)}</td>
               <td><code>${safe(r.model)}</code></td>
               <td class="right"><code>${Number(r.prompt_tokens || 0)}</code></td>
@@ -3145,7 +3281,7 @@ def usage_ui(request: Request) -> str:
     """.strip()
 
     return _ui_shell(
-        title="ETI360 API Usage Log",
+        title="ETI360 LLM Usage Log",
         active="usage",
         body_html=body_html,
         max_width_px=1400,
@@ -3286,7 +3422,7 @@ _HOME_OWN_CARD_NAMES: list[str] = [
 _HOME_UTILITY_CARD_NAMES: list[str] = [
     "Documents",
     "Prompts",
-    "API Usage Log",
+    "LLM Usage Log",
     "DB Schema",
     "API Docs",
     "Marketing Website",
@@ -3314,53 +3450,6 @@ def apps_home(request: Request) -> str:
     own_names_json = json.dumps(_HOME_OWN_CARD_NAMES)
     utility_names_json = json.dumps(_HOME_UTILITY_CARD_NAMES)
 
-    extra_head = """
-    <style>
-      .apps-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 12px;
-      }
-      .app-card {
-        border: 1px solid var(--eti-border);
-        border-radius: 14px;
-        background: var(--eti-bg);
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        min-height: 190px;
-      }
-      .app-card h3 {
-        margin: 0;
-        font-size: 16px;
-        line-height: 1.3;
-        color: var(--eti-text-2);
-      }
-      .app-card p {
-        margin: 0;
-        font-size: 13px;
-        color: var(--eti-muted);
-      }
-      .app-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-      }
-      .app-actions {
-        margin-top: auto;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .app-actions .btn {
-        padding: 8px 12px;
-        font-size: 13px;
-      }
-    </style>
-    """.strip()
-
     script = """
     <script>
       const ownCardsEl = document.getElementById('own-cards');
@@ -3371,12 +3460,17 @@ def apps_home(request: Request) -> str:
       function esc(s) {
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
       }
+      function shortWords(s, maxWords = 9) {
+        const words = String(s || '').trim().split(/\\s+/).filter(Boolean);
+        if (words.length <= maxWords) return words.join(' ');
+        return words.slice(0, maxWords).join(' ') + '...';
+      }
 
       function buildCard(it, fallbackName) {
         const exists = !!it;
         const name = exists ? String(it.name || fallbackName) : String(fallbackName || 'Unnamed');
-        const status = exists ? String(it.status || '') : 'missing';
         const desc = exists ? String(it.description || '') : 'Missing from projects.json';
+        const shortDesc = shortWords(desc, 9);
         const url = exists ? String(it.url || '').trim() : '';
         const repo = exists ? String(it.repo_url || '').trim() : '';
         const docs = exists ? String(it.docs_url || '').trim() : '';
@@ -3384,15 +3478,15 @@ def apps_home(request: Request) -> str:
         const openLabel = url ? 'Open' : (repo ? 'Repo' : 'Unavailable');
         const openAttrs = openHref && /^https?:\\/\\//i.test(openHref) ? ' target=\"_blank\" rel=\"noopener\"' : '';
         const docsLink = docs ? `<a class=\"btn\" href=\"${esc(docs)}\" target=\"_blank\" rel=\"noopener\">Docs</a>` : '';
-        const notes = exists && it.notes ? `<p>${esc(it.notes)}</p>` : '';
         return `
           <article class=\"app-card\">
-            <div class=\"app-meta\">
-              <span class=\"pill\">${esc(status || 'unknown')}</span>
+            <div class=\"app-card-main\">
+              <div class=\"app-copy\">
+                <h3>${esc(name)}</h3>
+                <p>${esc(shortDesc)}</p>
+              </div>
+              <div class=\"app-icon-slot\" title=\"Icon slot\">Icon</div>
             </div>
-            <h3>${esc(name)}</h3>
-            <p>${esc(desc)}</p>
-            ${notes}
             <div class=\"app-actions\">
               ${openHref ? `<a class=\"btn primary\" href=\"${esc(openHref)}\"${openAttrs}>${esc(openLabel)}</a>` : `<span class=\"pill\">No link</span>`}
               ${docsLink}
@@ -3409,9 +3503,13 @@ def apps_home(request: Request) -> str:
         }
         cards.push(`
           <article class=\"app-card\">
-            <div class=\"app-meta\"><span class=\"pill\">grouped</span></div>
-            <h3>Utilities</h3>
-            <p>Shared support tools and admin surfaces.</p>
+            <div class=\"app-card-main\">
+              <div class=\"app-copy\">
+                <h3>Utilities</h3>
+                <p>Shared support tools and admin surfaces.</p>
+              </div>
+              <div class=\"app-icon-slot\" title=\"Icon slot\">Icon</div>
+            </div>
             <div class=\"app-actions\">
               <a class=\"btn primary\" href=\"/apps/utilities\">Open Utilities</a>
             </div>
@@ -3443,7 +3541,6 @@ def apps_home(request: Request) -> str:
         active="apps",
         body_html=body_html,
         max_width_px=1200,
-        extra_head=extra_head,
         extra_script=script,
         user=user,
     )
@@ -3471,47 +3568,6 @@ def apps_utilities(request: Request) -> str:
       </div>
     """.strip()
 
-    extra_head = """
-    <style>
-      .apps-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 12px;
-      }
-      .app-card {
-        border: 1px solid var(--eti-border);
-        border-radius: 14px;
-        background: var(--eti-bg);
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        min-height: 180px;
-      }
-      .app-card h3 {
-        margin: 0;
-        font-size: 16px;
-        line-height: 1.3;
-        color: var(--eti-text-2);
-      }
-      .app-card p {
-        margin: 0;
-        font-size: 13px;
-        color: var(--eti-muted);
-      }
-      .app-actions {
-        margin-top: auto;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .app-actions .btn {
-        padding: 8px 12px;
-        font-size: 13px;
-      }
-    </style>
-    """.strip()
-
     script = """
     <script>
       const cardsEl = document.getElementById('utility-cards');
@@ -3521,12 +3577,17 @@ def apps_utilities(request: Request) -> str:
       function esc(s) {
         return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;');
       }
+      function shortWords(s, maxWords = 9) {
+        const words = String(s || '').trim().split(/\\s+/).filter(Boolean);
+        if (words.length <= maxWords) return words.join(' ');
+        return words.slice(0, maxWords).join(' ') + '...';
+      }
 
       function buildCard(it, fallbackName) {
         const exists = !!it;
         const name = exists ? String(it.name || fallbackName) : String(fallbackName || 'Unnamed');
-        const status = exists ? String(it.status || '') : 'missing';
         const desc = exists ? String(it.description || '') : 'Missing from projects.json';
+        const shortDesc = shortWords(desc, 9);
         const url = exists ? String(it.url || '').trim() : '';
         const repo = exists ? String(it.repo_url || '').trim() : '';
         const docs = exists ? String(it.docs_url || '').trim() : '';
@@ -3536,9 +3597,13 @@ def apps_utilities(request: Request) -> str:
         const docsLink = docs ? `<a class=\"btn\" href=\"${esc(docs)}\" target=\"_blank\" rel=\"noopener\">Docs</a>` : '';
         return `
           <article class=\"app-card\">
-            <span class=\"pill\">${esc(status || 'unknown')}</span>
-            <h3>${esc(name)}</h3>
-            <p>${esc(desc)}</p>
+            <div class=\"app-card-main\">
+              <div class=\"app-copy\">
+                <h3>${esc(name)}</h3>
+                <p>${esc(shortDesc)}</p>
+              </div>
+              <div class=\"app-icon-slot\" title=\"Icon slot\">Icon</div>
+            </div>
             <div class=\"app-actions\">
               ${openHref ? `<a class=\"btn primary\" href=\"${esc(openHref)}\"${openAttrs}>${esc(openLabel)}</a>` : `<span class=\"pill\">No link</span>`}
               ${docsLink}
@@ -3572,7 +3637,6 @@ def apps_utilities(request: Request) -> str:
         active="apps",
         body_html=body_html,
         max_width_px=1200,
-        extra_head=extra_head,
         extra_script=script,
         user=user,
     )
@@ -4532,7 +4596,7 @@ def arp_ui(
         dialog.eti-modal::backdrop { background: rgba(15, 23, 42, 0.55); }
         .eti-modal__header { padding: 18px 18px 0 18px; display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
         .eti-modal__body { padding: 10px 18px 18px 18px; }
-        .eti-modal__close { border: 0; background: transparent; font-size: 22px; line-height: 1; cursor: pointer; color: var(--text-muted); }
+        .eti-modal__close { border: 0; background: transparent; font-size: 22px; line-height: 1; cursor: pointer; color: var(--eti-muted); }
       </style>
 
       <dialog id="dlgApiKey" class="eti-modal">
@@ -8482,6 +8546,8 @@ def _record_icon_usage_rows(
     renderer_model: str,
     renderer_prompt_tokens: int,
     renderer_completion_tokens: int,
+    classifier_cost_usd: float | None = None,
+    renderer_cost_usd: float | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     rows.append(
@@ -8500,6 +8566,7 @@ def _record_icon_usage_rows(
             locations_count=int(locations_count),
             ok_count=int(ok_count),
             fail_count=int(fail_count),
+            cost_usd=classifier_cost_usd,
         )
     )
     rows.append(
@@ -8518,6 +8585,7 @@ def _record_icon_usage_rows(
             locations_count=int(locations_count),
             ok_count=int(ok_count),
             fail_count=int(fail_count),
+            cost_usd=renderer_cost_usd,
         )
     )
     return rows
@@ -8535,10 +8603,11 @@ def _parse_icon_batch_line(raw: str) -> tuple[str, str]:
 
 @app.post("/icons/render")
 def render_icon(
+    request: Request,
     body: IconRenderIn,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
     form = IconFormInput(activity_name=body.activity_name, context_note=body.context_note)
     classification = classify_icon_intent(form)
     spec = classification.spec.canonical()
@@ -8565,6 +8634,8 @@ def render_icon(
         renderer_model=str(rendered.usage.model or ""),
         renderer_prompt_tokens=int(rendered.usage.input_tokens or 0),
         renderer_completion_tokens=int(rendered.usage.output_tokens or 0),
+        classifier_cost_usd=float(classification.usage.estimated_cost_usd or 0.0),
+        renderer_cost_usd=float(rendered.usage.estimated_cost_usd or 0.0),
     )
     return {
         "ok": True,
@@ -8582,10 +8653,11 @@ def render_icon(
 
 @app.post("/icons/render-batch")
 def render_icon_batch(
+    request: Request,
     body: IconBatchRenderIn,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
 
     rows: list[dict[str, Any]] = []
     success_count = 0
@@ -8594,6 +8666,8 @@ def render_icon_batch(
     classifier_completion_tokens_total = 0
     renderer_prompt_tokens_total = 0
     renderer_completion_tokens_total = 0
+    classifier_cost_usd_total = 0.0
+    renderer_cost_usd_total = 0.0
     classifier_model = ""
     renderer_model = ""
 
@@ -8614,6 +8688,8 @@ def render_icon_batch(
             classifier_completion_tokens_total += int(classification.usage.output_tokens or 0)
             renderer_prompt_tokens_total += int(rendered.usage.input_tokens or 0)
             renderer_completion_tokens_total += int(rendered.usage.output_tokens or 0)
+            classifier_cost_usd_total += float(classification.usage.estimated_cost_usd or 0.0)
+            renderer_cost_usd_total += float(rendered.usage.estimated_cost_usd or 0.0)
             png_b64 = b64encode(rendered.png_bytes).decode("ascii")
             image_data_url = f"data:image/png;base64,{png_b64}"
             icon_id = _save_generated_icon(
@@ -8657,6 +8733,8 @@ def render_icon_batch(
         renderer_model=renderer_model or "gpt-image-1",
         renderer_prompt_tokens=renderer_prompt_tokens_total,
         renderer_completion_tokens=renderer_completion_tokens_total,
+        classifier_cost_usd=classifier_cost_usd_total,
+        renderer_cost_usd=renderer_cost_usd_total,
     )
     return {
         "ok": failed_count == 0,
@@ -8669,9 +8747,10 @@ def render_icon_batch(
 
 @app.get("/icons/list")
 def list_generated_icons(
+    request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> dict[str, Any]:
-    _require_api_key(x_api_key)
+    _require_access(request=request, x_api_key=x_api_key, role="viewer")
     rows_out: list[dict[str, Any]] = []
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -8971,6 +9050,10 @@ def icons_create_ui(
         <div class="btnrow"><a class="btn" href="/icons/ui">Back to Icons List</a></div>
         <h1>Create Icons</h1>
         <p class="muted">Paste CSV or delimited rows. Build the table, then generate icons.</p>
+        <div class="statusbox mono" style="margin-top:10px; white-space:pre-wrap;">
+Sample test input:
+Fukuoka City Overview | Coastal Japanese city blending historic Shinto shrines and modern skyline along Hakata Bay. Known for open waterfront views, clean urban geometry, cultural restraint, and balanced harmony between tradition and contemporary infrastructure.
+        </div>
       </div>
 
       <div class="card">
@@ -8978,13 +9061,14 @@ def icons_create_ui(
         <textarea id="inputData" class="mono" style="width:100%; min-height:200px;" placeholder="activity_name,context_note
 Trekking,Guided mountain trekking activity on marked trails with elevation gain and rest checkpoints.
 Coach Transfer,Group transfer by coach between airport and accommodation."></textarea>
-        <div class="muted" style="margin-top:8px;">Supported formats: CSV with <code>activity_name,context_note</code> headers or line-delimited <code>Activity | Context note</code>.</div>
+        <div class="muted" style="margin-top:8px;">Supported formats: CSV with flexible headers (for example <code>activity,description</code>, <code>name,context</code>, or <code>activity_name,context_note</code>), 2-column CSV without headers, or line-delimited <code>Activity | Context note</code>.</div>
         <div class="btnrow" style="margin-top:10px;">
           <button id="buildTable" class="btn" type="button">Build Table</button>
           <button id="makeIcons" class="btn primary" type="button">Make Icons</button>
           <button id="clearInput" class="btn" type="button">Clear</button>
         </div>
         <div id="status" class="muted" style="margin-top:10px;">Paste data then click Build Table.</div>
+        <div id="submitAck" class="statusbox" style="display:none; margin-top:10px;"></div>
       </div>
 
       <div class="card">
@@ -9014,6 +9098,7 @@ Coach Transfer,Group transfer by coach between airport and accommodation."></tex
       const makeBtn = document.getElementById('makeIcons');
       const clearBtn = document.getElementById('clearInput');
       const statusEl = document.getElementById('status');
+      const submitAckEl = document.getElementById('submitAck');
       const rowsEl = document.getElementById('rows');
 
       let parsedRows = [];
@@ -9046,17 +9131,44 @@ Coach Transfer,Group transfer by coach between airport and accommodation."></tex
         const lines = raw.split(/\\r?\\n/).map((l) => l.trim()).filter(Boolean).filter((l) => !l.startsWith('#'));
         if (!lines.length) return [];
 
-        const first = lines[0].toLowerCase();
-        if (first.includes(',') && first.includes('activity_name') && first.includes('context_note')) {
-          const headers = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
-          const iActivity = headers.indexOf('activity_name');
-          const iContext = headers.indexOf('context_note');
-          if (iActivity < 0 || iContext < 0) return [];
+        function normalizeHeader(h) {
+          return String(h || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        }
+        function pickHeaderIndex(headers, aliases) {
+          for (let i = 0; i < headers.length; i += 1) {
+            if (aliases.includes(headers[i])) return i;
+          }
+          return -1;
+        }
+
+        const first = lines[0];
+        if (first.includes(',')) {
+          const headers = splitCsvLine(first).map(normalizeHeader);
+          const activityAliases = ['activity', 'activity_name', 'name', 'title', 'task'];
+          const contextAliases = ['description', 'context', 'context_note', 'note', 'details', 'summary'];
+          const iActivity = pickHeaderIndex(headers, activityAliases);
+          const iContext = pickHeaderIndex(headers, contextAliases);
+
+          // Headered CSV with flexible aliases.
+          if (iActivity >= 0 && iContext >= 0) {
+            const out = [];
+            for (let i = 1; i < lines.length; i += 1) {
+              const vals = splitCsvLine(lines[i]);
+              const activity_name = String(vals[iActivity] || '').trim();
+              const context_note = String(vals[iContext] || '').trim();
+              if (!activity_name || !context_note) continue;
+              out.push({ line: i + 1, activity_name, context_note });
+            }
+            return out;
+          }
+
+          // Fallback: 2-column CSV with no header (or unknown header names).
           const out = [];
-          for (let i = 1; i < lines.length; i += 1) {
+          for (let i = 0; i < lines.length; i += 1) {
             const vals = splitCsvLine(lines[i]);
-            const activity_name = String(vals[iActivity] || '').trim();
-            const context_note = String(vals[iContext] || '').trim();
+            if (vals.length < 2) continue;
+            const activity_name = String(vals[0] || '').trim();
+            const context_note = String(vals.slice(1).join(',') || '').trim();
             if (!activity_name || !context_note) continue;
             out.push({ line: i + 1, activity_name, context_note });
           }
@@ -9102,6 +9214,9 @@ Coach Transfer,Group transfer by coach between airport and accommodation."></tex
         renderedByLine = {};
         renderTable();
         statusEl.textContent = `Parsed ${parsedRows.length} row(s).`;
+        const now = new Date();
+        submitAckEl.style.display = 'block';
+        submitAckEl.innerHTML = `<strong>Submission received.</strong> ${esc(parsedRows.length)} row(s) loaded at ${esc(now.toLocaleString())}.`;
       }
 
       async function makeIcons() {
@@ -9129,6 +9244,9 @@ Coach Transfer,Group transfer by coach between airport and accommodation."></tex
           renderTable();
           const s = body.summary || {};
           statusEl.textContent = `Done. Processed=${s.processed || 0}, Succeeded=${s.succeeded || 0}, Failed=${s.failed || 0}.`;
+          const now = new Date();
+          submitAckEl.style.display = 'block';
+          submitAckEl.innerHTML = `<strong>Icon run submitted and completed.</strong> Processed ${esc(s.processed || 0)} row(s), succeeded ${esc(s.succeeded || 0)}, failed ${esc(s.failed || 0)} at ${esc(now.toLocaleString())}.`;
         } catch (e) {
           statusEl.textContent = 'Error: ' + String(e?.message || e);
         } finally {
@@ -9142,6 +9260,8 @@ Coach Transfer,Group transfer by coach between airport and accommodation."></tex
         renderedByLine = {};
         renderTable();
         statusEl.textContent = 'Cleared.';
+        submitAckEl.style.display = 'none';
+        submitAckEl.innerHTML = '';
       }
 
       inputEl.value = localStorage.getItem('eti_icons_create_input') || '';
@@ -9890,6 +10010,67 @@ subtitle
 
 Nothing else.
 """.strip(),
+        },
+        {
+            "prompt_key": "icons_classify_v1",
+            "app_key": "icons",
+            "workflow": "icons",
+            "name": "Icons classify (OpenAI)",
+            "natural_name": "OpenAI: icon intent classification",
+            "description": "Classify activity/context into structured icon intent JSON.",
+            "provider": "openai",
+            "model": os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4.1-mini",
+            "prompt_text": "Managed by code in app/icons/pipeline.py (classification request payload).",
+        },
+        {
+            "prompt_key": "icons_render_v1",
+            "app_key": "icons",
+            "workflow": "icons",
+            "name": "Icons render (OpenAI Images)",
+            "natural_name": "OpenAI Images: icon PNG render",
+            "description": "Render icon PNG from canonical icon prompt.",
+            "provider": "openai",
+            "model": "gpt-image-1",
+            "prompt_text": "Managed by code in app/icons/pipeline.py (images generation payload).",
+        },
+        {
+            "prompt_key": "arp_extract_v1",
+            "app_key": "arp",
+            "workflow": "arp",
+            "name": "ARP extract (OpenAI)",
+            "natural_name": "OpenAI: chunk extraction for ARP facts",
+            "description": "Extract structured assumptions/cautions from evidence chunks.",
+            "provider": "openai",
+            "model": os.environ.get("OPENAI_MODEL_ARP_EXTRACT", "").strip()
+            or os.environ.get("OPENAI_MODEL", "").strip()
+            or "gpt-5-mini",
+            "prompt_text": "Managed by code constant ARP_EXTRACT_SYSTEM + arp_extract_user_prompt.",
+        },
+        {
+            "prompt_key": "arp_write_v1",
+            "app_key": "arp",
+            "workflow": "arp",
+            "name": "ARP write (OpenAI)",
+            "natural_name": "OpenAI: ARP JSON writer",
+            "description": "Write validated ARP JSON from extracted evidence.",
+            "provider": "openai",
+            "model": os.environ.get("OPENAI_MODEL_ARP_WRITE", "").strip()
+            or os.environ.get("OPENAI_MODEL", "").strip()
+            or "gpt-5-mini",
+            "prompt_text": "Managed by code constant ARP_WRITE_SYSTEM + _arp_writer_input_md.",
+        },
+        {
+            "prompt_key": "arp_icon_v1",
+            "app_key": "arp",
+            "workflow": "arp",
+            "name": "ARP icon classify (OpenAI)",
+            "natural_name": "OpenAI: ARP activity icon classifier",
+            "description": "Classify activity overview into deterministic ARP SVG icon spec.",
+            "provider": "openai",
+            "model": os.environ.get("OPENAI_MODEL_ARP_ICON", "").strip()
+            or os.environ.get("OPENAI_MODEL", "").strip()
+            or "gpt-5-mini",
+            "prompt_text": "Managed by code constant ICON_CLASSIFY_SYSTEM.",
         },
     ]
 

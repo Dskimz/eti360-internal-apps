@@ -11,6 +11,20 @@ UI styling is shared via `/static/eti360.css` (vendored from `@eti360/design-sys
 - **Build Command:** `pip install -r requirements.txt`
 - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
+## Local dev (single env file)
+
+Set up once:
+
+1. Copy env template:
+   - `cp .env.example .env.local`
+2. Fill values in `.env.local`.
+3. Run:
+   - `./scripts/run_local.sh`
+
+Notes:
+- The launcher auto-loads `.env.local` (fallback `.env`) and starts Uvicorn on `http://127.0.0.1:8765`.
+- `.env*` files are git-ignored (except templates), so secrets stay local.
+
 ## Environment variables
 
 Required:

@@ -4,3 +4,7 @@ __pycache__/
 .DS_Store
 node_modules/
 package-lock.json
+.env
+.env.*
+!.env.example
+!.env.template

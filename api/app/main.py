@@ -3766,6 +3766,31 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
         `;
       }
 
+      function scaleBarOverlayHtml(distanceM) {
+        const m = Number(distanceM || 0);
+        if (!(m > 0)) return '';
+        const maxKm = niceScaleMaxKm(m);
+        const segKm = maxKm / 4;
+        const ticksKm = [0, segKm, segKm * 2, segKm * 3, maxKm].map(fmtTick);
+        const ticksMi = [0, segKm, segKm * 2, segKm * 3, maxKm].map((v) => String(Math.round(v * 0.621371)));
+        return `
+          <div style="position:absolute; left:4px; bottom:4px; background:rgba(255,255,255,0.92); padding:2px 3px; border-radius:0;">
+            <div style="display:flex; justify-content:space-between; font-size:9px; color:#333; line-height:1.0; width:120px;">
+              <span>${ticksKm[0]}</span><span>${ticksKm[1]}</span><span>${ticksKm[2]}</span><span>${ticksKm[3]}</span><span>${ticksKm[4]} km</span>
+            </div>
+            <div style="margin-top:1px; display:flex; height:6px; border:1px solid #333; border-radius:0; overflow:hidden; width:120px;">
+              <div style="flex:1; background:#1F4E79;"></div>
+              <div style="flex:1; background:#D0D3D6;"></div>
+              <div style="flex:1; background:#1F4E79;"></div>
+              <div style="flex:1; background:#D0D3D6;"></div>
+            </div>
+            <div style="margin-top:1px; display:flex; justify-content:space-between; font-size:8px; color:#333; line-height:1.0; width:120px;">
+              <span>${ticksMi[0]}</span><span>${ticksMi[1]}</span><span>${ticksMi[2]}</span><span>${ticksMi[3]}</span><span>${ticksMi[4]} mi</span>
+            </div>
+          </div>
+        `;
+      }
+
       function splitCsvLine(line) {
         const out = [];
         let cur = '';
@@ -3893,7 +3918,7 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
           const km = meters > 0 ? (meters / 1000).toFixed(2) : '';
           const mi = meters > 0 ? (meters / 1609.344).toFixed(2) : '';
           const distanceLabel = meters > 0 ? `${km} km / ${mi} mi` : '';
-          const scale = scaleBarHtml(meters);
+          const scaleOverlay = scaleBarOverlayHtml(meters);
           tr.innerHTML = `
             <td><span class="datetime">${esc(createdLabel)}</span></td>
             <td>${esc(it.trip_id || '')}</td>
@@ -3901,7 +3926,7 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
             <td>${esc(it.segment_name || '')}</td>
             <td>${esc(it.mode || '')}</td>
             <td>${esc(distanceLabel)}</td>
-            <td>${mapLink ? `<a href="${esc(mapLink)}" target="_blank" rel="noopener">Open</a>${scale}` : '<span class="muted">Missing</span>'}</td>
+            <td>${mapLink ? `<a href="${esc(mapLink)}" target="_blank" rel="noopener">Open</a><div style="position:relative; width:150px; height:150px; margin-top:4px;"><img alt="saved map preview" src="${esc(mapLink)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" />${scaleOverlay}</div>` : '<span class="muted">Missing</span>'}</td>
           `;
           savedRowsEl.appendChild(tr);
         }
@@ -4024,9 +4049,9 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
             const km = meters > 0 ? (meters / 1000).toFixed(2) : '';
             const mi = meters > 0 ? (meters / 1609.344).toFixed(2) : '';
             const distanceLabel = meters > 0 ? `Distance: ${km} km / ${mi} mi` : '';
-            const scale = scaleBarHtml(meters);
+            const scaleOverlay = scaleBarOverlayHtml(meters);
             if (dataUrl) {
-              generatedMaps[key] = `<a href="${esc(dataUrl)}" target="_blank" rel="noopener"><img alt="map preview" src="${esc(dataUrl)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" /></a>${scale}<div class="muted" style="margin-top:4px;">${esc(distanceLabel)}</div><div class="muted" style="margin-top:2px;">${esc(note)}</div>`;
+              generatedMaps[key] = `<a href="${esc(dataUrl)}" target="_blank" rel="noopener"><div style="position:relative; width:150px; height:150px;"><img alt="map preview" src="${esc(dataUrl)}" style="width:150px; height:150px; object-fit:cover; border:1px solid #D0D3D6; border-radius:4px;" />${scaleOverlay}</div></a><div class="muted" style="margin-top:4px;">${esc(distanceLabel)}</div><div class="muted" style="margin-top:2px;">${esc(note)}</div>`;
             } else {
               generatedMaps[key] = `<span class="muted">Failed</span><div class="muted" style="margin-top:4px;">${esc(note)}</div>`;
             }

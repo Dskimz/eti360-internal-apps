@@ -58,6 +58,45 @@ app = FastAPI(title="ETI360 Internal API", docs_url="/docs", redoc_url=None)
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
+
+def _load_local_env_files() -> None:
+    """
+    Best-effort local env loading when uvicorn is launched directly.
+    Shell launcher still works; this just removes that hard dependency.
+    """
+    base_dir = Path(__file__).resolve().parents[1]  # api/
+    candidate_files = (
+        base_dir / ".env.local",
+        base_dir / ".env",
+        base_dir / "ETI360 - Internal Apps Group.env",
+    )
+    for env_path in candidate_files:
+        if not env_path.is_file():
+            continue
+        try:
+            with env_path.open("r", encoding="utf-8") as f:
+                for raw in f:
+                    line = raw.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if line.startswith("export "):
+                        line = line[7:].strip()
+                    if "=" not in line:
+                        continue
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    if not key:
+                        continue
+                    value = value.strip()
+                    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+                        value = value[1:-1]
+                    os.environ.setdefault(key, value)
+        except Exception as e:
+            print(f"[startup] skipped env file {env_path.name}: {e}")
+
+
+_load_local_env_files()
+
 WEATHER_SCHEMA = "weather"
 OPS_SCHEMA = os.environ.get("OPS_SCHEMA", "ops").strip() or "ops"
 ARP_SCHEMA = os.environ.get("ARP_SCHEMA", "arp").strip() or "arp"
@@ -3597,7 +3636,9 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
         <h2>Saved Maps</h2>
         <div class="btnrow" style="margin-top:10px; align-items:center;">
           <label for="saved_trip_filter">Trip ID</label>
-          <input id="saved_trip_filter" type="text" placeholder="e.g. SG-TEST-001" style="max-width:220px;" />
+          <select id="saved_trip_filter" style="max-width:260px;">
+            <option value="">All trips</option>
+          </select>
           <button id="load_saved_maps" class="btn" type="button">Load Maps</button>
           <button id="download_saved_maps" class="btn" type="button">Download Filtered ZIP</button>
         </div>
@@ -3887,6 +3928,26 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
         }
       }
 
+      async function loadTripOptions() {
+        const current = String(savedTripEl.value || '').trim();
+        try {
+          const res = await fetch('/travel_segments/v1/maps/trips?limit=500', { cache: 'no-store' });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.ok) return;
+          const trips = Array.isArray(body.trips) ? body.trips : [];
+          savedTripEl.innerHTML = '<option value="">All trips</option>';
+          for (const t of trips) {
+            const opt = document.createElement('option');
+            opt.value = String(t || '');
+            opt.textContent = String(t || '');
+            savedTripEl.appendChild(opt);
+          }
+          if (current) savedTripEl.value = current;
+        } catch (_e) {
+          // Keep default option if loading fails.
+        }
+      }
+
       function buildTable() {
         const raw = String(inputEl.value || '').trim();
         if (!raw) {
@@ -4008,6 +4069,8 @@ SG-CHECK-002,2,Gardens by the Bay to Singapore Flyer,Gardens by the Bay,1.2816,1
           diagStatusEl.textContent = 'Diagnostics request failed.';
         }
       });
+
+      loadTripOptions();
     </script>
     """.strip()
 
@@ -4219,6 +4282,35 @@ def travel_segments_list_maps(
             }
         )
     return {"ok": True, "count": len(out), "items": out}
+
+
+@app.get("/travel_segments/v1/maps/trips")
+def travel_segments_list_trip_ids(
+    request: Request,
+    limit: int = Query(default=200, ge=1, le=1000),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> dict[str, Any]:
+    _ = _require_access(request=request, x_api_key=x_api_key, role="viewer")
+    trips: list[str] = []
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            _apply_ops_migrations(cur)
+            _ensure_travel_segment_maps_table(cur)
+            cur.execute(
+                f"""
+                SELECT trip_id, MAX(created_at) AS last_seen
+                FROM "{_jobs_schema_name()}".travel_segment_maps
+                WHERE COALESCE(trip_id, '') <> ''
+                GROUP BY trip_id
+                ORDER BY last_seen DESC
+                LIMIT %s;
+                """,
+                (int(limit),),
+            )
+            rows = cur.fetchall()
+    for trip_id, _last_seen in rows:
+        trips.append(str(trip_id or "").strip())
+    return {"ok": True, "count": len(trips), "trips": trips}
 
 
 @app.get("/travel_segments/v1/maps/download")
